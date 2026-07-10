@@ -1,0 +1,49 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Warehouse extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $fillable = [
+        'company_id',
+        'name',
+        'code',
+        'location',
+        'description',
+        'active',
+    ];
+
+    protected $casts = [
+        'active' => 'boolean',
+        'deleted_at' => 'datetime',
+    ];
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function inventoryMovements(): HasMany
+    {
+        return $this->hasMany(InventoryMovement::class)->latest('movement_date');
+    }
+
+    public function primaryBranch(): HasOne
+    {
+        return $this->hasOne(Branch::class, 'warehouse_id');
+    }
+
+    public function defaultForBranches(): HasMany
+    {
+        return $this->hasMany(Branch::class, 'warehouse_id');
+    }
+}
