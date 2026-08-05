@@ -5,7 +5,7 @@
 
     {{-- Print-only header --}}
     <div class="print-header d-none">
-        <h3 class="fw-bold mb-1">VR Motors — Repuestos &amp; Accesorios</h3>
+        <h3 class="fw-bold mb-1">{{ $return->company?->name ?? config('brand.name') }}</h3>
         <p class="mb-0 text-muted small">Comprobante de devolución</p>
     </div>
 

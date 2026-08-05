@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'VR Motors')</title>
+    {{-- Con sesión, el título por defecto es el de la empresa activa (white-label). --}}
+    <title>@yield('title', auth()->check()
+        ? (auth()->user()->getCurrentCompany()?->name ?? config('brand.name'))
+        : config('brand.name'))</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,17 +14,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         /* ════════════════════════════════════════════════════════════
-           VR Motors — Sistema de diseño (negro + rojo)
+           Sistema de diseño (negro + rojo)
            ════════════════════════════════════════════════════════════ */
         :root {
             /* Brand */
-            --brand-red:        #e10600;
-            --brand-red-dark:   #b30500;
+            --brand-red:        #e63946;
+            --brand-red-dark:   #c1121f;
             --brand-red-soft:   #fee2e2;
             --brand-red-tint:   #fef2f2;
-            --brand-black:      #0a0a0a;
-            --brand-black-2:    #161616;
-            --brand-black-3:    #1f1f1f;
+            --brand-black:      #22242e;
+            --brand-black-2:    #2d2f3a;
+            --brand-black-3:    #3a3d4a;
 
             /* Surface */
             --surface-bg:       #f5f6f8;
@@ -29,7 +32,7 @@
             --surface-muted:    #fafafa;
 
             /* Text */
-            --text-primary:     #0f0f10;
+            --text-primary:     #22242e;
             --text-secondary:   #4a4a52;
             --text-muted:       #8a8a92;
             --text-inverse:     #ffffff;
@@ -47,9 +50,9 @@
             /* Bootstrap override — primary = NEGRO (acciones neutras).
                El rojo se reserva para acentos de marca y .danger */
             --bs-primary:       var(--brand-black);
-            --bs-primary-rgb:   10, 10, 10;
+            --bs-primary-rgb:   34, 36, 46;
             --bs-link-color:    var(--brand-red);
-            --bs-link-color-rgb:225, 6, 0;
+            --bs-link-color-rgb:230, 57, 70;
             --bs-link-hover-color: var(--brand-red-dark);
 
             /* Radii & shadows */
@@ -113,7 +116,7 @@
             transition: all .16s ease;
             border-width: 1px;
         }
-        .btn:focus, .btn:focus-visible { box-shadow: 0 0 0 3px rgba(10,10,10,.12) !important; }
+        .btn:focus, .btn:focus-visible { box-shadow: 0 0 0 3px rgba(34,36,46,.12) !important; }
 
         /* Primary = NEGRO (acciones neutras: guardar, crear, confirmar) */
         .btn-primary {
@@ -126,7 +129,7 @@
             border-color: var(--brand-black-2);
             color: #fff;
             transform: translateY(-1px);
-            box-shadow: 0 4px 10px rgba(10,10,10,.20);
+            box-shadow: 0 4px 10px rgba(34,36,46,.20);
         }
         .btn-primary:active { transform: translateY(0); }
 
@@ -163,7 +166,7 @@
             background: var(--brand-red-dark);
             border-color: var(--brand-red-dark);
             color: #fff;
-            box-shadow: 0 4px 10px rgba(225,6,0,.25);
+            box-shadow: 0 4px 10px rgba(230,57,70,.25);
         }
 
         .btn-outline-danger {
@@ -199,7 +202,7 @@
         }
         .form-control:focus, .form-select:focus {
             border-color: var(--brand-black);
-            box-shadow: 0 0 0 3px rgba(10,10,10,.10);
+            box-shadow: 0 0 0 3px rgba(34,36,46,.10);
         }
         .form-label {
             color: var(--text-primary);
@@ -218,7 +221,7 @@
         }
         .form-check-input:focus {
             border-color: var(--brand-black);
-            box-shadow: 0 0 0 3px rgba(10,10,10,.10);
+            box-shadow: 0 0 0 3px rgba(34,36,46,.10);
         }
         .form-switch .form-check-input:checked {
             background-color: var(--brand-black);
@@ -347,7 +350,7 @@
         .select2-container--bootstrap-5.select2-container--focus .select2-selection,
         .select2-container--bootstrap-5.select2-container--open  .select2-selection {
             border-color: var(--brand-black);
-            box-shadow: 0 0 0 .2rem rgba(10,10,10,.08);
+            box-shadow: 0 0 0 .2rem rgba(34,36,46,.08);
         }
         .select2-container--bootstrap-5 .select2-results__option--highlighted[aria-selected] {
             background-color: var(--brand-black);
@@ -359,6 +362,69 @@
     {{-- Select2 (búsqueda en selects) --}}
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
+
+    {{-- Colores base por empresa (white-label): recolorea el menú de navegación y
+         la cabecera. Solo se inyecta si la empresa activa definió sus colores;
+         de lo contrario se usa la paleta por defecto del sistema. --}}
+    @php $themeCompany = auth()->check() ? auth()->user()->getCurrentCompany() : null; @endphp
+    @if($themeCompany?->hasTheme())
+        @php
+            $tPrimary = $themeCompany->theme_primary;
+            $tAccent  = $themeCompany->theme_accent;
+        @endphp
+        {{-- Los selectores van prefijados con `body` para ganar en especificidad a
+             los estilos base del layout (que se inyectan después vía @stack). --}}
+        <style>
+            :root {
+                --company-primary: {{ $tPrimary }};
+                --company-accent:  {{ $tAccent }};
+            }
+
+            /* ── Menú de navegación ─────────────────────────────── */
+            body .app-sidebar { background: var(--company-primary); }
+            body .app-sidebar::before {
+                background: linear-gradient(180deg, var(--company-accent) 0%, transparent 100%);
+            }
+            body .app-link:hover i { color: var(--company-accent); }
+            body .app-link.active {
+                background: linear-gradient(90deg, color-mix(in srgb, var(--company-accent) 16%, transparent) 0%, transparent 100%);
+                border-color: color-mix(in srgb, var(--company-accent) 30%, transparent);
+            }
+            body .app-link.active::before { background: var(--company-accent); }
+            body .app-link.active i { color: var(--company-accent); }
+            body .sidebar-section-title:has(+ ul .app-link.active) {
+                background: color-mix(in srgb, var(--company-accent) 14%, transparent);
+                border-color: color-mix(in srgb, var(--company-accent) 40%, transparent);
+            }
+            body .app-sidebar .nav.flex-column:has(.app-link.active),
+            body .offcanvas .nav.flex-column:has(.app-link.active) {
+                border-color: color-mix(in srgb, var(--company-accent) 40%, transparent);
+            }
+            body .offcanvas.offcanvas-start { background: var(--company-primary); }
+
+            /* ── Cabecera (topbar: nombre de empresa + botones usuario/cerrar sesión) ── */
+            body .app-topbar {
+                background: var(--company-primary);
+                border-bottom-color: color-mix(in srgb, #fff 12%, transparent);
+            }
+            body .app-topbar .topbar-label,
+            body .app-topbar .text-muted { color: #fff !important; }
+            body .app-topbar .topbar-separator { color: color-mix(in srgb, #fff 40%, transparent); }
+            body .app-topbar .btn-icon,
+            body .app-topbar .btn-logout {
+                background: color-mix(in srgb, #fff 8%, transparent);
+                color: #fff;
+                border-color: color-mix(in srgb, #fff 20%, transparent);
+            }
+            body .app-topbar .btn-icon:hover,
+            body .app-topbar .btn-logout:hover {
+                background: var(--company-accent);
+                border-color: var(--company-accent);
+                color: #fff;
+            }
+        </style>
+    @endif
+
     @stack('styles')
 </head>
 <body>
@@ -406,7 +472,7 @@
                 '<div class="modal-dialog modal-dialog-centered modal-sm">'
               +   '<div class="modal-content border-0 shadow">'
               +     '<div class="modal-body p-4 text-center">'
-              +       '<div id="acIcon" style="width:56px;height:56px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:rgba(225,6,0,.1);color:#e10600;font-size:1.6rem;margin-bottom:.75rem;"><i class="bi bi-exclamation-triangle"></i></div>'
+              +       '<div id="acIcon" style="width:56px;height:56px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:rgba(230,57,70,.1);color:#e63946;font-size:1.6rem;margin-bottom:.75rem;"><i class="bi bi-exclamation-triangle"></i></div>'
               +       '<h6 class="fw-bold mb-1" id="acTitle">¿Confirmar acción?</h6>'
               +       '<p class="text-muted small mb-4" id="acMsg"></p>'
               +       '<div class="d-flex gap-2">'

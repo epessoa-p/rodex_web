@@ -2,6 +2,8 @@
 
 namespace App\Models\Purchases;
 
+use App\Models\Concerns\BelongsToCompany;
+
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TreasuryMovement extends Model
 {
+    use BelongsToCompany;
+
     use HasFactory;
 
     const CATEGORIES = [

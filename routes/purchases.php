@@ -9,7 +9,7 @@ use App\Http\Controllers\Purchases\SupplierController;
 use App\Http\Controllers\Purchases\TreasuryController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'plan:purchases'])->group(function () {
 
     // ── Dashboard de Compras ──────────────────────────────────
     Route::get('purchases/dashboard', [PurchaseDashboardController::class, 'index'])

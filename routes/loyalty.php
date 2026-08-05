@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 // ── Catálogo público de recompensas (SIN autenticación) ───────
 Route::get('/catalogo/{token}', [LoyaltyCatalogController::class, 'public'])->name('loyalty.catalog.public');
 
-Route::middleware('auth')->prefix('loyalty')->name('loyalty.')->group(function () {
+Route::middleware(['auth', 'plan:loyalty'])->prefix('loyalty')->name('loyalty.')->group(function () {
 
     // ── Dashboard (incluye ranking) ───────────────────────────
     Route::get('/', [LoyaltyDashboardController::class, 'index'])->name('dashboard')

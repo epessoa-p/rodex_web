@@ -1,8 +1,9 @@
 @php
     // dompdf rinde mejor con la imagen embebida en base64 que con una URL/ruta.
-    $logoPath = public_path('images/logo_blanco.jpeg');
-    $logoData = is_file($logoPath)
-        ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
+    // $companyLogo es el logo de la empresa (o el de la plataforma como respaldo).
+    $logoPath = $companyLogo ?? null;
+    $logoData = ($logoPath && is_file($logoPath))
+        ? 'data:' . (mime_content_type($logoPath) ?: 'image/jpeg') . ';base64,' . base64_encode(file_get_contents($logoPath))
         : null;
 @endphp
 <!DOCTYPE html>
@@ -20,7 +21,7 @@
             font-size: 11px;
         }
         /* Header como tabla (dompdf no soporta flexbox) */
-        .header { width: 100%; border-bottom: 3px solid #e10600; padding-bottom: 10px; margin-bottom: 14px; }
+        .header { width: 100%; border-bottom: 3px solid #e63946; padding-bottom: 10px; margin-bottom: 14px; }
         .header td { vertical-align: middle; }
         .header img { height: 64px; width: auto; }
         .header .logo-cell { width: 80px; }
@@ -28,7 +29,7 @@
         .header .meta { color: #666; font-size: 10px; margin-top: 3px; }
         table.data { width: 100%; border-collapse: collapse; }
         table.data thead th {
-            background: #0a0a0a;
+            background: #22242e;
             color: #fff;
             text-align: left;
             padding: 6px 8px;
@@ -39,7 +40,7 @@
         table.data tbody td { padding: 5px 8px; border-bottom: 1px solid #eee; }
         table.data tbody td.num { text-align: right; }
         table.data tbody tr:nth-child(even) { background: #fafafa; }
-        table.data tfoot td { padding: 7px 8px; border-top: 2px solid #0a0a0a; font-weight: bold; }
+        table.data tfoot td { padding: 7px 8px; border-top: 2px solid #22242e; font-weight: bold; }
         table.data tfoot td.num { text-align: right; }
         .code { color: #555; font-family: "DejaVu Sans Mono", monospace; }
     </style>

@@ -29,7 +29,7 @@
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <div class="rounded-3 d-flex align-items-center justify-content-center"
-                             style="width:44px;height:44px;background:rgba(225,6,0,.08)">
+                             style="width:44px;height:44px;background:rgba(230,57,70,.08)">
                             <i class="bi bi-cart-check fs-5 text-danger"></i>
                         </div>
                         <span class="badge bg-danger-subtle text-danger border border-danger-subtle small">Este mes</span>

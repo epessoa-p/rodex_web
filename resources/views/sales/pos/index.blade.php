@@ -7,7 +7,7 @@
 <div class="d-flex align-items-center justify-content-center" style="min-height:65vh;">
     <div class="text-center px-4" style="max-width:420px;">
         <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-4"
-             style="width:90px;height:90px;background:rgba(225,6,0,.07);">
+             style="width:90px;height:90px;background:rgba(230,57,70,.07);">
             <i class="bi bi-safe2 text-danger" style="font-size:2.4rem;"></i>
         </div>
         <h4 class="fw-bold mb-2">Caja cerrada</h4>
@@ -525,9 +525,9 @@
     position: relative;
     height: 100%;
 }
-.product-card:hover { border-color: var(--brand-black,#0a0a0a); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+.product-card:hover { border-color: var(--brand-black,#22242e); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
 .product-card.disabled-card { opacity: .45; cursor: not-allowed; }
-.product-card.in-cart { border-color: #0a0a0a; background: #fafafa; }
+.product-card.in-cart { border-color: #22242e; background: #fafafa; }
 .product-thumb { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; background:#f5f5f5; }
 .product-thumb-placeholder {
     width: 100%; aspect-ratio: 1; border-radius: 6px; background:#f0f0f0;
@@ -561,8 +561,8 @@
     white-space: nowrap;
     flex-shrink: 0;
 }
-.cat-pill:hover { border-color: #0a0a0a; color: #0a0a0a; }
-.cat-pill.active { background: #0a0a0a; border-color: #0a0a0a; color: #fff; }
+.cat-pill:hover { border-color: #22242e; color: #22242e; }
+.cat-pill.active { background: #22242e; border-color: #22242e; color: #fff; }
 
 /* Product info btn */
 .product-info-btn {
@@ -585,7 +585,7 @@
     padding: 0;
     line-height: 1;
 }
-.product-info-btn:hover { background: #fff; border-color: #0a0a0a; color: #0a0a0a; }
+.product-info-btn:hover { background: #fff; border-color: #22242e; color: #22242e; }
 
 /* Product detail modal gallery */
 #productModal .modal-content { max-height: 90vh; }
@@ -618,7 +618,7 @@
     cursor: pointer;
     transition: border-color .15s;
 }
-.pm-thumb.active, .pm-thumb:hover { border-color: #0a0a0a; }
+.pm-thumb.active, .pm-thumb:hover { border-color: #22242e; }
 
 /* Flechas de navegación de la galería */
 .pm-stage { position: relative; display: flex; align-items: center; justify-content: center; }
@@ -638,7 +638,7 @@
 
 /* Credit modal — encabezado con color de marca */
 .credit-modal-header {
-    background: linear-gradient(135deg, #e10600 0%, #a30400 100%);
+    background: linear-gradient(135deg, #e63946 0%, #a30400 100%);
     border-bottom: 0;
 }
 .credit-modal-header .modal-title,
@@ -694,7 +694,7 @@ function showToast(msg, type) {
         cont.style.cssText = 'position:fixed;top:1rem;right:1rem;z-index:1090;display:flex;flex-direction:column;gap:.5rem;';
         document.body.appendChild(cont);
     }
-    const colors = { warning: '#f59e0b', danger: '#e11d48', success: '#16a34a', info: '#0a0a0a' };
+    const colors = { warning: '#f59e0b', danger: '#e11d48', success: '#16a34a', info: '#22242e' };
     const icons  = { warning: 'bi-exclamation-triangle', danger: 'bi-x-octagon', success: 'bi-check-circle', info: 'bi-info-circle' };
     const el = document.createElement('div');
     el.style.cssText = 'background:#fff;border-left:4px solid ' + (colors[type] || colors.info) + ';box-shadow:0 6px 22px rgba(0,0,0,.16);border-radius:8px;padding:.7rem .9rem;font-size:.85rem;max-width:340px;display:flex;align-items:flex-start;gap:.5rem;';

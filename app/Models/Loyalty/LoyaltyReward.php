@@ -2,6 +2,8 @@
 
 namespace App\Models\Loyalty;
 
+use App\Models\Concerns\BelongsToCompany;
+
 use App\Models\Company;
 use App\Models\Product;
 use App\Models\User;
@@ -11,6 +13,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class LoyaltyReward extends Model
 {
+    use BelongsToCompany;
+
     use SoftDeletes;
 
     protected $fillable = [

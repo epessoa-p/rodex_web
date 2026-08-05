@@ -7,7 +7,7 @@ use App\Http\Controllers\Workshop\WorkOrderController;
 use App\Http\Controllers\Workshop\WorkshopDashboardController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'plan:workshop'])->group(function () {
 
     // ── Dashboard ─────────────────────────────────────────────
     Route::get('workshop/dashboard', [WorkshopDashboardController::class, 'index'])

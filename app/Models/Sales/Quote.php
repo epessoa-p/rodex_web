@@ -2,6 +2,8 @@
 
 namespace App\Models\Sales;
 
+use App\Models\Concerns\BelongsToCompany;
+
 use App\Models\Branch;
 use App\Models\Client;
 use App\Models\Company;
@@ -14,6 +16,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Quote extends Model
 {
+    use BelongsToCompany;
+
     use HasFactory, SoftDeletes;
 
     const STATUSES = [

@@ -5,9 +5,26 @@
 
 <div class="card mt-4">
     <div class="card-body">
-        <form action="{{ route('companies.update', $company) }}" method="POST">
+        <form action="{{ route('companies.update', $company) }}" method="POST" enctype="multipart/form-data">
             @csrf
             @method('PUT')
+
+            <div class="form-group mb-3">
+                <label for="logo" class="form-label">Logo</label>
+                <div class="d-flex align-items-center gap-3">
+                    <img src="{{ $company->logo_url }}" alt="{{ $company->name }}"
+                         style="width:64px;height:64px;object-fit:contain;background:#111;border-radius:8px;padding:4px;">
+                    <div class="flex-grow-1">
+                        <input type="file" id="logo" name="logo" accept="image/*"
+                               class="form-control @error('logo') is-invalid @enderror">
+                        <div class="form-text">
+                            Se muestra en el menú, los recibos y las impresiones.
+                            {{ $company->logo ? 'Sube uno nuevo para reemplazarlo.' : 'Ahora se usa el logo por defecto.' }}
+                        </div>
+                        @error('logo')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+            </div>
 
             <div class="form-group mb-3">
                 <label for="name" class="form-label">Nombre</label>
@@ -38,6 +55,8 @@
                 <label for="description" class="form-label">Descripción</label>
                 <textarea id="description" name="description" class="form-control @error('description') is-invalid @enderror" rows="3">{{ old('description', $company->description) }}</textarea>
             </div>
+
+            @include('admin.companies._theme', ['company' => $company])
 
             <div class="form-group">
                 <button type="submit" class="btn btn-primary">

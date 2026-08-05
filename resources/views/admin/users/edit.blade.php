@@ -85,7 +85,7 @@
 
             {{-- Panel lateral: vista previa --}}
             <div class="col-lg-5">
-                <div class="card border-0 shadow-sm" style="border-left:4px solid var(--brand-red,#e10600) !important;">
+                <div class="card border-0 shadow-sm" style="border-left:4px solid var(--brand-red,#e63946) !important;">
                     <div class="card-body p-4">
                         <div class="text-muted small mb-1">Nombre de usuario (vista previa)</div>
                         <div class="fw-bold fs-5 font-monospace text-break" id="previewName">{{ $user->name }}</div>

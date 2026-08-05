@@ -138,7 +138,7 @@ class WorkOrderController extends Controller
                 // Fotos de la recepción (estado del vehículo al recibirlo).
                 if ($request->hasFile('photos')) {
                     foreach ($request->file('photos') as $i => $file) {
-                        $path = $file->store("work-orders/{$wo->id}", 'public');
+                        $path = $file->store("company/{$companyId}/work-orders/{$wo->id}", 'public');
                         WorkOrderPhoto::create([
                             'company_id'    => $companyId,
                             'work_order_id' => $wo->id,

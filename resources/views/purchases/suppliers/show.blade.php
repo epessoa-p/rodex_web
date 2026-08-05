@@ -5,7 +5,7 @@
 
     {{-- Hero header --}}
     <div class="card border-0 shadow-sm mb-4 overflow-hidden">
-        <div style="height:6px;background:linear-gradient(90deg,var(--brand-red) 0%,#ff4d4d 50%,transparent 100%);"></div>
+        <div style="height:6px;background:linear-gradient(90deg,var(--brand-red) 0%,#ff6b6b 50%,transparent 100%);"></div>
         <div class="card-body p-4">
             <div class="d-flex align-items-center gap-4 flex-wrap">
                 <div class="rounded-3 border d-flex align-items-center justify-content-center fw-bold flex-shrink-0"

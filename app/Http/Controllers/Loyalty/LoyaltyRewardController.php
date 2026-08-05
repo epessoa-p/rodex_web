@@ -132,7 +132,7 @@ class LoyaltyRewardController extends Controller
         $data['created_by'] = auth()->id();
         $data['active']     = (bool) $request->boolean('active');
         if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('loyalty/rewards', 'public');
+            $data['image'] = $request->file('image')->store("company/{$cid}/loyalty/rewards", 'public');
         }
 
         LoyaltyReward::create($data);
@@ -161,7 +161,7 @@ class LoyaltyRewardController extends Controller
             if ($reward->image) {
                 Storage::disk('public')->delete($reward->image);
             }
-            $data['image'] = $request->file('image')->store('loyalty/rewards', 'public');
+            $data['image'] = $request->file('image')->store("company/{$reward->company_id}/loyalty/rewards", 'public');
         }
 
         $reward->update($data);

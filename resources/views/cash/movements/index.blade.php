@@ -79,7 +79,7 @@
         </button>
         @foreach($branches as $b)
             @php
-                $bc = $b->color ?: '#0a0a0a';
+                $bc = $b->color ?: '#22242e';
                 $h  = ltrim($bc, '#');
                 if (strlen($h) === 3) { $h = $h[0].$h[0].$h[1].$h[1].$h[2].$h[2]; }
                 $lum = (0.299 * hexdec(substr($h,0,2))) + (0.587 * hexdec(substr($h,2,2))) + (0.114 * hexdec(substr($h,4,2)));
@@ -211,7 +211,7 @@
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-body p-3 d-flex align-items-center gap-3">
                             <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                                 style="width:38px;height:38px;background:rgba(10,10,10,.07);">
+                                 style="width:38px;height:38px;background:rgba(34,36,46,.07);">
                                 <i class="bi bi-graph-up-arrow text-dark"></i>
                             </div>
                             <div class="min-w-0">
@@ -243,7 +243,7 @@
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-body p-3 d-flex align-items-center gap-3">
                             <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                                 style="width:38px;height:38px;background:rgba(225,6,0,.07);">
+                                 style="width:38px;height:38px;background:rgba(230,57,70,.07);">
                                 <i class="bi bi-box-arrow-up text-danger"></i>
                             </div>
                             <div class="min-w-0">
@@ -503,7 +503,7 @@
                     <div class="tab-pane fade" id="subPagar" role="tabpanel">
                         @if($porPagar->total())
                         <div class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom"
-                             style="background:rgba(225,6,0,.03);">
+                             style="background:rgba(230,57,70,.03);">
                             <span class="text-muted small">
                                 <i class="bi bi-cash-stack me-1 text-danger"></i>
                                 {{ $porPagar->total() }} {{ $porPagar->total() === 1 ? 'pendiente' : 'pendientes' }}
@@ -749,7 +749,7 @@
         border-bottom-color: var(--brand-black);
         color: #fff;
         font-weight: 600;
-        box-shadow: 0 -2px 6px rgba(10,10,10,.12);
+        box-shadow: 0 -2px 6px rgba(34,36,46,.12);
     }
     .mov-tab.active i { color: #fff; }
 
@@ -806,10 +806,10 @@
         transition: all .15s ease;
         white-space: nowrap;
     }
-    .mov-pill:hover { border-color: var(--brand-black,#0a0a0a); color: var(--brand-black,#0a0a0a); }
+    .mov-pill:hover { border-color: var(--brand-black,#22242e); color: var(--brand-black,#22242e); }
     .mov-pill.active {
-        background: var(--brand-black,#0a0a0a);
-        border-color: var(--brand-black,#0a0a0a);
+        background: var(--brand-black,#22242e);
+        border-color: var(--brand-black,#22242e);
         color: #fff;
     }
 
@@ -833,10 +833,10 @@
         transition: all .15s ease;
         white-space: nowrap;
     }
-    .branch-tab:hover { border-color: var(--bc,#0a0a0a); }
+    .branch-tab:hover { border-color: var(--bc,#22242e); }
     .branch-tab.active {
-        background: var(--bc,#0a0a0a);
-        border-color: var(--bc,#0a0a0a);
+        background: var(--bc,#22242e);
+        border-color: var(--bc,#22242e);
         color: var(--bt,#fff);
     }
     .branch-tab.active .branch-dot { display: none; }
@@ -849,7 +849,7 @@
     .closure-row.expanded { background: var(--surface-muted, #f6f7f9) !important; }
 
     /* Mini KPIs del detalle */
-    .session-detail { border-top: 2px solid var(--brand-black, #0a0a0a); }
+    .session-detail { border-top: 2px solid var(--brand-black, #22242e); }
     .sd-kpi {
         background: #fff;
         border: 1px solid #eceef1;

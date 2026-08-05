@@ -210,8 +210,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 datasets: [{
                     label: 'Ventas',
                     data: @json($chartData),
-                    borderColor: '#0a0a0a',
-                    backgroundColor: 'rgba(10,10,10,.08)',
+                    borderColor: '#22242e',
+                    backgroundColor: 'rgba(34,36,46,.08)',
                     fill: true, tension: .3, pointRadius: 3,
                 }]
             },
@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function () {
             type: 'bar',
             data: {
                 labels: @json($topProducts->pluck('name')),
-                datasets: [{ label: 'Vendido', data: @json($topProducts->pluck('total')), backgroundColor: '#0a0a0a' }]
+                datasets: [{ label: 'Vendido', data: @json($topProducts->pluck('total')), backgroundColor: '#22242e' }]
             },
             options: {
                 indexAxis: 'y', responsive: true,

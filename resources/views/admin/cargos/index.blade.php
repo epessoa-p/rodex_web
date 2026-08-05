@@ -22,7 +22,9 @@
                         <tr>
                             <th class="ps-3">Cargo</th>
                             <th>Rol asociado</th>
+                            @if(auth()->user()->is_super_admin)
                             <th>Empresa</th>
+                            @endif
                             <th class="text-center">Estado</th>
                             <th class="text-end pe-3">Acciones</th>
                         </tr>
@@ -35,7 +37,9 @@
                                     <small class="text-muted">{{ $cargo->description ?: 'Sin descripción' }}</small>
                                 </td>
                                 <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ $cargo->role?->name ?? '-' }}</span></td>
+                                @if(auth()->user()->is_super_admin)
                                 <td>{{ $cargo->company?->name ?? '-' }}</td>
+                                @endif
                                 <td class="text-center">
                                     <span class="badge {{ $cargo->active ? 'bg-success' : 'bg-secondary' }}">{{ $cargo->active ? 'Activo' : 'Inactivo' }}</span>
                                 </td>
@@ -49,7 +53,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="text-center py-5 text-muted">No hay cargos registrados.</td></tr>
+                            <tr><td colspan="{{ auth()->user()->is_super_admin ? 5 : 4 }}" class="text-center py-5 text-muted">No hay cargos registrados.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

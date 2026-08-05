@@ -35,11 +35,15 @@ class PersonalController extends Controller
         $authUser = auth()->user();
         $companyId = $authUser->is_super_admin ? request()->integer('company_id') : $authUser->getCurrentCompany()?->id;
 
-        $cargos = Cargo::when($companyId, fn ($q) => $q->where('company_id', $companyId))
-            ->where('active', true)
-            ->with('role')
-            ->orderBy('name')
-            ->get();
+        // Sin empresa definida (super_admin que aún no elige una) no se listan cargos:
+        // se cargan por AJAX al seleccionar la empresa. Así no se mezclan de varias.
+        $cargos = $companyId
+            ? Cargo::where('company_id', $companyId)
+                ->where('active', true)
+                ->with('role')
+                ->orderBy('name')
+                ->get()
+            : collect();
 
         return view('admin.personal.create', [
             'cargos' => $cargos,
@@ -47,6 +51,41 @@ class PersonalController extends Controller
                 ? Company::orderBy('name')->get()
                 : collect([$authUser->getCurrentCompany()])->filter(),
         ]);
+    }
+
+    /**
+     * Devuelve (JSON) los cargos activos de una empresa, para poblar el select
+     * de cargo cuando el super_admin elige una empresa en el formulario.
+     */
+    public function cargosByCompany(Request $request)
+    {
+        $authUser = auth()->user();
+
+        $companyId = $authUser->is_super_admin
+            ? (int) $request->integer('company_id')
+            : (int) $authUser->getCurrentCompany()?->id;
+
+        if (!$companyId) {
+            return response()->json([]);
+        }
+
+        // Un usuario no super_admin solo puede consultar los cargos de SU empresa.
+        if (!$authUser->is_super_admin && $companyId !== $authUser->getCurrentCompany()?->id) {
+            abort(403);
+        }
+
+        $cargos = Cargo::where('company_id', $companyId)
+            ->where('active', true)
+            ->with('role')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Cargo $c) => [
+                'id'        => $c->id,
+                'name'      => $c->name,
+                'role_name' => $c->role?->name,
+            ]);
+
+        return response()->json($cargos);
     }
 
     public function store(Request $request)

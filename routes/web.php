@@ -2,10 +2,12 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\Admin\BranchController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\SubscriptionController as AdminSubscriptionController;
 use App\Http\Controllers\Admin\SystemResetController;
 use App\Http\Controllers\Admin\CargoController;
 use App\Http\Controllers\Admin\PersonalController;
@@ -26,6 +28,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/select-company',             [LoginController::class, 'selectCompany'])->name('select-company');
     Route::post('/set-company/{companyId}',   [LoginController::class, 'setCompany'])->name('set-company');
 
+    // Pantalla de suscripción vencida/suspendida (accesible aunque esté bloqueada).
+    Route::get('/suscripcion', [SubscriptionController::class, 'blocked'])->name('subscription.blocked');
+
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // ── Empresas (solo super_admin) ───────────────────────────────
@@ -37,6 +42,16 @@ Route::middleware('auth')->group(function () {
         Route::get('/{company}/edit', [CompanyController::class, 'edit'])->name('edit');
         Route::put('/{company}',      [CompanyController::class, 'update'])->name('update');
         Route::delete('/{company}',   [CompanyController::class, 'destroy'])->name('destroy');
+    });
+
+    // ── Suscripciones SaaS: panel del operador (solo super_admin) ──
+    Route::middleware('check-role:super_admin')->prefix('admin/subscriptions')->name('subscriptions.')->group(function () {
+        Route::get('/',                       [AdminSubscriptionController::class, 'index'])->name('index');
+        Route::get('/{company}/edit',         [AdminSubscriptionController::class, 'edit'])->name('edit');
+        Route::put('/{company}',              [AdminSubscriptionController::class, 'update'])->name('update');
+        Route::post('/{company}/renew',       [AdminSubscriptionController::class, 'renew'])->name('renew');
+        Route::post('/{company}/suspend',     [AdminSubscriptionController::class, 'suspend'])->name('suspend');
+        Route::post('/{company}/cancel',      [AdminSubscriptionController::class, 'cancel'])->name('cancel');
     });
 
     // ── Roles (solo super_admin) ──────────────────────────────────
@@ -97,6 +112,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/',               [PersonalController::class, 'index'])->name('index')->middleware('check-permission:personal.view');
         Route::get('/create',         [PersonalController::class, 'create'])->name('create')->middleware('check-permission:personal.create');
         Route::post('/',              [PersonalController::class, 'store'])->name('store')->middleware('check-permission:personal.create');
+        // Cargos de una empresa (JSON) para poblar el select según la empresa elegida.
+        Route::get('/cargos',         [PersonalController::class, 'cargosByCompany'])->name('cargos')->middleware('check-permission:personal.create,personal.edit');
         Route::get('/{personal}/edit',[PersonalController::class, 'edit'])->name('edit')->middleware('check-permission:personal.edit');
         Route::put('/{personal}',     [PersonalController::class, 'update'])->name('update')->middleware('check-permission:personal.edit');
         Route::delete('/{personal}',  [PersonalController::class, 'destroy'])->name('destroy')->middleware('check-permission:personal.delete');
@@ -126,6 +143,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/{client}/edit',  [ClientController::class, 'edit'])->name('edit')->middleware('check-permission:clients.edit');
         Route::put('/{client}',       [ClientController::class, 'update'])->name('update')->middleware('check-permission:clients.edit');
         Route::delete('/{client}',    [ClientController::class, 'destroy'])->name('destroy')->middleware('check-permission:clients.delete');
+        // Descarga autorizada: los documentos viven en disco privado, fuera de public/.
+        Route::get('/documents/{document}/download', [ClientController::class, 'downloadDocument'])->name('documents.download')->middleware('check-permission:clients.view');
         Route::delete('/documents/{document}', [ClientController::class, 'destroyDocument'])->name('documents.destroy')->middleware('check-permission:clients.edit');
     });
 

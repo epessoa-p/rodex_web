@@ -1,13 +1,15 @@
 @extends('layouts.auth')
 
-@section('title', 'Acceso · VR Motors')
+@section('title', 'Acceso · ' . config('brand.name'))
 
 @section('content')
 <div class="auth-container">
     <div class="auth-card">
         <div class="auth-header">
-            <div class="logo"><img src="{{ asset('images/logo_blanco_sm.png') }}" alt="VR Motors"></div>
-            <h1>VR <span class="brand-accent">MOTORS</span></h1>
+            {{-- Login: icono neutro de la plataforma (sin imagen de logo). --}}
+            <div class="logo">
+                <i class="bi bi-tools"></i>
+            </div>
             <p>Accede al sistema de gestión</p>
         </div>
 

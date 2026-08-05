@@ -24,7 +24,7 @@
 
     {{-- ── Header compacto ──────────────────────────────────────────── --}}
     <div class="card border-0 shadow-sm mb-3 overflow-hidden">
-        <div style="height:4px;background:linear-gradient(90deg,var(--brand-red) 0%,#ff4d4d 50%,transparent 100%);"></div>
+        <div style="height:4px;background:linear-gradient(90deg,var(--brand-red) 0%,#ff6b6b 50%,transparent 100%);"></div>
         <div class="card-body p-3">
             <div class="d-flex align-items-center gap-3 flex-wrap">
                 {{-- Avatar --}}

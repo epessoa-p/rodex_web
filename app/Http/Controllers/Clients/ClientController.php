@@ -68,7 +68,8 @@ class ClientController extends Controller
             DB::transaction(function () use ($validated, $companyId) {
                 $photoPath = null;
                 if (request()->hasFile('photo')) {
-                    $photoPath = request()->file('photo')->store('clients/photos', 'public');
+                    $photoPath = request()->file('photo')
+                        ->store("company/{$companyId}/clients/photos", 'public');
                 }
 
                 $client = Client::create([
@@ -190,7 +191,8 @@ class ClientController extends Controller
                     if ($client->photo) {
                         Storage::disk('public')->delete($client->photo);
                     }
-                    $photoPath = request()->file('photo')->store('clients/photos', 'public');
+                    $photoPath = request()->file('photo')
+                        ->store("company/{$client->company_id}/clients/photos", 'public');
                 }
 
                 $client->update([
@@ -225,7 +227,7 @@ class ClientController extends Controller
                 Storage::disk('public')->delete($client->photo);
             }
             foreach ($client->documents as $doc) {
-                Storage::disk('public')->delete($doc->file_path);
+                Storage::disk($doc->resolveDisk())->delete($doc->file_path);
             }
 
             $client->delete();
@@ -237,12 +239,32 @@ class ClientController extends Controller
         }
     }
 
+    /**
+     * Descarga autorizada de un documento de cliente.
+     *
+     * Los documentos ya no son accesibles por URL pública: solo se entregan
+     * tras comprobar que el documento pertenece a la empresa activa.
+     */
+    public function downloadDocument(ClientDocument $document)
+    {
+        $this->authorizeClient($document->client);
+
+        $disk = $document->resolveDisk();
+
+        abort_unless(Storage::disk($disk)->exists($document->file_path), 404);
+
+        return Storage::disk($disk)->response(
+            $document->file_path,
+            $document->file_name
+        );
+    }
+
     public function destroyDocument(ClientDocument $document)
     {
         $this->authorizeClient($document->client);
 
         try {
-            Storage::disk('public')->delete($document->file_path);
+            Storage::disk($document->resolveDisk())->delete($document->file_path);
             $document->delete();
             return back()->with('success', 'Documento eliminado.');
         } catch (\Throwable $e) {
@@ -263,7 +285,10 @@ class ClientController extends Controller
 
             $type  = $types[$index] ?? 'other';
             $label = $labels[$index] ?? null;
-            $path  = $file->store("clients/documents/{$client->id}", 'public');
+
+            // Documentos sensibles (CI, facturas): disco PRIVADO, fuera de public/,
+            // segmentados por empresa. Se sirven por clients.documents.download.
+            $path  = $file->store("company/{$companyId}/clients/{$client->id}/documents", 'local');
 
             ClientDocument::create([
                 'client_id'  => $client->id,

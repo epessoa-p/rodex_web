@@ -43,6 +43,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Reinicio del sistema (borrado masivo)
+    |--------------------------------------------------------------------------
+    |
+    | admin/system/reset hace TRUNCATE de las tablas operativas de TODAS las
+    | empresas. En un SaaS multi-empresa esto destruiría los datos de todos los
+    | clientes, por lo que viene deshabilitado por defecto y nunca se permite en
+    | producción. Actívalo solo en entornos de desarrollo con SYSTEM_RESET_ENABLED=true.
+    |
+    */
+
+    'system_reset_enabled' => (bool) env('SYSTEM_RESET_ENABLED', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------
     |

@@ -51,11 +51,10 @@ class CargoController extends Controller
             : (int) $authUser->getCurrentCompany()?->id;
 
         try {
+            // Al crear un cargo SIEMPRE se genera un rol nuevo con el mismo nombre;
+            // por eso no se piden aquí role_mode / role_id / new_role_name.
             $validated = $request->validate([
                 'company_id' => ['nullable', 'exists:companies,id'],
-                'role_mode' => ['required', 'in:existing,new'],
-                'role_id' => ['required_if:role_mode,existing', 'nullable', 'exists:roles,id'],
-                'new_role_name' => ['required_if:role_mode,new', 'nullable', 'string', 'max:255'],
                 'name' => [
                     'required',
                     'string',
@@ -73,24 +72,11 @@ class CargoController extends Controller
             }
 
             DB::transaction(function () use ($validated, $companyId, $request) {
-                if ($validated['role_mode'] === 'new') {
-                    $slug = Str::of($validated['new_role_name'])->lower()->ascii()->replace(' ', '_')->toString();
-                    $baseSlug = $slug ?: 'role';
-                    $counter = 1;
-                    while (Role::where('slug', $slug)->exists()) {
-                        $slug = $baseSlug . '_' . $counter;
-                        $counter++;
-                    }
+                $role = Role::create([
+                    'name' => trim($validated['name']),
+                    'slug' => $this->uniqueRoleSlug($validated['name']),
+                ]);
 
-                    $role = Role::create([
-                        'name' => trim($validated['new_role_name']),
-                        'slug' => $slug,
-                    ]);
-                } else {
-                    $role = Role::findOrFail($validated['role_id']);
-                }
-
-                // Sync permissions to the role
                 if ($request->has('permissions')) {
                     $role->permissions()->sync($validated['permissions'] ?? []);
                 }
@@ -111,6 +97,21 @@ class CargoController extends Controller
             Log::error('Error al crear cargo', ['message' => $exception->getMessage()]);
             return back()->withInput()->withErrors(['error' => 'No fue posible crear el cargo.']);
         }
+    }
+
+    /** Genera un slug único para un rol a partir de un nombre. */
+    protected function uniqueRoleSlug(string $name): string
+    {
+        $base = Str::of($name)->lower()->ascii()->replace(' ', '_')->toString() ?: 'role';
+        $slug = $base;
+        $counter = 1;
+
+        while (Role::where('slug', $slug)->exists()) {
+            $slug = $base . '_' . $counter;
+            $counter++;
+        }
+
+        return $slug;
     }
 
     public function edit(Cargo $cargo)
@@ -161,17 +162,9 @@ class CargoController extends Controller
 
             DB::transaction(function () use ($validated, $cargo, $companyId, $request) {
                 if ($validated['role_mode'] === 'new') {
-                    $slug = Str::of($validated['new_role_name'])->lower()->ascii()->replace(' ', '_')->toString();
-                    $baseSlug = $slug ?: 'role';
-                    $counter = 1;
-                    while (Role::where('slug', $slug)->exists()) {
-                        $slug = $baseSlug . '_' . $counter;
-                        $counter++;
-                    }
-
                     $role = Role::create([
                         'name' => trim($validated['new_role_name']),
-                        'slug' => $slug,
+                        'slug' => $this->uniqueRoleSlug($validated['new_role_name']),
                     ]);
                 } else {
                     $role = Role::findOrFail($validated['role_id']);

@@ -17,7 +17,7 @@
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center gap-3">
                         <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                             style="width:48px;height:48px;background:rgba(225,6,0,.08)">
+                             style="width:48px;height:48px;background:rgba(230,57,70,.08)">
                             <i class="bi bi-exclamation-circle fs-4 text-danger"></i>
                         </div>
                         <div>

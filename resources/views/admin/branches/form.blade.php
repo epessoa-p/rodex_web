@@ -40,12 +40,12 @@
                 <div class="col-md-6"><label class="form-label">Encargado</label><input type="text" name="manager_name" class="form-control" value="{{ old('manager_name', $branch?->manager_name) }}"></div>
                 <div class="col-md-6">
                     <label class="form-label">Color de la sucursal</label>
-                    @php $branchColor = old('color', $branch?->color ?: '#e10600'); @endphp
+                    @php $branchColor = old('color', $branch?->color ?: '#e63946'); @endphp
                     <div class="input-group">
                         <input type="color" id="branch_color_picker" class="form-control form-control-color" value="{{ $branchColor }}"
                                style="max-width:52px;" title="Elegir color">
                         <input type="text" name="color" id="branch_color_hex" class="form-control" value="{{ $branchColor }}"
-                               maxlength="7" placeholder="#e10600" data-no-search>
+                               maxlength="7" placeholder="#e63946" data-no-search>
                     </div>
                     <small class="text-muted">Se usará como color de referencia de la sucursal.</small>
                 </div>

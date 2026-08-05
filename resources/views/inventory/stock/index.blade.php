@@ -158,7 +158,7 @@
             </div>
         </div>
         <div class="col-12 col-lg">
-            <div class="card border-0 shadow-sm h-100" style="background:linear-gradient(135deg,#0a0a0a,#2a2a2a);">
+            <div class="card border-0 shadow-sm h-100" style="background:linear-gradient(135deg,#22242e,#2a2a2a);">
                 <div class="card-body py-2 px-3 text-white">
                     <div class="d-flex align-items-center gap-2" style="font-size:.66rem;letter-spacing:.04em;opacity:.8;">
                         <i class="bi bi-graph-up-arrow"></i>GANANCIA POTENCIAL
@@ -374,13 +374,13 @@
     align-items: center;
 }
 .wh-pill:hover {
-    border-color: var(--brand-black, #0a0a0a);
-    color: var(--brand-black, #0a0a0a);
+    border-color: var(--brand-black, #22242e);
+    color: var(--brand-black, #22242e);
     text-decoration: none;
 }
 .wh-pill.active {
-    background: var(--brand-black, #0a0a0a);
-    border-color: var(--brand-black, #0a0a0a);
+    background: var(--brand-black, #22242e);
+    border-color: var(--brand-black, #22242e);
     color: #fff;
 }
 
@@ -412,8 +412,8 @@
     white-space: nowrap;
     flex-shrink: 0;
 }
-.cat-pill:hover  { border-color: #0a0a0a; color: #0a0a0a; }
-.cat-pill.active { background: #0a0a0a; border-color: #0a0a0a; color: #fff; }
+.cat-pill:hover  { border-color: #22242e; color: #22242e; }
+.cat-pill.active { background: #22242e; border-color: #22242e; color: #fff; }
 .brand-pill { padding: .2rem .7rem; font-size: .74rem; }
 
 /* ── Tabla compacta (small) ─────────────────────────────── */
@@ -425,7 +425,7 @@
     max-width: 80px;
     transition: border-color .15s ease, box-shadow .15s ease;
 }
-.fld-input:focus { border-color: #0a0a0a; box-shadow: 0 0 0 .18rem rgba(10,10,10,.1); }
+.fld-input:focus { border-color: #22242e; box-shadow: 0 0 0 .18rem rgba(34,36,46,.1); }
 .fld-input.saving { border-color: #fd7e14; }
 .fld-input.saved  { border-color: #198754; }
 .fld-input.error  { border-color: #dc3545; }
@@ -436,8 +436,8 @@
     transition: border-color .15s ease, box-shadow .15s ease;
 }
 .qty-input:not(:disabled):focus {
-    border-color: #0a0a0a;
-    box-shadow: 0 0 0 .18rem rgba(10,10,10,.1);
+    border-color: #22242e;
+    box-shadow: 0 0 0 .18rem rgba(34,36,46,.1);
 }
 .qty-input:disabled { background: #f8f9fa; cursor: not-allowed; opacity: .75; }
 

@@ -2,12 +2,16 @@
 
 namespace App\Models\Loyalty;
 
+use App\Models\Concerns\BelongsToCompany;
+
 use App\Models\Company;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class LoyaltySetting extends Model
 {
+    use BelongsToCompany;
+
     protected $fillable = [
         'company_id', 'enabled', 'earn_amount', 'earn_points',
         'rounding', 'min_purchase', 'points_label', 'expiration_months', 'public_token',

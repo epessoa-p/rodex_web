@@ -280,7 +280,7 @@
 <div class="modal fade" id="modalMapPicker" tabindex="-1" aria-labelledby="modalMapPickerLabel">
     <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width:92vw;">
         <div class="modal-content border-0 shadow-lg" style="height:94vh;">
-            <div class="modal-header border-0 pb-0 px-4 pt-3" style="background:#0a0a0a;color:#fff;border-radius:14px 14px 0 0;">
+            <div class="modal-header border-0 pb-0 px-4 pt-3" style="background:#22242e;color:#fff;border-radius:14px 14px 0 0;">
                 <div class="d-flex align-items-center gap-3 flex-grow-1 me-3">
                     <i class="bi bi-geo-alt-fill text-danger fs-5"></i>
                     <h5 class="modal-title mb-0 fw-bold" id="modalMapPickerLabel" style="color:#fff;">
@@ -288,19 +288,19 @@
                     </h5>
                     {{-- Buscador de dirección --}}
                     <div class="input-group ms-3" style="max-width:460px;">
-                        <span class="input-group-text" style="background:#1f1f1f;border-color:#333;color:#aaa;">
+                        <span class="input-group-text" style="background:#3a3d4a;border-color:#333;color:#aaa;">
                             <i class="bi bi-search"></i>
                         </span>
                         <input type="text" id="mapSearchInput" class="form-control"
                                placeholder="Buscar dirección o lugar..."
                                style="background:#1a1a1a;border-color:#333;color:#e8e8e8;">
                         <button type="button" class="btn" id="btnMapSearch"
-                                style="background:#e10600;border-color:#e10600;color:#fff;">
+                                style="background:#e63946;border-color:#e63946;color:#fff;">
                             Buscar
                         </button>
                     </div>
                     <button type="button" class="btn btn-sm" id="btnMapGeolocate"
-                            style="background:#1f1f1f;border:1px solid #333;color:#ccc;white-space:nowrap;">
+                            style="background:#3a3d4a;border:1px solid #333;color:#ccc;white-space:nowrap;">
                         <i class="bi bi-crosshair2 me-1"></i>Mi ubicación
                     </button>
                 </div>
@@ -309,13 +309,13 @@
 
             {{-- Instrucción --}}
             <div class="px-4 py-2 d-flex align-items-center gap-3 flex-wrap"
-                 style="background:#161616;border-bottom:1px solid #2a2a2a;">
+                 style="background:#2d2f3a;border-bottom:1px solid #2a2a2a;">
                 <span style="color:#9a9a9a;font-size:.8rem;">
                     <i class="bi bi-hand-index me-1 text-danger"></i>
                     Haz clic en el mapa para colocar el marcador en la ubicación del cliente.
                 </span>
                 <div id="mapCoordsBadge" class="ms-auto rounded-pill px-3 py-1 d-none"
-                     style="background:#1f1f1f;border:1px solid #333;color:#ccc;font-size:.78rem;font-family:monospace;">
+                     style="background:#3a3d4a;border:1px solid #333;color:#ccc;font-size:.78rem;font-family:monospace;">
                     <i class="bi bi-geo me-1 text-danger"></i>
                     <span id="mapCoordsText">—</span>
                 </div>

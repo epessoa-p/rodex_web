@@ -5,13 +5,13 @@
 
     {{-- Print-only top (hidden in screen) --}}
     <div class="print-header d-none">
-        <h3 class="fw-bold mb-1">VR Motors — Repuestos &amp; Accesorios</h3>
+        <h3 class="fw-bold mb-1">{{ $sale->company?->name ?? config('brand.name') }}</h3>
         <p class="mb-0 text-muted small">Comprobante de venta</p>
     </div>
 
     {{-- ── HEADER CARD ──────────────────────────────────────────────── --}}
     <div class="card card-soft mb-4 overflow-hidden no-print-shadow">
-        <div style="height:6px;background:linear-gradient(90deg,var(--brand-red) 0%,#ff4d4d 50%,transparent 100%);"></div>
+        <div style="height:6px;background:linear-gradient(90deg,var(--brand-red) 0%,#ff6b6b 50%,transparent 100%);"></div>
         <div class="card-body p-4">
             <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
                 <div>

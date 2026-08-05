@@ -7,7 +7,7 @@ use App\Http\Controllers\CashRegister\CashSessionController;
 use App\Http\Controllers\CashRegister\MovementController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'plan:cash'])->group(function () {
 
     // ── Movimientos (tablero financiero por sucursal) ─────────────
     Route::get('cash/movimientos', [MovementController::class, 'index'])

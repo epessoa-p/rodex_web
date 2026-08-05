@@ -43,13 +43,19 @@
 
                         <div class="col-md-6">
                             <label class="form-label">Cargo <span class="text-danger">*</span></label>
-                            <select name="cargo_id" class="form-select" required>
-                                <option value="">Seleccionar cargo</option>
-                                @foreach($cargos as $cargo)
-                                    <option value="{{ $cargo->id }}" {{ (string) old('cargo_id', $personal?->cargo_id) === (string) $cargo->id ? 'selected' : '' }}>
-                                        {{ $cargo->name }} · Rol: {{ $cargo->role?->name }}
-                                    </option>
-                                @endforeach
+                            <select name="cargo_id" id="cargo_id" class="form-select" required
+                                    data-cargos-url="{{ route('personal.cargos') }}"
+                                    data-selected="{{ old('cargo_id', $personal?->cargo_id) }}">
+                                @if($companies->count() > 1 && !old('company_id', $personal?->company_id))
+                                    <option value="">Selecciona una empresa primero</option>
+                                @else
+                                    <option value="">Seleccionar cargo</option>
+                                    @foreach($cargos as $cargo)
+                                        <option value="{{ $cargo->id }}" {{ (string) old('cargo_id', $personal?->cargo_id) === (string) $cargo->id ? 'selected' : '' }}>
+                                            {{ $cargo->name }} · Rol: {{ $cargo->role?->name }}
+                                        </option>
+                                    @endforeach
+                                @endif
                             </select>
                         </div>
 
@@ -150,6 +156,66 @@
         </div>
     </form>
 </div>
+
+@if($companies->count() > 1)
+@push('scripts')
+<script>
+// Carga dinámica de cargos según la empresa elegida (solo para super_admin).
+// Se usa jQuery porque los <select> están envueltos por select2: hay que
+// escuchar el 'change' de jQuery y refrescar el widget con 'change.select2'.
+jQuery(function ($) {
+    const $company = $('#company_id');
+    const $cargo   = $('#cargo_id');
+    if (!$company.length || !$cargo.length) return;
+
+    const url = $cargo.data('cargosUrl');
+
+    function setPlaceholder(text, disabled) {
+        $cargo.empty()
+              .append($('<option>', { value: '', text: text }))
+              .prop('disabled', !!disabled)
+              .trigger('change.select2');
+    }
+
+    function loadCargos(companyId, selectCargo) {
+        if (!companyId) { setPlaceholder('Selecciona una empresa primero', true); return; }
+
+        setPlaceholder('Cargando cargos…', true);
+        $.ajax({
+            url: url,
+            data: { company_id: companyId },
+            dataType: 'json',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).done(function (data) {
+            if (!data.length) { setPlaceholder('Esta empresa no tiene cargos activos', false); return; }
+
+            $cargo.empty().append($('<option>', { value: '', text: 'Seleccionar cargo' }));
+            data.forEach(function (c) {
+                const label = c.name + (c.role_name ? ' · Rol: ' + c.role_name : '');
+                const $opt = $('<option>', { value: c.id, text: label });
+                if (String(c.id) === String(selectCargo)) $opt.prop('selected', true);
+                $cargo.append($opt);
+            });
+            $cargo.prop('disabled', false).trigger('change.select2');
+        }).fail(function () {
+            setPlaceholder('No se pudieron cargar los cargos', false);
+        });
+    }
+
+    // Carga inicial: si ya hay empresa elegida (edición o reintento tras error),
+    // trae sus cargos y preselecciona el que estaba.
+    if ($company.val()) {
+        loadCargos($company.val(), $cargo.data('selected') || '');
+    } else {
+        setPlaceholder('Selecciona una empresa primero', true);
+    }
+
+    // Al cambiar de empresa, recargar los cargos.
+    $company.on('change', function () { loadCargos($(this).val(), ''); });
+});
+</script>
+@endpush
+@endif
 
 @if($personal)
 @push('scripts')

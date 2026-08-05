@@ -2,6 +2,8 @@
 
 namespace App\Models\Loyalty;
 
+use App\Models\Concerns\BelongsToCompany;
+
 use App\Models\Client;
 use App\Models\Company;
 use App\Models\User;
@@ -11,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class LoyaltyPointMovement extends Model
 {
+    use BelongsToCompany;
+
     const TYPES = [
         'earn'   => ['label' => 'Acumulación', 'color' => 'success'],
         'redeem' => ['label' => 'Canje',        'color' => 'danger'],

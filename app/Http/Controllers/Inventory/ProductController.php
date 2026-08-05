@@ -42,6 +42,10 @@ class ProductController extends Controller
             ? request('company_id')
             : $user->getCurrentCompany()?->id;
 
+        if ($this->planLimitReached($companyId, 'products')) {
+            return back()->withInput()->withErrors(['error' => $this->planLimitMessage('productos')]);
+        }
+
         $validated = request()->validate([
             'company_id'         => ['nullable', 'exists:companies,id'],
             'name'               => 'required|string|max:255',
@@ -433,7 +437,7 @@ class ProductController extends Controller
         $currentCount = $product->photos()->count();
 
         foreach (request()->file('photos') as $i => $file) {
-            $path = $file->store("products/{$product->id}", 'public');
+            $path = $file->store("company/{$product->company_id}/products/{$product->id}", 'public');
             ProductPhoto::create([
                 'product_id' => $product->id,
                 'company_id' => $product->company_id,

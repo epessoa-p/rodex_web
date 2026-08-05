@@ -263,7 +263,7 @@
     width:28px; height:28px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
     background:#e9ecef; color:#6c757d; font-weight:700; font-size:.8rem; flex-shrink:0;
 }
-.wiz-step.active .wiz-num { background:var(--brand-black,#0a0a0a); color:#fff; }
+.wiz-step.active .wiz-num { background:var(--brand-black,#22242e); color:#fff; }
 .wiz-step.done .wiz-num { background:#198754; color:#fff; }
 .wiz-label { font-size:.82rem; font-weight:600; color:#495057; }
 .wiz-line { flex:1; height:2px; background:#e9ecef; min-width:24px; max-width:80px; }
@@ -328,7 +328,7 @@
         const dt = new DataTransfer(); dt.items.add(f); fileInput.files = dt.files;
         fileName.textContent = f.name;
         selected.classList.remove('d-none');
-        dropZone.style.borderColor = 'var(--brand-black,#0a0a0a)';
+        dropZone.style.borderColor = 'var(--brand-black,#22242e)';
         dropZone.style.background = '#f5f5f5';
         refreshVerify();
     }
@@ -344,7 +344,7 @@
         if (e.target.closest('button')) return;
         fileInput.click();
     });
-    dropZone.addEventListener('dragover', function (e) { e.preventDefault(); dropZone.style.borderColor = '#0a0a0a'; dropZone.style.background = '#f0f0f0'; });
+    dropZone.addEventListener('dragover', function (e) { e.preventDefault(); dropZone.style.borderColor = '#22242e'; dropZone.style.background = '#f0f0f0'; });
     dropZone.addEventListener('dragleave', function () { if (!fileInput.files[0]) { dropZone.style.borderColor = '#ddd'; dropZone.style.background = '#fafafa'; } });
     dropZone.addEventListener('drop', function (e) { e.preventDefault(); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
 

@@ -47,6 +47,10 @@ class BranchController extends Controller
             $user = auth()->user();
             $companyId = $user->is_super_admin ? request('company_id') : $user->getCurrentCompany()?->id;
 
+            if ($this->planLimitReached($companyId, 'branches')) {
+                return back()->withInput()->withErrors(['error' => $this->planLimitMessage('sucursales')]);
+            }
+
             $validated = request()->validate([
                 'company_id' => ['nullable', 'exists:companies,id'],
                 'name' => 'required|string|max:255',

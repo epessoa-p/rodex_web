@@ -660,7 +660,7 @@ class RentalController extends Controller
 
         if ($hasPhotos) {
             foreach ($request->file('photos') as $i => $file) {
-                $path = $file->store("rentals/{$rental->id}/{$type}", 'public');
+                $path = $file->store("company/{$rental->company_id}/rentals/{$rental->id}/{$type}", 'public');
                 RentalInspectionPhoto::create([
                     'company_id'           => $rental->company_id,
                     'rental_inspection_id' => $inspection->id,

@@ -15,7 +15,7 @@
 
     {{-- Info moto --}}
     <div class="card border-0 shadow-sm mb-4 overflow-hidden">
-        <div style="height:4px;background:linear-gradient(90deg,var(--brand-red) 0%,#ff4d4d 60%,transparent 100%);"></div>
+        <div style="height:4px;background:linear-gradient(90deg,var(--brand-red) 0%,#ff6b6b 60%,transparent 100%);"></div>
         <div class="card-body p-4">
             <div class="d-flex flex-wrap gap-4 align-items-center">
                 <div class="rounded-2 bg-light border d-flex align-items-center justify-content-center flex-shrink-0"

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
+
 use App\Models\Inventory\ProductBrand;
 use App\Models\Inventory\ProductCategory;
 use App\Models\Inventory\ProductPhoto;
@@ -15,6 +17,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
 {
+    use BelongsToCompany;
+
     use HasFactory, SoftDeletes;
 
     protected $fillable = [

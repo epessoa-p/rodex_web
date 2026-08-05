@@ -20,7 +20,7 @@
 <div class="mt-3">
     <label class="form-label fw-semibold small"><i class="bi bi-camera me-1"></i>Fotos (opcional)</label>
     <x-media-upload name="photos[]" :multiple="true" :bare="true"
-        accent="#e10600" :max-mb="5" :max-files="12"
+        accent="#e63946" :max-mb="5" :max-files="12"
         drop-text="Arrastra fotos aquí"
         hint="JPG, PNG, WebP · máx. 5MB" />
 </div>

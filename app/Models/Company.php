@@ -6,14 +6,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Company extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'name', 'ruc', 'address', 'phone', 'email', 'logo', 'description', 'active'
+        'name', 'ruc', 'address', 'phone', 'email', 'logo', 'description', 'active',
+        'theme_primary', 'theme_accent',
     ];
 
     protected $casts = [
@@ -63,6 +66,94 @@ class Company extends Model
     public function cashRegisters(): HasMany
     {
         return $this->hasMany(CashRegister::class);
+    }
+
+    // ── Marca (white-label) ───────────────────────────────────────
+
+    /**
+     * URL del logo de la empresa para mostrar en pantalla.
+     * Si la empresa no subió logo, se usa el de la plataforma.
+     */
+    public function getLogoUrlAttribute(): string
+    {
+        if ($this->logo && Storage::disk('public')->exists($this->logo)) {
+            return asset('storage/' . $this->logo);
+        }
+
+        return asset(config('brand.logo'));
+    }
+
+    /**
+     * Ruta en disco del logo, para incrustarlo en PDF/Excel
+     * (esos formatos no pueden resolver una URL).
+     */
+    public function getLogoFileAttribute(): ?string
+    {
+        $path = $this->logo
+            ? public_path('storage/' . $this->logo)
+            : public_path(config('brand.logo'));
+
+        return is_file($path) ? $path : null;
+    }
+
+    /** ¿La empresa definió colores propios para el menú y la cabecera? */
+    public function hasTheme(): bool
+    {
+        return !empty($this->theme_primary) && !empty($this->theme_accent);
+    }
+
+    // ── Suscripción SaaS ──────────────────────────────────────────
+
+    public function subscription(): HasOne
+    {
+        return $this->hasOne(Subscription::class);
+    }
+
+    /** ¿La empresa puede escribir? (trial o periodo pagado vigente) */
+    public function subscriptionAllowsWrite(): bool
+    {
+        return (bool) $this->subscription?->allowsWrite();
+    }
+
+    /** ¿La empresa puede al menos entrar y consultar? (incluye gracia) */
+    public function subscriptionAllowsRead(): bool
+    {
+        return (bool) $this->subscription?->allowsRead();
+    }
+
+    /**
+     * ¿El plan contratado incluye este módulo? (ver Plan::MODULES)
+     * Sin suscripción o sin plan => no.
+     */
+    public function planAllows(string $feature): bool
+    {
+        return (bool) $this->subscription?->plan?->allows($feature);
+    }
+
+    /** Uso actual de un recurso limitado por plan. */
+    public function usageFor(string $key): int
+    {
+        return match ($key) {
+            'users'    => $this->users()->count(),
+            'branches' => $this->branches()->count(),
+            'products' => $this->products()->count(),
+            default    => 0,
+        };
+    }
+
+    /**
+     * ¿Queda cupo en el plan para añadir otro recurso de este tipo?
+     * Sin límite definido (null) => ilimitado.
+     */
+    public function withinLimit(string $key): bool
+    {
+        $limit = $this->subscription?->plan?->limitFor($key);
+
+        if ($limit === null) {
+            return true;
+        }
+
+        return $this->usageFor($key) < $limit;
     }
 
     /**

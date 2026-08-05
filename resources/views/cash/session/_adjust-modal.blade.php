@@ -140,8 +140,8 @@
         font-weight: 600;
     }
     .adjust-tabs .nav-link.active {
-        background: var(--brand-black, #0a0a0a);
-        border-color: var(--brand-black, #0a0a0a);
+        background: var(--brand-black, #22242e);
+        border-color: var(--brand-black, #22242e);
         color: #fff;
     }
 </style>

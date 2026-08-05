@@ -74,8 +74,8 @@
 @push('styles')
 <style>
 .reward-pick { border:1.5px solid #e3e3e3; background:#fff; border-radius:10px; padding:.6rem .75rem; transition:all .15s; }
-.reward-pick:hover:not(:disabled) { border-color:#0a0a0a; }
-.reward-pick.active { border-color:var(--brand-red,#e10600); background:rgba(225,6,0,.04); box-shadow:0 0 0 .15rem rgba(225,6,0,.12); }
+.reward-pick:hover:not(:disabled) { border-color:#22242e; }
+.reward-pick.active { border-color:var(--brand-red,#e63946); background:rgba(230,57,70,.04); box-shadow:0 0 0 .15rem rgba(230,57,70,.12); }
 .reward-pick:disabled { opacity:.5; cursor:not-allowed; }
 </style>
 @endpush

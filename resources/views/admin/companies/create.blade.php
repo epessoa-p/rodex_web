@@ -5,8 +5,16 @@
 
 <div class="card mt-4">
     <div class="card-body">
-        <form action="{{ route('companies.store') }}" method="POST">
+        <form action="{{ route('companies.store') }}" method="POST" enctype="multipart/form-data">
             @csrf
+
+            <div class="form-group mb-3">
+                <label for="logo" class="form-label">Logo</label>
+                <input type="file" id="logo" name="logo" accept="image/*"
+                       class="form-control @error('logo') is-invalid @enderror">
+                <div class="form-text">Se muestra en el menú, los recibos y las impresiones de esta empresa.</div>
+                @error('logo')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
 
             <div class="form-group mb-3">
                 <label for="name" class="form-label">Nombre</label>
@@ -37,6 +45,8 @@
                 <label for="description" class="form-label">Descripción</label>
                 <textarea id="description" name="description" class="form-control @error('description') is-invalid @enderror" rows="3">{{ old('description') }}</textarea>
             </div>
+
+            @include('admin.companies._theme')
 
             <div class="form-group">
                 <button type="submit" class="btn btn-primary">

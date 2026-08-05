@@ -53,7 +53,7 @@
         </button>
         @foreach($branches as $b)
             @php
-                $bc = $b->color ?: '#0a0a0a';
+                $bc = $b->color ?: '#22242e';
                 $h  = ltrim($bc, '#');
                 if (strlen($h) === 3) { $h = $h[0].$h[0].$h[1].$h[1].$h[2].$h[2]; }
                 $lum = (0.299 * hexdec(substr($h,0,2))) + (0.587 * hexdec(substr($h,2,2))) + (0.114 * hexdec(substr($h,4,2)));
@@ -100,8 +100,8 @@
     border-radius: 50rem; padding: .18rem .8rem; font-size: .76rem; font-weight: 600;
     cursor: pointer; transition: all .15s ease; white-space: nowrap;
 }
-.stat-pill:hover { border-color: var(--brand-black,#0a0a0a); color: var(--brand-black,#0a0a0a); }
-.stat-pill.active { background: var(--brand-black,#0a0a0a); border-color: var(--brand-black,#0a0a0a); color: #fff; }
+.stat-pill:hover { border-color: var(--brand-black,#22242e); color: var(--brand-black,#22242e); }
+.stat-pill.active { background: var(--brand-black,#22242e); border-color: var(--brand-black,#22242e); color: #fff; }
 .stat-slot { display: none; }
 .stat-slot.is-active { display: inline-flex; }
 
@@ -116,8 +116,8 @@
     border: 1.5px solid #dee2e6; background: #fff; color: #495057; cursor: pointer;
     transition: all .15s ease; white-space: nowrap;
 }
-.branch-tab:hover { border-color: var(--bc,#0a0a0a); }
-.branch-tab.active { background: var(--bc,#0a0a0a); border-color: var(--bc,#0a0a0a); color: var(--bt,#fff); }
+.branch-tab:hover { border-color: var(--bc,#22242e); }
+.branch-tab.active { background: var(--bc,#22242e); border-color: var(--bc,#22242e); color: var(--bt,#fff); }
 .branch-tab.active .branch-dot { display: none; }
 .branch-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 
@@ -153,14 +153,14 @@
     function lineChart(el, d, label) {
         return new Chart(el, {
             type: 'line',
-            data: { labels: d.labels, datasets: [{ label: label, data: d.data, borderColor: '#0a0a0a', backgroundColor: 'rgba(10,10,10,.08)', fill: true, tension: .3, pointRadius: 2 }] },
+            data: { labels: d.labels, datasets: [{ label: label, data: d.data, borderColor: '#22242e', backgroundColor: 'rgba(34,36,46,.08)', fill: true, tension: .3, pointRadius: 2 }] },
             options: baseOpts({ plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } })
         });
     }
     function barChart(el, labels, data, horizontal) {
         return new Chart(el, {
             type: 'bar',
-            data: { labels: labels, datasets: [{ data: data, backgroundColor: '#0a0a0a', borderRadius: 4 }] },
+            data: { labels: labels, datasets: [{ data: data, backgroundColor: '#22242e', borderRadius: 4 }] },
             options: baseOpts({ indexAxis: horizontal ? 'y' : 'x', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true }, y: { beginAtZero: true } } })
         });
     }

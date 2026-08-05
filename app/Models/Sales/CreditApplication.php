@@ -2,6 +2,8 @@
 
 namespace App\Models\Sales;
 
+use App\Models\Concerns\BelongsToCompany;
+
 use App\Models\Client;
 use App\Models\Company;
 use App\Models\User;
@@ -12,6 +14,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CreditApplication extends Model
 {
+    use BelongsToCompany;
+
     use HasFactory, SoftDeletes;
 
     const STATUSES = [

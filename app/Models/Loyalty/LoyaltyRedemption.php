@@ -2,6 +2,8 @@
 
 namespace App\Models\Loyalty;
 
+use App\Models\Concerns\BelongsToCompany;
+
 use App\Models\Client;
 use App\Models\Company;
 use App\Models\Sales\Sale;
@@ -11,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class LoyaltyRedemption extends Model
 {
+    use BelongsToCompany;
+
     protected $fillable = [
         'company_id', 'client_id', 'reward_id', 'points_spent',
         'sale_id', 'status', 'user_id', 'redeemed_at',

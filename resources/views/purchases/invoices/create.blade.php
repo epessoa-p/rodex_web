@@ -486,7 +486,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.receipt-card').forEach(card => {
             const cb = card.querySelector('.receipt-checkbox');
             if (cb.checked) {
-                card.style.borderColor = 'var(--brand-black, #0a0a0a)';
+                card.style.borderColor = 'var(--brand-black, #22242e)';
                 card.style.background  = '#f8f8f8';
             } else {
                 card.style.borderColor = '';

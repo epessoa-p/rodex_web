@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'VR Motors')</title>
+    <title>@yield('title', config('brand.name'))</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,10 +11,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --brand-red:      #e10600;
-            --brand-red-dark: #b30500;
-            --brand-black:    #0a0a0a;
-            --brand-black-2:  #161616;
+            --brand-red:      #e63946;
+            --brand-red-dark: #c1121f;
+            --brand-black:    #22242e;
+            --brand-black-2:  #2d2f3a;
         }
 
         * { box-sizing: border-box; }
@@ -48,12 +48,12 @@
         }
         body::before {
             width: 600px; height: 600px;
-            background: radial-gradient(circle, rgba(225,6,0,.25) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(230,57,70,.25) 0%, transparent 70%);
             top: -200px; left: -200px;
         }
         body::after {
             width: 700px; height: 700px;
-            background: radial-gradient(circle, rgba(225,6,0,.18) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(230,57,70,.18) 0%, transparent 70%);
             bottom: -250px; right: -250px;
         }
 
@@ -62,7 +62,7 @@
             position: absolute;
             inset: 0;
             background-image:
-                linear-gradient(90deg, transparent 0%, transparent 49%, rgba(225,6,0,.04) 50%, transparent 51%, transparent 100%);
+                linear-gradient(90deg, transparent 0%, transparent 49%, rgba(230,57,70,.04) 50%, transparent 51%, transparent 100%);
             background-size: 4px 100%;
             z-index: 0;
             opacity: 0.6;
@@ -84,7 +84,7 @@
             border-radius: 16px;
             box-shadow:
                 0 30px 60px rgba(0,0,0,.5),
-                0 0 0 1px rgba(225,6,0,.15),
+                0 0 0 1px rgba(230,57,70,.15),
                 inset 0 1px 0 rgba(255,255,255,.04);
             padding: 38px 36px;
             position: relative;
@@ -106,25 +106,41 @@
         }
 
         .logo {
-            width: 110px;
-            height: 110px;
-            background: #000;
-            border-radius: 18px;
+            width: 96px;
+            height: 96px;
+            background: linear-gradient(135deg, var(--brand-red) 0%, var(--brand-red-dark) 100%);
+            border-radius: 22px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            font-size: 2rem;
+            color: #fff;
             margin: 0 auto 18px;
-            box-shadow: 0 8px 24px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.08);
-            border: 1px solid rgba(255,255,255,.06);
+            box-shadow: 0 10px 26px rgba(230,57,70,.35), inset 0 1px 0 rgba(255,255,255,.18);
+            border: 1px solid rgba(255,255,255,.1);
             overflow: hidden;
+        }
+        .logo i {
+            font-size: 2.9rem;
+            line-height: 1;
         }
         .logo img {
             width: 100%;
             height: 100%;
             object-fit: contain;
             padding: 6px;
+        }
+
+        /* Firma de la plataforma: logo completo (con texto) */
+        .brand-signature {
+            margin: 0 auto 14px;
+            max-width: 320px;
+        }
+        .brand-signature img {
+            width: 100%;
+            height: auto;
+            border-radius: 14px;
+            box-shadow: 0 10px 26px rgba(0,0,0,.35);
+            display: block;
         }
 
         .auth-header h1 {
@@ -165,7 +181,7 @@
         }
 
         .input-group:focus-within {
-            box-shadow: 0 0 0 3px rgba(225,6,0,.25);
+            box-shadow: 0 0 0 3px rgba(230,57,70,.25);
         }
 
         .input-group-text {
@@ -193,7 +209,7 @@
 
         .form-control:focus {
             background-color: rgba(255,255,255,0.06);
-            border-color: rgba(225,6,0,.5);
+            border-color: rgba(230,57,70,.5);
             color: #fff;
             box-shadow: none;
         }
@@ -210,12 +226,12 @@
             transition: all .2s ease;
             margin-top: 8px;
             letter-spacing: 0.01em;
-            box-shadow: 0 6px 16px rgba(225,6,0,.3);
+            box-shadow: 0 6px 16px rgba(230,57,70,.3);
         }
 
         .btn-login:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 24px rgba(225,6,0,.45);
+            box-shadow: 0 10px 24px rgba(230,57,70,.45);
             color: white;
         }
 
@@ -224,8 +240,8 @@
         }
 
         .alert {
-            border: 1px solid rgba(225,6,0,.2);
-            background: rgba(225,6,0,.08);
+            border: 1px solid rgba(230,57,70,.2);
+            background: rgba(230,57,70,.08);
             color: #ffb4b0;
             border-radius: 10px;
             margin-bottom: 18px;

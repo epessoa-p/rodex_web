@@ -2,6 +2,8 @@
 
 namespace App\Models\Sales;
 
+use App\Models\Concerns\BelongsToCompany;
+
 use App\Models\Company;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,6 +13,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PaymentPlan extends Model
 {
+    use BelongsToCompany;
+
     use HasFactory, SoftDeletes;
 
     protected $fillable = [

@@ -35,7 +35,7 @@
                             <td class="ps-4 py-2">
                                 <div class="d-flex align-items-center gap-3">
                                     <div class="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
-                                         style="width:36px;height:36px;background:rgba(225,6,0,.07);">
+                                         style="width:36px;height:36px;background:rgba(230,57,70,.07);">
                                         <i class="bi bi-list-check text-danger"></i>
                                     </div>
                                     <div>

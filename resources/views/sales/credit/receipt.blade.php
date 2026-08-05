@@ -54,14 +54,15 @@
 <div class="ticket">
 
     {{-- ── Encabezado: logo a la izquierda, datos a la derecha ── --}}
-    @php $logoPath = public_path('images/logo_blanco.jpeg'); @endphp
     <div class="head">
-        @if(file_exists($logoPath))
-        <div class="logo"><img src="{{ asset('images/logo_blanco.jpeg') }}" alt="Logo"></div>
+        @if($company?->logo_file)
+        <div class="logo"><img src="{{ $company->logo_url }}" alt="{{ $company->name }}"></div>
         @endif
         <div class="biz">
-            <div class="biz-name">{{ $company->name ?? 'VR Motors' }}</div>
-            <div class="biz-sub muted">Repuestos &amp; Accesorios</div>
+            <div class="biz-name">{{ $company?->name ?? config('brand.name') }}</div>
+            @if($company?->description)
+            <div class="biz-sub muted">{{ $company->description }}</div>
+            @endif
             @if($branch?->name)<div class="biz-sub bold">{{ $branch->name }}</div>@endif
             @if($branch?->address)<div class="biz-sub">{{ $branch->address }}</div>@elseif($company?->address)<div class="biz-sub">{{ $company->address }}</div>@endif
             @php $tel = $branch?->phone ?: $company?->phone; @endphp

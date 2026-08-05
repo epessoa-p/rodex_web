@@ -24,7 +24,7 @@
                     <div class="text-white fw-bold" style="font-size:2rem">${{ number_format($totalBalance, 2) }}</div>
                 </div>
                 <div class="rounded-3 d-flex align-items-center justify-content-center"
-                     style="width:60px;height:60px;background:rgba(225,6,0,.2)">
+                     style="width:60px;height:60px;background:rgba(230,57,70,.2)">
                     <i class="bi bi-safe2 fs-3 text-danger"></i>
                 </div>
             </div>

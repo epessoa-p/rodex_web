@@ -12,11 +12,24 @@
             <button class="btn btn-link p-0 me-2 d-lg-none text-white" type="button" data-bs-toggle="offcanvas" data-bs-target="#appSidebarMobile" aria-controls="appSidebarMobile">
                 <i class="bi bi-list fs-4"></i>
             </button>
-            <div class="brand-icon"><img src="{{ asset('images/logo_blanco_sm.png') }}" alt="VR Motors"></div>
-            <div>
-                <div class="brand-title">VR <span class="brand-accent">MOTORS</span></div>
-                <small class="brand-subtitle">Repuestos &amp; Accesorios</small>
-            </div>
+            @if(auth()->user()->is_super_admin)
+                {{-- Modo global: firma de la plataforma (SCZ SOFT). --}}
+                <div class="brand-global">
+                    <img src="{{ asset(config('brand.logo')) }}" alt="{{ config('brand.name') }}">
+                    <small class="brand-subtitle d-block mt-2">Modo global</small>
+                </div>
+            @else
+                <div class="brand-icon">
+                    <img src="{{ $currentCompany?->logo_url ?? asset(config('brand.logo_sm')) }}"
+                         alt="{{ $currentCompany?->name ?? config('brand.name') }}">
+                </div>
+                <div>
+                    <div class="brand-title">{{ $currentCompany?->name ?? config('brand.name') }}</div>
+                    @if($currentCompany?->description)
+                        <small class="brand-subtitle">{{ $currentCompany->description }}</small>
+                    @endif
+                </div>
+            @endif
         </div>
 
         <div class="sidebar-section-title">General</div>
@@ -56,10 +69,17 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link app-link {{ request()->routeIs('subscriptions.*') ? 'active' : '' }}" href="{{ route('subscriptions.index') }}">
+                    <i class="bi bi-credit-card"></i> Suscripciones
+                </a>
+            </li>
+            @if(config('app.system_reset_enabled') && !app()->environment('production'))
+            <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('system.reset') ? 'active' : '' }}" href="{{ route('system.reset') }}">
                     <i class="bi bi-exclamation-octagon"></i> Reiniciar sistema
                 </a>
             </li>
+            @endif
         </ul>
         @endif
 
@@ -114,6 +134,7 @@
             @endif
         </ul>
 
+        @module('inventory')
         <div class="sidebar-section-title mt-4">Inventario</div>
         <ul class="nav flex-column gap-1">
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('products.view', $currentCompany))
@@ -157,6 +178,7 @@
             </li>
             @endif
         </ul>
+        @endmodule
 
         @php
             $canSales = auth()->user()->is_super_admin
@@ -174,6 +196,7 @@
                 || auth()->user()->hasPermissionInCompany('credit-reports.view', $currentCompany);
         @endphp
         @if($canSales)
+        @module('sales')
         <div class="sidebar-section-title mt-4">Ventas</div>
         <ul class="nav flex-column gap-1">
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('sales-dashboard.view', $currentCompany))
@@ -233,9 +256,11 @@
             </li>
             @endif
         </ul>
+        @endmodule
         @endif
 
         @if($canCredit)
+        @module('sales')
         <div class="sidebar-section-title mt-4">Créditos</div>
         <ul class="nav flex-column gap-1">
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('credit-applications.view', $currentCompany))
@@ -288,6 +313,7 @@
             </li>
             @endif
         </ul>
+        @endmodule
         @endif
 
         @php
@@ -297,6 +323,7 @@
                 || auth()->user()->hasPermissionInCompany('mechanics.view', $currentCompany);
         @endphp
         @if($canWorkshop)
+        @module('workshop')
         <div class="sidebar-section-title mt-4">Taller</div>
         <ul class="nav flex-column gap-1">
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('workshop-dashboard.view', $currentCompany))
@@ -347,6 +374,7 @@
             </li>
             @endif
         </ul>
+        @endmodule
         @endif
 
         @php
@@ -358,6 +386,7 @@
                 || auth()->user()->hasPermissionInCompany('warranties.view', $currentCompany);
         @endphp
         @if($canMotos)
+        @module('motos')
         <div class="sidebar-section-title mt-4">Motos</div>
         <ul class="nav flex-column gap-1">
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('moto-brands.view', $currentCompany))
@@ -403,6 +432,7 @@
             </li>
             @endif
         </ul>
+        @endmodule
         @endif
 
         @php
@@ -410,6 +440,7 @@
                 || auth()->user()->hasPermissionInCompany('rentals.view', $currentCompany);
         @endphp
         @if($canRentals)
+        @module('rentals')
         <div class="sidebar-section-title mt-4">Alquileres</div>
         <ul class="nav flex-column gap-1">
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('rentals-dashboard.view', $currentCompany))
@@ -470,6 +501,7 @@
                 </a>
             </li>
         </ul>
+        @endmodule
         @endif
 
         @php
@@ -483,6 +515,7 @@
                 || auth()->user()->hasPermissionInCompany('loyalty-settings.view', $currentCompany);
         @endphp
         @if($canLoyalty)
+        @module('loyalty')
         <div class="sidebar-section-title mt-4">Fidelización</div>
         <ul class="nav flex-column gap-1">
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('loyalty-dashboard.view', $currentCompany))
@@ -507,6 +540,7 @@
             <li class="nav-item"><a class="nav-link app-link {{ request()->routeIs('loyalty.reports.*') ? 'active' : '' }}" href="{{ route('loyalty.reports.index') }}"><i class="bi bi-bar-chart-line"></i> Reportes</a></li>
             @endif
         </ul>
+        @endmodule
         @endif
 
         @php
@@ -520,6 +554,7 @@
                 || auth()->user()->hasPermissionInCompany('treasury.view', $currentCompany);
         @endphp
         @if($canPurchases)
+        @module('purchases')
         <div class="sidebar-section-title mt-4">Compras</div>
         <ul class="nav flex-column gap-1">
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('purchases-dashboard.view', $currentCompany))
@@ -572,6 +607,7 @@
             </li>
             @endif
         </ul>
+        @endmodule
         @endif
 
     </aside>
@@ -674,8 +710,17 @@
 <div class="offcanvas offcanvas-start" tabindex="-1" id="appSidebarMobile" aria-labelledby="appSidebarMobileLabel">
     <div class="offcanvas-header">
         <h5 class="offcanvas-title d-flex align-items-center gap-2" id="appSidebarMobileLabel">
-            <span class="brand-icon"><img src="{{ asset('images/logo_blanco_sm.png') }}" alt="VR Motors"></span>
-            VR <span class="brand-accent">MOTORS</span>
+            @if(auth()->user()->is_super_admin)
+                <img src="{{ asset(config('brand.logo')) }}" alt="{{ config('brand.name') }}"
+                     style="height:38px;width:auto;border-radius:8px;">
+                <span class="small text-muted">Modo global</span>
+            @else
+                <span class="brand-icon">
+                    <img src="{{ $currentCompany?->logo_url ?? asset(config('brand.logo_sm')) }}"
+                         alt="{{ $currentCompany?->name ?? config('brand.name') }}">
+                </span>
+                {{ $currentCompany?->name ?? config('brand.name') }}
+            @endif
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
@@ -697,7 +742,10 @@
             <ul class="nav flex-column gap-1 mb-3">
                 <li><a class="nav-link app-link {{ request()->routeIs('companies.*') ? 'active' : '' }}" href="{{ route('companies.index') }}"><i class="bi bi-building me-2"></i>Empresas</a></li>
                 <li><a class="nav-link app-link {{ request()->routeIs('roles.*') ? 'active' : '' }}" href="{{ route('roles.index') }}"><i class="bi bi-shield-lock me-2"></i>Roles</a></li>
+                <li><a class="nav-link app-link {{ request()->routeIs('subscriptions.*') ? 'active' : '' }}" href="{{ route('subscriptions.index') }}"><i class="bi bi-credit-card me-2"></i>Suscripciones</a></li>
+                @if(config('app.system_reset_enabled') && !app()->environment('production'))
                 <li><a class="nav-link app-link {{ request()->routeIs('system.reset') ? 'active' : '' }}" href="{{ route('system.reset') }}"><i class="bi bi-exclamation-octagon me-2"></i>Reiniciar sistema</a></li>
+                @endif
             </ul>
             @endif
 
@@ -724,6 +772,7 @@
                 @endif
             </ul>
 
+            @module('inventory')
             <div class="sidebar-section-title">Inventario</div>
             <ul class="nav flex-column gap-1">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('products.view', $currentCompany))
@@ -743,8 +792,10 @@
                 <li><a class="nav-link app-link {{ request()->routeIs('inventory.kardex') ? 'active' : '' }}" href="{{ route('inventory.kardex') }}"><i class="bi bi-journal-text me-2"></i>Kardex</a></li>
                 @endif
             </ul>
+            @endmodule
 
             @if($canSales)
+            @module('sales')
             <div class="sidebar-section-title">Ventas</div>
             <ul class="nav flex-column gap-1 mb-3">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('sales-dashboard.view', $currentCompany))
@@ -772,9 +823,11 @@
                 <li><a class="nav-link app-link {{ request()->routeIs('vehicles.*') ? 'active' : '' }}" href="{{ route('vehicles.index') }}"><i class="bi bi-bicycle me-2"></i>Vehículos</a></li>
                 @endif
             </ul>
+            @endmodule
             @endif
 
             @if($canCredit)
+            @module('sales')
             <div class="sidebar-section-title">Créditos</div>
             <ul class="nav flex-column gap-1 mb-3">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('credit-applications.view', $currentCompany))
@@ -799,9 +852,11 @@
                 <li><a class="nav-link app-link {{ request()->routeIs('credit.reports') ? 'active' : '' }}" href="{{ route('credit.reports') }}"><i class="bi bi-graph-up me-2"></i>Reportes</a></li>
                 @endif
             </ul>
+            @endmodule
             @endif
 
             @if($canWorkshop)
+            @module('workshop')
             <div class="sidebar-section-title">Taller</div>
             <ul class="nav flex-column gap-1 mb-3">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('workshop-dashboard.view', $currentCompany))
@@ -824,9 +879,11 @@
                 <li><a class="nav-link app-link {{ request()->routeIs('workshop.history') ? 'active' : '' }}" href="{{ route('workshop.history') }}"><i class="bi bi-clock-history me-2"></i>Historial</a></li>
                 @endif
             </ul>
+            @endmodule
             @endif
 
             @if($canMotos)
+            @module('motos')
             <div class="sidebar-section-title">Motos</div>
             <ul class="nav flex-column gap-1 mb-3">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('moto-brands.view', $currentCompany))
@@ -848,9 +905,11 @@
                 <li><a class="nav-link app-link {{ request()->routeIs('warranties.*') ? 'active' : '' }}" href="{{ route('warranties.index') }}"><i class="bi bi-shield-check me-2"></i>Garantías</a></li>
                 @endif
             </ul>
+            @endmodule
             @endif
 
             @if($canRentals)
+            @module('rentals')
             <div class="sidebar-section-title">Alquileres</div>
             <ul class="nav flex-column gap-1 mb-3">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('rentals-dashboard.view', $currentCompany))
@@ -867,9 +926,11 @@
                 <li><a class="nav-link app-link {{ request()->routeIs('rentals.penalties') ? 'active' : '' }}" href="{{ route('rentals.penalties') }}"><i class="bi bi-exclamation-triangle me-2"></i>Penalizaciones</a></li>
                 <li><a class="nav-link app-link {{ request()->routeIs('rentals.history') ? 'active' : '' }}" href="{{ route('rentals.history') }}"><i class="bi bi-clock-history me-2"></i>Historial</a></li>
             </ul>
+            @endmodule
             @endif
 
             @if($canLoyalty)
+            @module('loyalty')
             <div class="sidebar-section-title">Fidelización</div>
             <ul class="nav flex-column gap-1 mb-3">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('loyalty-dashboard.view', $currentCompany))
@@ -894,9 +955,11 @@
                 <li><a class="nav-link app-link {{ request()->routeIs('loyalty.reports.*') ? 'active' : '' }}" href="{{ route('loyalty.reports.index') }}"><i class="bi bi-bar-chart-line me-2"></i>Reportes</a></li>
                 @endif
             </ul>
+            @endmodule
             @endif
 
             @if($canPurchases)
+            @module('purchases')
             <div class="sidebar-section-title">Compras</div>
             <ul class="nav flex-column gap-1 mb-3">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('purchases-dashboard.view', $currentCompany))
@@ -921,6 +984,7 @@
                 <li><a class="nav-link app-link {{ request()->routeIs('treasury.*') ? 'active' : '' }}" href="{{ route('treasury.index') }}"><i class="bi bi-bank me-2"></i>Tesorería</a></li>
                 @endif
             </ul>
+            @endmodule
             @endif
 
         </nav>
@@ -1007,15 +1071,65 @@
         letter-spacing: 0.04em;
     }
 
+    /* Firma de la plataforma en modo global (super_admin): logo completo */
+    .brand-global { flex: 1; min-width: 0; text-align: center; }
+    .brand-global img {
+        width: 100%;
+        max-width: 190px;
+        height: auto;
+        border-radius: 10px;
+        box-shadow: 0 4px 14px rgba(0,0,0,.4);
+        display: block;
+        margin: 0 auto;
+    }
+
     /* ── Section titles ─────────────────────────────────────────── */
+    /* ── Sección como RECUADRO ──────────────────────────────────────
+       Título y lista son elementos hermanos: se unen visualmente en una
+       sola caja. El título forma la parte superior (bordes + esquinas
+       redondeadas arriba) y la lista el cuerpo (bordes + esquinas abajo),
+       sin separación entre ambos. Así cada sección se ve como un recuadro. */
     .sidebar-section-title {
-        color: #6a6a70;
+        color: #8a8a92;
         font-size: 0.68rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.12em;
-        padding: 4px 12px 8px;
-        margin-top: 6px;
+        padding: 9px 12px;
+        margin: 14px 2px 0;                 /* separación entre recuadros; sin hueco abajo */
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.09);
+        border-bottom: 0;                   /* se une con la lista de abajo */
+        border-radius: 9px 9px 0 0;
+    }
+    .sidebar-section-title:first-of-type { margin-top: 4px; }
+
+    /* Cuerpo del recuadro: la lista de items. */
+    .app-sidebar .nav.flex-column,
+    .offcanvas .nav.flex-column {
+        margin: 0 2px 2px;
+        padding: 6px;
+        background: rgba(255,255,255,0.015);
+        border: 1px solid rgba(255,255,255,0.09);
+        border-top: 0;
+        border-radius: 0 0 9px 9px;
+    }
+
+    /* Sección colapsada (lista oculta): el título se vuelve una caja completa. */
+    .sidebar-section-title:has(+ ul.nav-section-hidden) {
+        border-bottom: 1px solid rgba(255,255,255,0.09);
+        border-radius: 9px;
+    }
+
+    /* Recuadro de la sección ACTIVA: contorno rojo para ubicarte de un vistazo. */
+    .sidebar-section-title:has(+ ul .app-link.active) {
+        color: #fff;
+        background: rgba(230,57,70,0.12);
+        border-color: rgba(230,57,70,0.35);
+    }
+    .app-sidebar .nav.flex-column:has(.app-link.active),
+    .offcanvas .nav.flex-column:has(.app-link.active) {
+        border-color: rgba(230,57,70,0.35);
     }
 
     /* ── Nav links ──────────────────────────────────────────────── */
@@ -1048,22 +1162,22 @@
     .app-link:hover i { color: var(--brand-red); }
 
     .app-link.active {
-        background: linear-gradient(90deg, rgba(225,6,0,0.15) 0%, rgba(225,6,0,0.03) 100%);
+        background: linear-gradient(90deg, rgba(230,57,70,0.15) 0%, rgba(230,57,70,0.03) 100%);
         color: #fff;
         font-weight: 600;
-        border-color: rgba(225,6,0,0.25);
+        border-color: rgba(230,57,70,0.25);
         box-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
     .app-link.active::before {
         content: '';
         position: absolute;
-        left: -12px;
+        left: 0;
         top: 50%;
         transform: translateY(-50%);
         width: 3px;
         height: 60%;
         background: var(--brand-red);
-        border-radius: 0 3px 3px 0;
+        border-radius: 3px;
     }
     .app-link.active i { color: var(--brand-red); }
 
@@ -1163,7 +1277,7 @@
         width: 8px; height: 8px;
         border-radius: 50%;
         background: var(--brand-red);
-        box-shadow: 0 0 0 2px rgba(225,6,0,.25);
+        box-shadow: 0 0 0 2px rgba(230,57,70,.25);
         animation: pulse-red 2s ease-in-out infinite;
     }
     .btn-cash-closed:hover {
@@ -1171,12 +1285,12 @@
         border-color: var(--brand-black-2);
         color: #fff;
         transform: translateY(-1px);
-        box-shadow: 0 4px 10px rgba(10,10,10,.20);
+        box-shadow: 0 4px 10px rgba(34,36,46,.20);
     }
 
     @keyframes pulse-red {
-        0%, 100% { box-shadow: 0 0 0 2px rgba(225,6,0,.25); }
-        50%      { box-shadow: 0 0 0 4px rgba(225,6,0,.05); }
+        0%, 100% { box-shadow: 0 0 0 2px rgba(230,57,70,.25); }
+        50%      { box-shadow: 0 0 0 4px rgba(230,57,70,.05); }
     }
 
     /* Caja abierta: verde suave (estado positivo activo) */

@@ -5,7 +5,7 @@
 
     {{-- Header --}}
     <div class="card border-0 shadow-sm mb-4 overflow-hidden">
-        <div style="height:5px;background:linear-gradient(90deg,var(--brand-red) 0%,#ff4d4d 50%,transparent 100%);"></div>
+        <div style="height:5px;background:linear-gradient(90deg,var(--brand-red) 0%,#ff6b6b 50%,transparent 100%);"></div>
         <div class="card-body p-4">
             <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
                 <div>

@@ -2,12 +2,16 @@
 
 namespace App\Models\Rentals;
 
+use App\Models\Concerns\BelongsToCompany;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RentalInspectionPhoto extends Model
 {
+    use BelongsToCompany;
+
     use HasFactory;
 
     protected $fillable = [

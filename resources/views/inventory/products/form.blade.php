@@ -274,7 +274,7 @@
 
                     {{-- Upload new photos --}}
                     <x-media-upload name="photos[]" :multiple="true" :bare="true"
-                        accent="#e10600" :max-mb="3" :max-files="8"
+                        accent="#e63946" :max-mb="3" :max-files="8"
                         drop-text="Arrastra fotos aquí"
                         hint="JPG, PNG, WebP · máx. 3MB · hasta 8 fotos" />
 
@@ -303,7 +303,7 @@
 
 @push('styles')
 <style>
-.upload-area:hover { border-color: var(--brand-red) !important; background: rgba(225,6,0,.02); }
+.upload-area:hover { border-color: var(--brand-red) !important; background: rgba(230,57,70,.02); }
 .object-fit-cover { object-fit: cover; }
 .border-dashed { border-style: dashed !important; }
 </style>

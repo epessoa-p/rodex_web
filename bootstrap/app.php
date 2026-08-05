@@ -31,10 +31,20 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // 1) SetTenant fija la empresa activa (aísla los datos por global scope).
+        // 2) EnsureSubscriptionActive corta el acceso si la suscripción venció.
+        $middleware->web(append: [
+            \App\Http\Middleware\SetTenant::class,
+            \App\Http\Middleware\EnsureSubscriptionActive::class,
+        ]);
+
         $middleware->alias([
             'check-role' => \App\Http\Middleware\CheckRole::class,
             'check-company' => \App\Http\Middleware\CheckCompany::class,
             'check-permission' => \App\Http\Middleware\CheckPermission::class,
+            'set-tenant' => \App\Http\Middleware\SetTenant::class,
+            'subscription' => \App\Http\Middleware\EnsureSubscriptionActive::class,
+            'plan' => \App\Http\Middleware\CheckPlanModule::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

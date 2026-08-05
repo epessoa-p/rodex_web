@@ -2,6 +2,8 @@
 
 namespace App\Models\Purchases;
 
+use App\Models\Concerns\BelongsToCompany;
+
 use App\Models\Company;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -13,6 +15,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class GoodsReceipt extends Model
 {
+    use BelongsToCompany;
+
     use HasFactory, SoftDeletes;
 
     protected $fillable = [

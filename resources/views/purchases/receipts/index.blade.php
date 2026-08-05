@@ -115,12 +115,12 @@
         cursor: pointer;
     }
     .wh-pill:hover {
-        border-color: var(--brand-black, #0a0a0a);
-        color: var(--brand-black, #0a0a0a);
+        border-color: var(--brand-black, #22242e);
+        color: var(--brand-black, #22242e);
     }
     .wh-pill.active {
-        background: var(--brand-black, #0a0a0a);
-        border-color: var(--brand-black, #0a0a0a);
+        background: var(--brand-black, #22242e);
+        border-color: var(--brand-black, #22242e);
         color: #fff;
     }
     .wh-pill .wh-count {

@@ -7,7 +7,7 @@ use App\Http\Controllers\Inventory\StockController;
 use App\Http\Controllers\Inventory\WarehouseController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'plan:inventory'])->group(function () {
 
     // ── Inventario (listado editable + migración) ─────────────────────────────
     Route::prefix('inventory/stock')->name('inventory.stock')->group(function () {

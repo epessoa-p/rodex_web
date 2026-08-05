@@ -10,11 +10,11 @@
     border: 1.5px solid #e3e3e3; background: #fff; border-radius: 10px;
     padding: .55rem .7rem; cursor: pointer; transition: all .15s ease;
 }
-.inst-card:hover { border-color: var(--brand-black, #0a0a0a); }
+.inst-card:hover { border-color: var(--brand-black, #22242e); }
 .inst-card.active {
-    border-color: var(--brand-red, #e10600);
-    background: rgba(225,6,0,.04);
-    box-shadow: 0 0 0 .15rem rgba(225,6,0,.12);
+    border-color: var(--brand-red, #e63946);
+    background: rgba(230,57,70,.04);
+    box-shadow: 0 0 0 .15rem rgba(230,57,70,.12);
 }
 .inst-card.overdue { border-color: #f1aeb5; }
 .inst-card.paid {

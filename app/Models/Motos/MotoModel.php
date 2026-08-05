@@ -2,6 +2,8 @@
 
 namespace App\Models\Motos;
 
+use App\Models\Concerns\BelongsToCompany;
+
 use App\Models\Company;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +15,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class MotoModel extends Model
 {
+    use BelongsToCompany;
+
     use HasFactory, SoftDeletes;
 
     protected $fillable = [

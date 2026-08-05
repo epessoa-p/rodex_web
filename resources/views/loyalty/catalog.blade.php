@@ -3,21 +3,21 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Catálogo de Recompensas — {{ $company->name ?? 'VR Motors' }}</title>
+    <title>Catálogo de Recompensas — {{ $company?->name ?? config('brand.name') }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     @php
-        $logo = $company?->logo ? asset('storage/' . $company->logo) : asset('images/logo_blanco.jpeg');
+        $logo = $company?->logo_url ?? asset(config('brand.logo'));
         $money = fn ($n) => '$' . number_format((float) $n, 2);
         $ruleAmount = rtrim(rtrim(number_format((float) $settings->earn_amount, 2), '0'), '.');
     @endphp
     <style>
-        :root { --brand:#e10600; }
+        :root { --brand:#e63946; }
         * { box-sizing: border-box; }
         body { background:#f3f4f6; color:#111; font-family:"Segoe UI",Arial,sans-serif; margin:0; }
         .sheet { max-width: 920px; margin: 0 auto; background:#fff; }
         .cat-hero {
-            background: linear-gradient(120deg,#0a0a0a 0%, #1a1a1a 60%, var(--brand) 140%);
+            background: linear-gradient(120deg,#22242e 0%, #1a1a1a 60%, var(--brand) 140%);
             color:#fff; padding: 28px 32px; display:flex; align-items:center; gap:20px;
         }
         .cat-hero img { width:84px; height:84px; object-fit:contain; background:#fff; border-radius:12px; padding:6px; }
@@ -44,8 +44,8 @@
         .reward .name { font-weight:700; font-size:.95rem; margin-bottom:4px; }
         .reward .desc { color:#666; font-size:.8rem; flex:1; }
         .reward .cost {
-            margin-top:10px; align-self:flex-start; background:rgba(225,6,0,.08); color:var(--brand);
-            border:1px solid rgba(225,6,0,.2); border-radius:50rem; padding:4px 12px; font-weight:800; font-size:.9rem;
+            margin-top:10px; align-self:flex-start; background:rgba(230,57,70,.08); color:var(--brand);
+            border:1px solid rgba(230,57,70,.2); border-radius:50rem; padding:4px 12px; font-weight:800; font-size:.9rem;
         }
         .cat-foot { text-align:center; color:#888; font-size:.82rem; padding: 8px 32px 28px; }
         .toolbar { position:sticky; top:0; background:#111; color:#fff; padding:10px 16px; display:flex; gap:8px; justify-content:center; }
@@ -72,7 +72,7 @@
             <img src="{{ $logo }}" alt="Logo">
             <div class="titles">
                 <h1>Catálogo de Recompensas</h1>
-                <div class="sub">{{ $company->name ?? 'VR Motors' }} · Programa de fidelización</div>
+                <div class="sub">{{ $company?->name ?? config('brand.name') }} · Programa de fidelización</div>
             </div>
             <div class="cat-qr">
                 <div id="catalogQr" data-url="{{ url()->current() }}"></div>
@@ -109,7 +109,7 @@
 
         <div class="cat-foot">
             @php $tel = $company?->phone; @endphp
-            {{ $company->name ?? 'VR Motors' }}@if($tel) · Tel: {{ $tel }}@endif @if($company?->address) · {{ $company->address }}@endif
+            {{ $company?->name ?? config('brand.name') }}@if($tel) · Tel: {{ $tel }}@endif @if($company?->address) · {{ $company->address }}@endif
             <div>Precios en puntos sujetos a disponibilidad.</div>
         </div>
     </div>

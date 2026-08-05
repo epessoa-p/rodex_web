@@ -8,7 +8,7 @@ use App\Http\Controllers\Motos\MotoUnitController;
 use App\Http\Controllers\Motos\WarrantyController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'plan:motos'])->group(function () {
 
     // ── Marcas ────────────────────────────────────────────────
     Route::prefix('motos/brands')->name('moto-brands.')->group(function () {

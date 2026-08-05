@@ -11,6 +11,17 @@ use Illuminate\Support\Facades\Schema;
 class SystemResetController extends Controller
 {
     /**
+     * El reinicio hace TRUNCATE global: borraría los datos operativos de TODAS
+     * las empresas del SaaS, no solo los de una. Por eso queda deshabilitado
+     * salvo que se active explícitamente, y nunca en producción.
+     */
+    private function guardEnabled(): void
+    {
+        abort_if(app()->environment('production'), 404);
+        abort_unless(config('app.system_reset_enabled'), 404);
+    }
+
+    /**
      * Tablas OPERATIVAS que se vacían al reiniciar.
      * Se CONSERVAN: usuarios, roles, permisos, cargos, personal, promotores,
      * mecánicos, sucursales, cajas, almacenes, empresas y los catálogos
@@ -49,6 +60,7 @@ class SystemResetController extends Controller
 
     public function index()
     {
+        $this->guardEnabled();
         abort_unless(auth()->user()->is_super_admin, 403);
 
         // Conteos informativos de lo que se borrará
@@ -76,6 +88,7 @@ class SystemResetController extends Controller
 
     public function run(Request $request)
     {
+        $this->guardEnabled();
         abort_unless(auth()->user()->is_super_admin, 403);
 
         $request->validate(['confirmation' => 'required|string']);

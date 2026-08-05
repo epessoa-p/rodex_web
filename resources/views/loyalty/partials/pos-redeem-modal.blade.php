@@ -120,7 +120,7 @@
 </script>
 <style>
 .rm-pick { border:1.5px solid #e3e3e3; background:#fff; border-radius:10px; padding:.6rem .75rem; transition:all .15s; }
-.rm-pick:hover:not(:disabled) { border-color:var(--brand-red,#e10600); }
+.rm-pick:hover:not(:disabled) { border-color:var(--brand-red,#e63946); }
 .rm-pick:disabled { opacity:.5; cursor:not-allowed; }
 </style>
 @endpush

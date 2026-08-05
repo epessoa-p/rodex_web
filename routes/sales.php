@@ -10,7 +10,7 @@ use App\Http\Controllers\Sales\SaleReturnController;
 use App\Http\Controllers\Sales\VehicleController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'plan:sales'])->group(function () {
 
     // ── Punto de Venta (POS) ──────────────────────────────────
     Route::get('sales/pos',  [PosController::class, 'index'])->name('pos.index')->middleware('check-permission:pos.access');

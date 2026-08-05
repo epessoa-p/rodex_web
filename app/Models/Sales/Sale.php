@@ -2,6 +2,8 @@
 
 namespace App\Models\Sales;
 
+use App\Models\Concerns\BelongsToCompany;
+
 use App\Models\Branch;
 use App\Models\CashRegisterSession;
 use App\Models\Client;
@@ -15,6 +17,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Sale extends Model
 {
+    use BelongsToCompany;
+
     use HasFactory, SoftDeletes;
 
     const SALE_TYPES = [

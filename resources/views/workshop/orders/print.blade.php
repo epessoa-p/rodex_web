@@ -1,7 +1,6 @@
 @php
     $company = $order->company;
     $money = fn ($n) => '$' . number_format((float) $n, 2);
-    $logoPath = public_path('images/logo_blanco.jpeg');
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -15,14 +14,14 @@
         html, body { background: #fff; color: #1a1a1a; font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; line-height: 1.4; }
         .sheet { width: 100%; max-width: 720px; margin: 0 auto; }
 
-        .head { display: flex; align-items: center; gap: 14px; border-bottom: 3px solid #e10600; padding-bottom: 12px; margin-bottom: 14px; }
+        .head { display: flex; align-items: center; gap: 14px; border-bottom: 3px solid #e63946; padding-bottom: 12px; margin-bottom: 14px; }
         .head img { height: 58px; width: auto; }
         .head .biz { flex: 1; }
         .biz-name { font-size: 18px; font-weight: 800; }
         .biz-sub { font-size: 11px; color: #666; }
         .doc-box { text-align: right; }
         .doc-title { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: #888; }
-        .doc-code { font-size: 20px; font-weight: 800; color: #e10600; }
+        .doc-code { font-size: 20px; font-weight: 800; color: #e63946; }
         .doc-date { font-size: 11px; color: #666; }
 
         .meta { display: flex; gap: 14px; margin-bottom: 14px; }
@@ -33,7 +32,7 @@
 
         .sec-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #444; margin: 14px 0 5px; }
         table { width: 100%; border-collapse: collapse; }
-        thead th { background: #0a0a0a; color: #fff; text-align: left; padding: 5px 8px; font-size: 10px; text-transform: uppercase; }
+        thead th { background: #22242e; color: #fff; text-align: left; padding: 5px 8px; font-size: 10px; text-transform: uppercase; }
         thead th.num { text-align: right; }
         thead th.ctr { text-align: center; }
         tbody td { padding: 5px 8px; border-bottom: 1px solid #eee; font-size: 11.5px; }
@@ -46,8 +45,8 @@
         .totes table { width: 46%; }
         .totes td { padding: 3px 8px; font-size: 12px; }
         .totes td.num { text-align: right; }
-        .totes .grand td { border-top: 2px solid #0a0a0a; font-weight: 800; font-size: 14px; padding-top: 5px; }
-        .totes .bal td { font-weight: 700; color: #e10600; }
+        .totes .grand td { border-top: 2px solid #22242e; font-weight: 800; font-size: 14px; padding-top: 5px; }
+        .totes .bal td { font-weight: 700; color: #e63946; }
 
         .diag { border: 1px solid #e5e5e5; border-radius: 8px; padding: 9px 11px; margin-top: 12px; font-size: 11.5px; }
         .signs { display: flex; gap: 40px; margin-top: 42px; }
@@ -55,7 +54,7 @@
         .foot { margin-top: 18px; text-align: center; font-size: 10px; color: #999; }
 
         .print-bar { position: fixed; top: 12px; right: 16px; }
-        .print-bar button { background: #e10600; color: #fff; border: 0; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+        .print-bar button { background: #e63946; color: #fff; border: 0; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
         @media print { .print-bar { display: none; } }
     </style>
 </head>
@@ -66,11 +65,11 @@
 
     <div class="sheet">
         <div class="head">
-            @if(file_exists($logoPath))
-            <img src="{{ asset('images/logo_blanco.jpeg') }}" alt="logo">
+            @if($company?->logo_file)
+            <img src="{{ $company->logo_url }}" alt="{{ $company->name }}">
             @endif
             <div class="biz">
-                <div class="biz-name">{{ $company->name ?? 'VR Motors' }}</div>
+                <div class="biz-name">{{ $company?->name ?? config('brand.name') }}</div>
                 <div class="biz-sub">Taller &amp; Servicio Técnico</div>
                 @if($order->branch?->name)<div class="biz-sub">{{ $order->branch->name }}</div>@endif
                 @php $tel = $order->branch?->phone ?: $company?->phone; @endphp
@@ -176,7 +175,7 @@
         </div>
 
         <div class="foot">
-            {{ $company->name ?? 'VR Motors' }} · OT {{ $order->code }} · Impreso {{ now()->format('d/m/Y H:i') }}
+            {{ $company?->name ?? config('brand.name') }} · OT {{ $order->code }} · Impreso {{ now()->format('d/m/Y H:i') }}
         </div>
     </div>
 

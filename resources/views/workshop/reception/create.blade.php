@@ -90,7 +90,7 @@
 
                 {{-- Vehículo (card distintivo con toggle existente / nuevo) --}}
                 @php $vehMode = old('vehicle_mode', 'existing'); @endphp
-                <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid var(--brand-red,#e10600) !important;">
+                <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid var(--brand-red,#e63946) !important;">
                     <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <h6 class="mb-0 fw-semibold"><i class="bi bi-car-front me-2 text-danger"></i>Vehículo</h6>
                         <div class="btn-group btn-group-sm" role="group" id="vehicleModeToggle">
@@ -262,7 +262,7 @@
                         </p>
                         <x-media-upload name="photos[]" :multiple="true" :bare="true"
                             label="Fotos" icon="bi-camera" :max-mb="5" :max-files="12"
-                            accent="#e10600" drop-text="Arrastra las fotos o toca para elegir" />
+                            accent="#e63946" drop-text="Arrastra las fotos o toca para elegir" />
                     </div>
                 </div>
 

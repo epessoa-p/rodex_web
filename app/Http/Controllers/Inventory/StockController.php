@@ -181,10 +181,14 @@ class StockController extends Controller
             ];
         })->all();
 
+        $company = $user->getCurrentCompany();
+
         return [
             'rows'           => $rows,
             'warehouseLabel' => $isAll ? 'Todos los almacenes' : ($warehouses->firstWhere('id', $whId)?->name ?? '—'),
-            'companyName'    => $user->getCurrentCompany()?->name ?? config('app.name'),
+            'companyName'    => $company?->name ?? config('brand.name'),
+            // Logo de la empresa (o el de la plataforma si no subió ninguno).
+            'companyLogo'    => $company?->logo_file ?? (is_file(public_path(config('brand.logo'))) ? public_path(config('brand.logo')) : null),
         ];
     }
 
@@ -197,11 +201,11 @@ class StockController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Inventario');
 
-        // Logo
-        $logoPath = public_path('images/logo_blanco.jpeg');
-        if (is_file($logoPath)) {
+        // Logo de la empresa
+        $logoPath = $data['companyLogo'];
+        if ($logoPath && is_file($logoPath)) {
             $drawing = new Drawing();
-            $drawing->setName('VR Motors');
+            $drawing->setName($data['companyName']);
             $drawing->setPath($logoPath);
             $drawing->setHeight(55);
             $drawing->setCoordinates('A1');

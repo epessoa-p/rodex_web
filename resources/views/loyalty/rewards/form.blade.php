@@ -62,7 +62,7 @@
                 </div>
             </div>
             <div class="col-lg-5">
-                <x-media-upload name="image" label="Imagen de la recompensa" :current="$reward->image_url" accent="#e10600" />
+                <x-media-upload name="image" label="Imagen de la recompensa" :current="$reward->image_url" accent="#e63946" />
             </div>
         </div>
 

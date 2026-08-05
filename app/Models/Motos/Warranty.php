@@ -2,6 +2,8 @@
 
 namespace App\Models\Motos;
 
+use App\Models\Concerns\BelongsToCompany;
+
 use App\Models\Client;
 use App\Models\Company;
 use App\Models\Sales\Sale;
@@ -13,6 +15,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Warranty extends Model
 {
+    use BelongsToCompany;
+
     use HasFactory, SoftDeletes;
 
     const STATUSES = [

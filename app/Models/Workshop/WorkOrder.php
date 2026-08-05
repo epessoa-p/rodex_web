@@ -2,6 +2,8 @@
 
 namespace App\Models\Workshop;
 
+use App\Models\Concerns\BelongsToCompany;
+
 use App\Models\Branch;
 use App\Models\CashRegisterSession;
 use App\Models\Client;
@@ -16,6 +18,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class WorkOrder extends Model
 {
+    use BelongsToCompany;
+
     use HasFactory, SoftDeletes;
 
     const STATUSES = [

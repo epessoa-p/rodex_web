@@ -2,6 +2,8 @@
 
 namespace App\Models\Rentals;
 
+use App\Models\Concerns\BelongsToCompany;
+
 use App\Models\Company;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +12,8 @@ use Illuminate\Support\Carbon;
 
 class RentalInstallment extends Model
 {
+    use BelongsToCompany;
+
     use HasFactory;
 
     const STATUSES = [

@@ -2,6 +2,8 @@
 
 namespace App\Models\Rentals;
 
+use App\Models\Concerns\BelongsToCompany;
+
 use App\Models\CashRegisterSession;
 use App\Models\Company;
 use App\Models\User;
@@ -11,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RentalPayment extends Model
 {
+    use BelongsToCompany;
+
     use HasFactory;
 
     const TYPES = [

@@ -5,7 +5,7 @@ use App\Http\Controllers\Rentals\RentalController;
 use App\Http\Controllers\Rentals\RentalDashboardController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth')->prefix('rentals')->name('rentals.')->group(function () {
+Route::middleware(['auth', 'plan:rentals'])->prefix('rentals')->name('rentals.')->group(function () {
 
     // ── Dashboard ─────────────────────────────────────────────
     Route::get('/', [RentalDashboardController::class, 'index'])->name('dashboard')->middleware('check-permission:rentals-dashboard.view');
