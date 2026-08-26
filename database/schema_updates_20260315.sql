@@ -95,7 +95,7 @@ CREATE TABLE branches (
     updated_at TIMESTAMP NULL DEFAULT NULL,
     deleted_at TIMESTAMP NULL DEFAULT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY branches_code_unique (code),
+    UNIQUE KEY branches_company_id_code_unique (company_id, code),
     KEY branches_company_id_name_index (company_id, name),
     CONSTRAINT branches_company_id_foreign FOREIGN KEY (company_id) REFERENCES companies (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

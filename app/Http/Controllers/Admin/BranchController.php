@@ -104,7 +104,7 @@ class BranchController extends Controller
             $validated = request()->validate([
                 'company_id' => ['nullable', 'exists:companies,id'],
                 'name' => 'required|string|max:255',
-                'code' => ['nullable', 'string', 'max:50', Rule::unique('branches', 'code')],
+                'code' => ['nullable', 'string', 'max:50', Rule::unique('branches', 'code')->where('company_id', $companyId)],
                 'phone' => 'nullable|string|max:20',
                 'email' => 'nullable|email|max:255',
                 'address' => 'nullable|string|max:255',
@@ -112,6 +112,8 @@ class BranchController extends Controller
                 'color' => 'nullable|string|max:7',
                 'warehouse_id' => ['required', 'exists:warehouses,id'],
                 'active' => 'sometimes|boolean',
+            ], [
+                'code.unique' => 'Ya existe una sucursal con ese código en esta empresa.',
             ]);
 
             if ($user->is_super_admin && empty($companyId)) {
@@ -176,7 +178,7 @@ class BranchController extends Controller
             $validated = request()->validate([
                 'company_id' => ['nullable', 'exists:companies,id'],
                 'name' => 'required|string|max:255',
-                'code' => ['nullable', 'string', 'max:50', Rule::unique('branches', 'code')->ignore($branch->id)],
+                'code' => ['nullable', 'string', 'max:50', Rule::unique('branches', 'code')->ignore($branch->id)->where('company_id', $companyId)],
                 'phone' => 'nullable|string|max:20',
                 'email' => 'nullable|email|max:255',
                 'address' => 'nullable|string|max:255',
@@ -184,6 +186,8 @@ class BranchController extends Controller
                 'color' => 'nullable|string|max:7',
                 'warehouse_id' => ['required', 'exists:warehouses,id'],
                 'active' => 'sometimes|boolean',
+            ], [
+                'code.unique' => 'Ya existe una sucursal con ese código en esta empresa.',
             ]);
 
             if ($user->is_super_admin && empty($companyId)) {
