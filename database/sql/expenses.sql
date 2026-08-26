@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Gastos desde caja + catálogo de Servicios
+--  Rodex — Gastos desde caja + catálogo de Servicios
 -- ============================================================
 
 -- ── 1. Catálogo de servicios de gasto ─────────────────────────

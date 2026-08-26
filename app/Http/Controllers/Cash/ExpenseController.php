@@ -148,7 +148,7 @@ class ExpenseController extends Controller
                 $balance  = (float) $purchase->balance;
                 if ($amount > $balance + 0.01) {
                     throw ValidationException::withMessages([
-                        'amount' => 'El monto supera el saldo de la factura (Bs. ' . number_format($balance, 2) . ').',
+                        'amount' => 'El monto supera el saldo de la factura (' . money($balance) . ').',
                     ]);
                 }
                 // Conciliar la factura (CxP) + registrar el pago (desde caja, sin tesorería)

@@ -55,13 +55,13 @@
                     <div class="card-body p-4">
                         @if($rental->isRenta())
                         <div class="alert alert-info border-0 small py-2"><i class="bi bi-info-circle me-1"></i>Renta periódica: en la entrega solo se cobra el <strong>depósito</strong>. Las cuotas se cobran en <strong>Cobros</strong>.</div>
-                        <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Renta total ({{ $rental->billing_period_label }})</span><span class="text-muted">Bs. {{ number_format($rental->rental_total, 2) }}</span></div>
-                        <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Depósito</span><span class="fw-semibold text-info">Bs. {{ number_format($rental->deposit, 2) }}</span></div>
-                        <div class="d-flex justify-content-between fw-bold border-top pt-2 mb-3"><span>A cobrar ahora</span><span class="fs-5">Bs. {{ number_format($rental->deposit, 2) }}</span></div>
+                        <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Renta total ({{ $rental->billing_period_label }})</span><span class="text-muted">{{ money($rental->rental_total) }}</span></div>
+                        <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Depósito</span><span class="fw-semibold text-info">{{ money($rental->deposit) }}</span></div>
+                        <div class="d-flex justify-content-between fw-bold border-top pt-2 mb-3"><span>A cobrar ahora</span><span class="fs-5">{{ money($rental->deposit) }}</span></div>
                         @else
-                        <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Alquiler ({{ $rental->days }}d)</span><span class="fw-semibold">Bs. {{ number_format($rental->rental_total, 2) }}</span></div>
-                        <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Depósito</span><span class="fw-semibold text-info">Bs. {{ number_format($rental->deposit, 2) }}</span></div>
-                        <div class="d-flex justify-content-between fw-bold border-top pt-2 mb-3"><span>A cobrar ahora</span><span class="fs-5">Bs. {{ number_format($rental->rental_total + $rental->deposit, 2) }}</span></div>
+                        <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Alquiler ({{ $rental->days }}d)</span><span class="fw-semibold">{{ money($rental->rental_total) }}</span></div>
+                        <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Depósito</span><span class="fw-semibold text-info">{{ money($rental->deposit) }}</span></div>
+                        <div class="d-flex justify-content-between fw-bold border-top pt-2 mb-3"><span>A cobrar ahora</span><span class="fs-5">{{ money($rental->rental_total + $rental->deposit) }}</span></div>
                         @endif
 
                         <div class="form-check form-switch mb-3">

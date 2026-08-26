@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Ventas v2 (Fase 2): Cotizaciones y Devoluciones
+--  Rodex — Ventas v2 (Fase 2): Cotizaciones y Devoluciones
 -- ============================================================
 
 -- ── 1. COTIZACIONES ──────────────────────────────────────────

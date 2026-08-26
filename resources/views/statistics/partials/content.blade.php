@@ -7,6 +7,7 @@
 </div>
 
 {{-- ── VENTAS ───────────────────────────────────────────── --}}
+@if(isset($stats['ventas']))
 <div class="tab-pane fade" id="p-ventas" role="tabpanel">
     @php $cmp = $stats['ventas']['comparison']; @endphp
 
@@ -16,7 +17,7 @@
             <div class="card border-0 shadow-sm h-100"><div class="card-body p-3">
                 <div class="text-muted small mb-1">Total ventas</div>
                 <div class="d-flex align-items-baseline gap-2 flex-wrap">
-                    <span class="fw-bold fs-5">Bs. {{ number_format($cmp['totalCur'], 2) }}</span>
+                    <span class="fw-bold fs-5">{{ money($cmp['totalCur']) }}</span>
                     <span class="badge {{ $cmp['totalPct'] >= 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle' }}" style="font-size:.7rem;">
                         <i class="bi bi-arrow-{{ $cmp['totalPct'] >= 0 ? 'up' : 'down' }}-right me-1"></i>{{ $cmp['totalPct'] }}%
                     </span>
@@ -28,7 +29,7 @@
             <div class="card border-0 shadow-sm h-100"><div class="card-body p-3">
                 <div class="text-muted small mb-1">Ganancia de las ventas</div>
                 <div class="d-flex align-items-baseline gap-2 flex-wrap">
-                    <span class="fw-bold fs-5">Bs. {{ number_format($cmp['profitCur'], 2) }}</span>
+                    <span class="fw-bold fs-5">{{ money($cmp['profitCur']) }}</span>
                     <span class="badge {{ $cmp['profitPct'] >= 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle' }}" style="font-size:.7rem;">
                         <i class="bi bi-arrow-{{ $cmp['profitPct'] >= 0 ? 'up' : 'down' }}-right me-1"></i>{{ $cmp['profitPct'] }}%
                     </span>
@@ -56,6 +57,8 @@
     </div>
 </div>
 
+@endif
+
 {{-- ── PERSONAL ─────────────────────────────────────────── --}}
 <div class="tab-pane fade" id="p-personal" role="tabpanel">
     @include('statistics.partials.kpis', ['kpis' => $stats['personal']['kpis']])
@@ -69,7 +72,7 @@
                     <table class="table table-sm align-middle mb-0" style="font-size:.8rem;">
                         <tbody>
                         @forelse($stats['personal']['ranking'] as $i => $r)
-                        <tr><td class="ps-3">{{ $i + 1 }}. {{ $r['name'] }}<div class="text-muted" style="font-size:.7rem;">{{ $r['count'] }} ventas · {{ $r['pct'] }}%</div></td><td class="text-end pe-3 fw-semibold">Bs. {{ number_format($r['total'], 2) }}</td></tr>
+                        <tr><td class="ps-3">{{ $i + 1 }}. {{ $r['name'] }}<div class="text-muted" style="font-size:.7rem;">{{ $r['count'] }} ventas · {{ $r['pct'] }}%</div></td><td class="text-end pe-3 fw-semibold">{{ money($r['total']) }}</td></tr>
                         @empty
                         <tr><td class="text-center py-3 text-muted small">Sin datos.</td></tr>
                         @endforelse
@@ -96,6 +99,7 @@
     </div>
 </div>
 
+@if(isset($stats['compras']))
 {{-- ── COMPRAS ──────────────────────────────────────────── --}}
 <div class="tab-pane fade" id="p-compras" role="tabpanel">
     @include('statistics.partials.kpis', ['kpis' => $stats['compras']['kpis']])
@@ -110,6 +114,9 @@
     </div>
 </div>
 
+@endif
+
+@if(isset($stats['inventario']))
 {{-- ── INVENTARIO ───────────────────────────────────────── --}}
 <div class="tab-pane fade" id="p-inventario" role="tabpanel">
     @include('statistics.partials.kpis', ['kpis' => $stats['inventario']['kpis']])
@@ -121,6 +128,9 @@
     </div>
 </div>
 
+@endif
+
+@if(isset($stats['taller']))
 {{-- ── TALLER ───────────────────────────────────────────── --}}
 <div class="tab-pane fade" id="p-taller" role="tabpanel">
     @include('statistics.partials.kpis', ['kpis' => $stats['taller']['kpis']])
@@ -132,6 +142,9 @@
     </div>
 </div>
 
+@endif
+
+@if(isset($stats['alquileres']))
 {{-- ── ALQUILERES ───────────────────────────────────────── --}}
 <div class="tab-pane fade" id="p-alquileres" role="tabpanel">
     @include('statistics.partials.kpis', ['kpis' => $stats['alquileres']['kpis']])
@@ -142,6 +155,8 @@
         <div class="col-lg-7">@include('statistics.partials.insights', ['items' => $stats['alquileres']['insights']])</div>
     </div>
 </div>
+
+@endif
 
 {{-- Datos de los gráficos para el período actual (los lee el JS tras cada swap) --}}
 <script type="application/json" id="statChartData">@json($chartData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)</script>

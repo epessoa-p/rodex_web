@@ -100,10 +100,10 @@
                                 @endif
                             </td>
                             <td class="py-2 small text-muted">{{ $sale->sale_date->format('d/m/Y') }}</td>
-                            <td class="py-2 text-end small fw-semibold">${{ number_format($sale->total, 2) }}</td>
-                            <td class="py-2 text-end small text-success">${{ number_format($sale->paid_amount, 2) }}</td>
+                            <td class="py-2 text-end small fw-semibold">{{ money($sale->total, null, 2) }}</td>
+                            <td class="py-2 text-end small text-success">{{ money($sale->paid_amount, null, 2) }}</td>
                             <td class="py-2 text-end fw-bold {{ $sale->balance > 0 ? 'text-danger' : 'text-muted' }}">
-                                ${{ number_format($sale->balance, 2) }}
+                                {{ money($sale->balance, null, 2) }}
                             </td>
                             <td class="py-2">
                                 <span class="badge bg-{{ $sale->payment_status_color }}-subtle text-{{ $sale->payment_status_color }} border border-{{ $sale->payment_status_color }}-subtle" style="font-size:.68rem;">

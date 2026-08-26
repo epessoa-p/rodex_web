@@ -38,7 +38,7 @@
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex align-items-center gap-2 text-muted small mb-1"><i class="bi bi-cash-coin"></i> Ingresos del mes</div>
-                    <div class="fs-3 fw-bold">Bs. {{ number_format($monthIncome, 2) }}</div>
+                    <div class="fs-3 fw-bold">{{ money($monthIncome) }}</div>
                 </div>
             </div>
         </div>
@@ -46,7 +46,7 @@
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex align-items-center gap-2 text-muted small mb-1"><i class="bi bi-safe2"></i> Depósitos retenidos</div>
-                    <div class="fs-3 fw-bold">Bs. {{ number_format($depositsHeld, 2) }}</div>
+                    <div class="fs-3 fw-bold">{{ money($depositsHeld) }}</div>
                 </div>
             </div>
         </div>
@@ -64,7 +64,7 @@
                         </div>
                         <div class="text-end">
                             <div class="text-muted small">Saldo vencido</div>
-                            <div class="fw-semibold">Bs. {{ number_format($overdueAmount, 2) }}</div>
+                            <div class="fw-semibold">{{ money($overdueAmount) }}</div>
                         </div>
                     </div>
                 </div>
@@ -192,7 +192,7 @@
                                 <td class="py-2 small">#{{ $inst->number }} · {{ $inst->period_label }}</td>
                                 <td class="py-2 small text-end pe-4">
                                     <span class="badge bg-danger-subtle text-danger border border-danger-subtle">{{ $inst->overdue_days }}d</span>
-                                    <div class="fw-semibold mt-1">Bs. {{ number_format($inst->balance, 2) }}</div>
+                                    <div class="fw-semibold mt-1">{{ money($inst->balance) }}</div>
                                 </td>
                             </tr>
                             @empty
@@ -221,7 +221,7 @@
                                 <td class="py-2 small">#{{ $inst->number }} · {{ $inst->period_label }}</td>
                                 <td class="py-2 small text-end pe-4">
                                     <span class="text-muted">{{ $inst->due_date?->format('d/m/Y') }}</span>
-                                    <div class="fw-semibold mt-1">Bs. {{ number_format($inst->balance, 2) }}</div>
+                                    <div class="fw-semibold mt-1">{{ money($inst->balance) }}</div>
                                 </td>
                             </tr>
                             @empty

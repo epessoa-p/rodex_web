@@ -45,7 +45,7 @@
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold">Por cada (monto) <span class="text-danger">*</span></label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light">$</span>
+                                    <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                     <input type="number" name="earn_amount" class="form-control" min="0.01" step="0.01"
                                            value="{{ old('earn_amount', $settings->earn_amount) }}" required>
                                 </div>
@@ -66,7 +66,7 @@
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold">Compra mínima para acumular</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light">$</span>
+                                    <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                     <input type="number" name="min_purchase" class="form-control" min="0" step="0.01"
                                            value="{{ old('min_purchase', $settings->min_purchase) }}">
                                 </div>
@@ -95,7 +95,7 @@
                         <div class="text-muted small mb-1">Regla actual</div>
                         <div class="fw-bold fs-5" id="rulePreview">—</div>
                         <hr>
-                        <div class="text-muted small">Ejemplo: una venta de <strong>$100</strong> otorgaría
+                        <div class="text-muted small">Ejemplo: una venta de <strong>{{ currency_symbol() }} 100</strong> otorgaría
                             <strong id="exampleResult">—</strong>.</div>
                     </div>
                 </div>
@@ -128,7 +128,7 @@
         const p = parseInt(pts.value, 10) || 0;
         const lbl = (label.value || 'puntos').trim();
         if (a > 0 && p > 0) {
-            rule.textContent = `Cada $${a.toFixed(2)} = ${p} ${lbl}`;
+            rule.textContent = `Cada ${money(a, 2)} = ${p} ${lbl}`;
             ex.textContent = blocks(100 / a, rnd.value) * p + ' ' + lbl;
         } else {
             rule.textContent = '—'; ex.textContent = '—';

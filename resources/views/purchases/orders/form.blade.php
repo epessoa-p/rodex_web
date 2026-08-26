@@ -128,12 +128,12 @@
                         <div class="col-md-4">
                             <div class="d-flex justify-content-between mb-2 small text-muted">
                                 <span>Subtotal</span>
-                                <span id="displaySubtotal">$0.00</span>
+                                <span id="displaySubtotal">{{ currency_symbol() }} 0.00</span>
                             </div>
                             <div class="d-flex justify-content-between align-items-center mb-2 small">
                                 <label class="text-muted mb-0" for="tax">Impuesto</label>
                                 <div class="input-group input-group-sm" style="width:130px">
-                                    <span class="input-group-text bg-light">$</span>
+                                    <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                     <input type="number" id="tax" name="tax" step="0.01" min="0"
                                            class="form-control text-end"
                                            value="{{ old('tax', $isEdit ? $order->tax : '0.00') }}"
@@ -143,7 +143,7 @@
                             </div>
                             <div class="d-flex justify-content-between fw-bold border-top pt-2">
                                 <span>Total</span>
-                                <span id="displayTotal" class="text-dark">$0.00</span>
+                                <span id="displayTotal" class="text-dark">{{ currency_symbol() }} 0.00</span>
                             </div>
                         </div>
                     </div>
@@ -165,15 +165,15 @@
                     </div>
                     <div class="d-flex justify-content-between mb-2 small">
                         <span class="text-muted">Subtotal</span>
-                        <span class="fw-semibold" id="summarySubtotal">$0.00</span>
+                        <span class="fw-semibold" id="summarySubtotal">{{ currency_symbol() }} 0.00</span>
                     </div>
                     <div class="d-flex justify-content-between mb-3 small">
                         <span class="text-muted">Impuesto</span>
-                        <span class="fw-semibold" id="summaryTax">$0.00</span>
+                        <span class="fw-semibold" id="summaryTax">{{ currency_symbol() }} 0.00</span>
                     </div>
                     <div class="d-flex justify-content-between fw-bold border-top pt-3">
                         <span>Total</span>
-                        <span id="summaryTotal" class="text-dark fs-5">$0.00</span>
+                        <span id="summaryTotal" class="text-dark fs-5">{{ currency_symbol() }} 0.00</span>
                     </div>
                     <div class="d-flex flex-column gap-2 mt-4">
                         <button type="submit" class="btn btn-primary w-100">
@@ -252,7 +252,7 @@ function addItemRow(productId, quantity, unitCost) {
         </td>
         <td>
             <div class="input-group input-group-sm">
-                <span class="input-group-text bg-light px-2">$</span>
+                <span class="input-group-text bg-light px-2">{{ currency_symbol() }}</span>
                 <input type="number" name="items[${idx}][unit_cost]" step="0.01" min="0"
                        class="form-control cost-input text-end" required
                        value="${unitCost || ''}"
@@ -260,7 +260,7 @@ function addItemRow(productId, quantity, unitCost) {
                        oninput="recalcRow(${idx})">
             </div>
         </td>
-        <td class="text-end fw-semibold small subtotal-cell pe-2" data-index="${idx}">$0.00</td>
+        <td class="text-end fw-semibold small subtotal-cell pe-2" data-index="${idx}">{{ currency_symbol() }} 0.00</td>
         <td class="pe-3">
             <button type="button" class="btn btn-sm btn-light border text-danger" onclick="removeRow(this)" title="Quitar">
                 <i class="bi bi-trash"></i>
@@ -289,20 +289,20 @@ function recalcRow(idx) {
     const qty  = parseInt(row.querySelector('.qty-input').value, 10)  || 0;
     const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
     const sub  = qty * cost;
-    row.querySelector(`.subtotal-cell`).textContent = '$' + sub.toFixed(2);
+    row.querySelector(`.subtotal-cell`).textContent = money(sub, 2);
     recalcTotals();
 }
 
 function recalcTotals() {
     let subtotal = 0;
     document.querySelectorAll('.subtotal-cell').forEach(cell => {
-        subtotal += parseFloat(cell.textContent.replace('$', '')) || 0;
+        subtotal += parseMoney(cell.textContent) || 0;
     });
     const tax   = parseFloat(document.getElementById('tax').value) || 0;
     const total = subtotal + tax;
     const rows  = document.querySelectorAll('.item-row').length;
 
-    const fmt = v => '$' + v.toFixed(2);
+    const fmt = v => money(v, 2);
     document.getElementById('displaySubtotal').textContent = fmt(subtotal);
     document.getElementById('displayTotal').textContent    = fmt(total);
     document.getElementById('summaryItems').textContent    = rows;

@@ -51,7 +51,7 @@
                                     {{ $return->refund_method_label }}
                                 </span>
                             </td>
-                            <td class="py-2 text-end fw-semibold text-danger">${{ number_format($return->total, 2) }}</td>
+                            <td class="py-2 text-end fw-semibold text-danger">{{ money($return->total, null, 2) }}</td>
                             <td class="py-2 text-end pe-4">
                                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('sale-returns.view', auth()->user()->getCurrentCompany()))
                                 <a href="{{ route('sale-returns.show', $return) }}" class="btn btn-sm btn-light border" title="Ver detalle">

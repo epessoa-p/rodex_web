@@ -29,7 +29,7 @@
                     </div>
                     <div>
                         <div class="text-muted small mb-1">Total por cobrar</div>
-                        <div class="fw-bold text-danger fs-4">${{ number_format($totalReceivable, 2) }}</div>
+                        <div class="fw-bold text-danger fs-4">{{ money($totalReceivable, null, 2) }}</div>
                     </div>
                 </div>
             </div>
@@ -91,9 +91,9 @@
                             </td>
                             <td class="py-2 small">{{ $sale->client_name }}</td>
                             <td class="py-2 small text-muted">{{ $sale->sale_date->format('d/m/Y') }}</td>
-                            <td class="py-2 text-end small">${{ number_format($sale->total, 2) }}</td>
-                            <td class="py-2 text-end small text-success">${{ number_format($sale->paid_amount, 2) }}</td>
-                            <td class="py-2 text-end fw-bold text-danger">${{ number_format($sale->balance, 2) }}</td>
+                            <td class="py-2 text-end small">{{ money($sale->total, null, 2) }}</td>
+                            <td class="py-2 text-end small text-success">{{ money($sale->paid_amount, null, 2) }}</td>
+                            <td class="py-2 text-end fw-bold text-danger">{{ money($sale->balance, null, 2) }}</td>
                             <td class="py-2 text-end pe-4">
                                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('credit.collect', auth()->user()->getCurrentCompany()))
                                 <button type="button" class="btn btn-sm btn-primary"

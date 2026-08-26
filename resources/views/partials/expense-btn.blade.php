@@ -29,7 +29,7 @@
                         <span class="small fw-semibold text-success-emphasis">
                             <i class="bi bi-cash-stack me-1"></i>Disponible en caja
                         </span>
-                        <span class="fw-bold fs-6 text-success" id="gastoCajaBalance">Bs. {{ number_format($expSession->expectedBalance(), 2) }}</span>
+                        <span class="fw-bold fs-6 text-success" id="gastoCajaBalance">{{ money($expSession->expectedBalance()) }}</span>
                     </div>
 
                     <div id="gastoLoading" class="text-center text-muted py-2 small"><span class="spinner-border spinner-border-sm me-1"></span>Cargando…</div>
@@ -106,7 +106,7 @@
                         <div class="col-5">
                             <label class="form-label small fw-semibold">Monto <span class="text-danger">*</span></label>
                             <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-light">Bs.</span>
+                                <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                 <input type="number" name="amount" id="gastoAmount" class="form-control" step="0.01" min="0.01" required>
                             </div>
                         </div>
@@ -187,7 +187,7 @@
             (pending || []).filter(p => String(p.supplier_id) === String(sid)).forEach(function (p) {
                 const o = document.createElement('option');
                 o.value = p.id; o.dataset.balance = p.balance;
-                o.textContent = p.code + ' · saldo Bs. ' + Number(p.balance).toFixed(2) + (p.date ? ' · ' + p.date : '');
+                o.textContent = p.code + ' · saldo {{ currency_symbol() }} ' + Number(p.balance).toFixed(2) + (p.date ? ' · ' + p.date : '');
                 purSel.appendChild(o);
             });
         });
@@ -196,7 +196,7 @@
             if (opt && opt.dataset.balance) {
                 amount.value = parseFloat(opt.dataset.balance).toFixed(2);
                 amount.max = opt.dataset.balance;
-                purHint.textContent = 'Saldo de la factura: Bs. ' + parseFloat(opt.dataset.balance).toFixed(2);
+                purHint.textContent = 'Saldo de la factura: {{ currency_symbol() }} ' + parseFloat(opt.dataset.balance).toFixed(2);
             }
         });
 
@@ -221,7 +221,7 @@
                     pending = d.pendingPurchases || [];
                     if (d.session) {
                         document.getElementById('gastoCajaBalance').textContent =
-                            'Bs. ' + Number(d.session.balance).toFixed(2);
+                            '{{ currency_symbol() }} ' + Number(d.session.balance).toFixed(2);
                     }
                     loaded = true;
                 })

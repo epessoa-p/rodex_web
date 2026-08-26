@@ -38,7 +38,7 @@
                     <div class="col-md-6">
                         <label class="form-label fw-semibold" for="default_amount">Monto sugerido</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-light">Bs.</span>
+                            <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                             <input type="number" id="default_amount" name="default_amount" class="form-control" step="0.01" min="0" value="{{ old('default_amount', $service->default_amount) }}" placeholder="Opcional">
                         </div>
                         <div class="form-text">Se usa para prellenar el monto en el modal de gasto.</div>

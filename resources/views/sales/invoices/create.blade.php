@@ -163,12 +163,12 @@
                             <div class="col-md-4">
                                 <div class="d-flex justify-content-between mb-2 small text-muted">
                                     <span>Subtotal productos</span>
-                                    <span id="displaySubtotal">$0.00</span>
+                                    <span id="displaySubtotal">{{ currency_symbol() }} 0.00</span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center mb-2 small">
                                     <label class="text-muted mb-0" for="global_discount">Descuento global</label>
                                     <div class="input-group input-group-sm" style="width:120px">
-                                        <span class="input-group-text bg-light">$</span>
+                                        <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                         <input type="number" id="global_discount" name="discount"
                                                step="0.01" min="0"
                                                class="form-control text-end"
@@ -180,7 +180,7 @@
                                 <div class="d-flex justify-content-between align-items-center mb-2 small">
                                     <label class="text-muted mb-0" for="tax">Impuesto</label>
                                     <div class="input-group input-group-sm" style="width:120px">
-                                        <span class="input-group-text bg-light">$</span>
+                                        <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                         <input type="number" id="tax" name="tax"
                                                step="0.01" min="0"
                                                class="form-control text-end"
@@ -191,7 +191,7 @@
                                 </div>
                                 <div class="d-flex justify-content-between fw-bold border-top pt-2">
                                     <span>Total</span>
-                                    <span id="displayTotal">$0.00</span>
+                                    <span id="displayTotal">{{ currency_symbol() }} 0.00</span>
                                 </div>
                             </div>
                         </div>
@@ -213,19 +213,19 @@
                         </div>
                         <div class="d-flex justify-content-between mb-2 small">
                             <span class="text-muted">Subtotal</span>
-                            <span class="fw-semibold" id="summarySubtotal">$0.00</span>
+                            <span class="fw-semibold" id="summarySubtotal">{{ currency_symbol() }} 0.00</span>
                         </div>
                         <div class="d-flex justify-content-between mb-2 small">
                             <span class="text-muted">Descuento</span>
-                            <span class="fw-semibold" id="summaryDiscount">$0.00</span>
+                            <span class="fw-semibold" id="summaryDiscount">{{ currency_symbol() }} 0.00</span>
                         </div>
                         <div class="d-flex justify-content-between mb-3 small">
                             <span class="text-muted">Impuesto</span>
-                            <span class="fw-semibold" id="summaryTax">$0.00</span>
+                            <span class="fw-semibold" id="summaryTax">{{ currency_symbol() }} 0.00</span>
                         </div>
                         <div class="d-flex justify-content-between fw-bold border-top pt-3">
                             <span>Total</span>
-                            <span id="summaryTotal" class="fs-5">$0.00</span>
+                            <span id="summaryTotal" class="fs-5">{{ currency_symbol() }} 0.00</span>
                         </div>
                         <div class="d-flex flex-column gap-2 mt-4">
                             <button type="button" class="btn btn-primary w-100 py-2" id="btnContado" onclick="submitContado()">
@@ -343,7 +343,7 @@
                     <div class="col-md-3">
                         <label class="form-label small fw-semibold">Pago inicial</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-light px-2">$</span>
+                            <span class="input-group-text bg-light px-2">{{ currency_symbol() }}</span>
                             <input type="number" id="sch_down" name="down_payment"
                                    class="form-control" min="0" step="0.01"
                                    value="{{ old('down_payment', '0') }}"
@@ -476,7 +476,7 @@ function addItemRow(productId, qty, unitPrice) {
         </td>
         <td>
             <div class="input-group input-group-sm">
-                <span class="input-group-text bg-light px-2">$</span>
+                <span class="input-group-text bg-light px-2">{{ currency_symbol() }}</span>
                 <input type="number" name="items[${idx}][unit_price]" step="0.01" min="0"
                        class="form-control price-input text-end" required
                        value="${unitPrice || ''}" placeholder="0.00"
@@ -485,14 +485,14 @@ function addItemRow(productId, qty, unitPrice) {
         </td>
         <td>
             <div class="input-group input-group-sm">
-                <span class="input-group-text bg-light px-2">$</span>
+                <span class="input-group-text bg-light px-2">{{ currency_symbol() }}</span>
                 <input type="number" name="items[${idx}][discount]" step="0.01" min="0"
                        class="form-control line-disc-input text-end"
                        value="0" placeholder="0.00"
                        oninput="recalcRow(${idx})">
             </div>
         </td>
-        <td class="text-end fw-semibold small subtotal-cell pe-2" data-index="${idx}">$0.00</td>
+        <td class="text-end fw-semibold small subtotal-cell pe-2" data-index="${idx}">{{ currency_symbol() }} 0.00</td>
         <td class="pe-3">
             <button type="button" class="btn btn-sm btn-light border text-danger" onclick="removeRow(this)" title="Quitar">
                 <i class="bi bi-trash"></i>
@@ -522,20 +522,20 @@ function recalcRow(idx) {
     const disc = parseFloat(row.querySelector('.line-disc-input')?.value)  || 0;
     const sub  = Math.max(0, qty * pr - disc);
     const cell = row.querySelector('.subtotal-cell');
-    if (cell) cell.textContent = '$' + sub.toFixed(2);
+    if (cell) cell.textContent = money(sub, 2);
     recalcTotals();
 }
 
 function recalcTotals() {
     let sub = 0;
     document.querySelectorAll('.subtotal-cell').forEach(c => {
-        sub += parseFloat(c.textContent.replace('$','')) || 0;
+        sub += parseMoney(c.textContent) || 0;
     });
     const disc  = parseFloat(document.getElementById('global_discount').value) || 0;
     const tax   = parseFloat(document.getElementById('tax').value) || 0;
     const total = Math.max(0, sub - disc + tax);
     const rows  = document.querySelectorAll('.item-row').length;
-    const fmt   = v => '$' + v.toFixed(2);
+    const fmt   = v => money(v, 2);
     document.getElementById('displaySubtotal').textContent  = fmt(sub);
     document.getElementById('displayTotal').textContent     = fmt(total);
     document.getElementById('summaryItems').textContent     = rows;
@@ -677,7 +677,7 @@ function addSchRow(dateVal, amtVal) {
         </td>
         <td class="py-1">
             <div class="input-group input-group-sm">
-                <span class="input-group-text bg-light px-2">$</span>
+                <span class="input-group-text bg-light px-2">{{ currency_symbol() }}</span>
                 <input type="number" name="installments[${i}][amount]"
                        class="form-control sch-amount text-end"
                        step="0.01" min="0" value="${amtVal || ''}"
@@ -721,7 +721,7 @@ function distributeEqual() {
 function computeTotal() {
     let sub = 0;
     document.querySelectorAll('.subtotal-cell').forEach(c => {
-        sub += parseFloat(c.textContent.replace('$','')) || 0;
+        sub += parseMoney(c.textContent) || 0;
     });
     const disc = parseFloat(document.getElementById('global_discount').value) || 0;
     const tax  = parseFloat(document.getElementById('tax').value) || 0;
@@ -747,21 +747,21 @@ function updateSchBalance() {
     const ok   = Math.abs(parseFloat(diff)) < 0.02;
 
     let recargoLine = effectiveRate > 0
-        ? `<div class="text-muted small mb-1">Recargo ${effectiveRate.toFixed(2)}%: <strong>$${interestAmt.toFixed(2)}</strong> &middot; Total con recargo: <strong>$${(total + interestAmt).toFixed(2)}</strong></div>`
+        ? `<div class="text-muted small mb-1">Recargo ${effectiveRate.toFixed(2)}%: <strong>${money(interestAmt, 2)}</strong> &middot; Total con recargo: <strong>${money((total + interestAmt), 2)}</strong></div>`
         : '';
 
     let interestBadge = effectiveRate > 0
         ? `<span class="badge bg-info-subtle text-info border border-info-subtle ms-2">
-               <i class="bi bi-percent me-1"></i>Recargo: $${interestAmt.toFixed(2)}
+               <i class="bi bi-percent me-1"></i>Recargo: ${money(interestAmt, 2)}
            </span>`
         : '';
 
     ind.innerHTML = recargoLine + (ok
         ? `<span class="badge bg-success-subtle text-success border border-success-subtle">
-               <i class="bi bi-check-circle me-1"></i>Cuotas cuadran: $${instSum.toFixed(2)}
+               <i class="bi bi-check-circle me-1"></i>Cuotas cuadran: ${money(instSum, 2)}
            </span>${interestBadge}`
         : `<span class="badge bg-warning-subtle text-warning border border-warning-subtle">
-               <i class="bi bi-exclamation-triangle me-1"></i>Suma cuotas: $${instSum.toFixed(2)} — Requerido: $${remWithInterest.toFixed(2)} (diff: $${diff})
+               <i class="bi bi-exclamation-triangle me-1"></i>Suma cuotas: ${money(instSum, 2)} — Requerido: ${money(remWithInterest, 2)} (diff: ${money(diff, 2)})
            </span>${interestBadge}`);
 }
 

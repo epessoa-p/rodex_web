@@ -96,7 +96,7 @@
                             <td class="py-2 small text-muted">
                                 {{ $order->delivered_at ? \Carbon\Carbon::parse($order->delivered_at)->format('d/m/Y') : '—' }}
                             </td>
-                            <td class="py-2 text-end fw-semibold small">${{ number_format($order->total, 2) }}</td>
+                            <td class="py-2 text-end fw-semibold small">{{ money($order->total, null, 2) }}</td>
                             <td class="py-2">
                                 <span class="badge bg-{{ $order->status_color }}-subtle text-{{ $order->status_color }} border border-{{ $order->status_color }}-subtle" style="font-size:.7rem;">
                                     {{ $order->status_label }}

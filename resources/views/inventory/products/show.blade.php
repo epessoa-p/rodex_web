@@ -101,7 +101,7 @@
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-3 text-center">
                     <p class="text-muted small mb-1 fw-semibold text-uppercase" style="letter-spacing:.04em">Precio venta</p>
-                    <p class="fw-bold fs-5 mb-0 text-success">${{ number_format($product->price, 2) }}</p>
+                    <p class="fw-bold fs-5 mb-0 text-success">{{ money($product->price, null, 2) }}</p>
                 </div>
             </div>
         </div>
@@ -109,7 +109,7 @@
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body p-3 text-center">
                     <p class="text-muted small mb-1 fw-semibold text-uppercase" style="letter-spacing:.04em">Precio compra</p>
-                    <p class="fw-bold fs-5 mb-0 text-muted">${{ number_format($product->cost, 2) }}</p>
+                    <p class="fw-bold fs-5 mb-0 text-muted">{{ money($product->cost, null, 2) }}</p>
                 </div>
             </div>
         </div>

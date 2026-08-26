@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Fotos de recepción (work_order_photos)
+--  Rodex — Fotos de recepción (work_order_photos)
 --  Documentan el estado del vehículo al recibirlo en el taller.
 --  Ligadas a la orden de trabajo (recepción).
 --

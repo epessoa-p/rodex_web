@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Módulo Taller (Workshop) v1
+--  Rodex — Módulo Taller (Workshop) v1
 --  Flujo: Recepción → Diagnóstico → OT → Mecánico → Repuestos → Pago → Entrega
 --  Estados y valores ENUM en español.
 -- ============================================================

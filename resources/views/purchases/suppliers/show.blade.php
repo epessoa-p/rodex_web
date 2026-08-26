@@ -57,7 +57,7 @@
                 <div class="card-body p-4">
                     <div class="text-muted small mb-1">Saldo pendiente</div>
                     <div class="fw-bold fs-4 {{ $supplier->balance_owed > 0 ? 'text-danger' : 'text-success' }}">
-                        ${{ number_format($supplier->balance_owed, 2) }}
+                        {{ money($supplier->balance_owed, null, 2) }}
                     </div>
                 </div>
             </div>
@@ -145,7 +145,7 @@
                             <div class="text-muted" style="font-size:.78rem">{{ $purchase->purchase_date->format('d/m/Y') }}</div>
                         </div>
                         <div class="text-end">
-                            <div class="fw-semibold small">${{ number_format($purchase->total, 2) }}</div>
+                            <div class="fw-semibold small">{{ money($purchase->total, null, 2) }}</div>
                             <span class="badge bg-{{ $purchase->payment_status_color }}-subtle text-{{ $purchase->payment_status_color }} border border-{{ $purchase->payment_status_color }}-subtle" style="font-size:.7rem">
                                 {{ $purchase->payment_status_label }}
                             </span>
@@ -176,7 +176,7 @@
                             <div class="text-muted" style="font-size:.78rem">{{ $order->order_date->format('d/m/Y') }}</div>
                         </div>
                         <div class="text-end">
-                            <div class="fw-semibold small">${{ number_format($order->total, 2) }}</div>
+                            <div class="fw-semibold small">{{ money($order->total, null, 2) }}</div>
                             <span class="badge bg-{{ $order->status_color }}-subtle text-{{ $order->status_color }} border border-{{ $order->status_color }}-subtle" style="font-size:.7rem">
                                 {{ $order->status_label }}
                             </span>

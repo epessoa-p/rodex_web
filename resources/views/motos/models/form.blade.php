@@ -85,7 +85,7 @@
                                 Precio sugerido
                             </label>
                             <div class="input-group">
-                                <span class="input-group-text bg-light">$</span>
+                                <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                 <input type="number" id="suggested_price" name="suggested_price"
                                        class="form-control @error('suggested_price') is-invalid @enderror"
                                        value="{{ old('suggested_price', $isEdit ? $model->suggested_price : '') }}"

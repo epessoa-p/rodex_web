@@ -48,9 +48,9 @@
                                     <span class="text-muted">{{ $inst->due_date?->format('d/m/Y') }}</span>
                                 @endif
                             </td>
-                            <td class="py-2 text-end fw-semibold">Bs. {{ number_format($inst->balance, 2) }}</td>
+                            <td class="py-2 text-end fw-semibold">{{ money($inst->balance) }}</td>
                             <td class="py-2 text-end {{ $inst->accrued_late_fee > 0 ? 'text-danger fw-semibold' : 'text-muted' }}">
-                                {{ $inst->accrued_late_fee > 0 ? 'Bs. ' . number_format($inst->accrued_late_fee, 2) : '—' }}
+                                {{ $inst->accrued_late_fee > 0 ? money($inst->accrued_late_fee) : '—' }}
                             </td>
                             <td class="py-2 text-end pe-4">
                                 @if($canPay)
@@ -88,7 +88,7 @@
       <div class="modal-body">
         <p class="small text-muted mb-3" id="cb_info"></p>
         <div class="mb-3"><label class="form-label small fw-semibold">Monto *</label>
-            <div class="input-group"><span class="input-group-text bg-light">Bs.</span>
+            <div class="input-group"><span class="input-group-text bg-light">{{ currency_symbol() }}</span>
             <input type="number" name="amount" id="cb_amount" class="form-control" step="0.01" min="0.01" required></div></div>
         <div class="mb-3" id="cb_latewrap" style="display:none;">
             <div class="form-check">
@@ -117,12 +117,12 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('cobrarForm').action = d.action;
         document.getElementById('cb_inst').value = d.inst;
         document.getElementById('cb_amount').value = d.balance;
-        document.getElementById('cb_info').textContent = d.code + ' · Cuota #' + d.num + ' — saldo Bs. ' + d.balance;
+        document.getElementById('cb_info').textContent = d.code + ' · Cuota #' + d.num + ' — saldo {{ currency_symbol() }} ' + d.balance;
         const late = parseFloat(d.latefee) || 0;
         const wrap = document.getElementById('cb_latewrap');
         if (late > 0) {
             wrap.style.display = '';
-            document.getElementById('cb_latefee_amt').textContent = 'Bs. ' + late.toFixed(2);
+            document.getElementById('cb_latefee_amt').textContent = '{{ currency_symbol() }} ' + late.toFixed(2);
             document.getElementById('cb_latefee').checked = true;
         } else {
             wrap.style.display = 'none';

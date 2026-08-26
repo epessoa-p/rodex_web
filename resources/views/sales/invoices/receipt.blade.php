@@ -2,7 +2,7 @@
     $company = $sale->company;
     $branch  = $sale->branch;
     $itemsSubtotal = $sale->items->sum(fn ($i) => $i->quantity * $i->unit_price - ($i->discount ?? 0));
-    $money = fn ($n) => '$' . number_format((float) $n, 2);
+    $money = fn ($n) => money($n, $company?->currency);
 @endphp
 <!DOCTYPE html>
 <html lang="es">

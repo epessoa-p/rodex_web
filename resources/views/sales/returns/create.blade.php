@@ -74,7 +74,7 @@
                             </div>
                             <div class="col-sm-3">
                                 <div class="text-muted mb-1" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;">Total</div>
-                                <div class="fw-semibold">${{ number_format($sale->total, 2) }}</div>
+                                <div class="fw-semibold">{{ money($sale->total, null, 2) }}</div>
                             </div>
                         </div>
                     </div>
@@ -181,7 +181,7 @@
                                             {{ number_format($alreadyReturned, 2) }}
                                         </td>
                                         <td class="py-3 text-end small text-success fw-semibold">{{ number_format($returnable, 0) }}</td>
-                                        <td class="py-3 text-end small">${{ number_format($item->unit_price, 2) }}</td>
+                                        <td class="py-3 text-end small">{{ money($item->unit_price, null, 2) }}</td>
                                         <td class="py-3 text-end pe-4">
                                             <input type="number"
                                                    name="items[{{ $i }}][quantity]"
@@ -204,7 +204,7 @@
                             <div class="col-md-4">
                                 <div class="d-flex justify-content-between fw-bold border-top pt-2">
                                     <span>Total a reembolsar</span>
-                                    <span id="displayReturnTotal" class="text-danger">$0.00</span>
+                                    <span id="displayReturnTotal" class="text-danger">{{ currency_symbol() }} 0.00</span>
                                 </div>
                             </div>
                         </div>
@@ -226,7 +226,7 @@
                         </div>
                         <div class="d-flex justify-content-between fw-bold border-top pt-3 mt-2">
                             <span>Total reembolso</span>
-                            <span id="summaryTotal" class="fs-5 text-danger">$0.00</span>
+                            <span id="summaryTotal" class="fs-5 text-danger">{{ currency_symbol() }} 0.00</span>
                         </div>
                         <div class="d-flex flex-column gap-2 mt-4">
                             <button type="submit" class="btn btn-primary w-100">
@@ -264,7 +264,7 @@ function recalcReturn() {
         if (qty > 0) count++;
         total += qty * price;
     });
-    const fmt = v => '$' + v.toFixed(2);
+    const fmt = v => money(v, 2);
     document.getElementById('displayReturnTotal').textContent = fmt(total);
     document.getElementById('summaryItems').textContent       = count;
     document.getElementById('summaryTotal').textContent       = fmt(total);

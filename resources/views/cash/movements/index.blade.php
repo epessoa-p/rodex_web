@@ -34,15 +34,15 @@
                     <div class="vr"></div>
                     <div class="text-center">
                         <div class="text-muted text-uppercase" style="font-size:.6rem;letter-spacing:.04em;">Balance</div>
-                        <div class="fw-bold {{ $allBalance >= 0 ? 'text-dark' : 'text-danger' }}" style="font-size:.92rem;">Bs. {{ number_format($allBalance, 2) }}</div>
+                        <div class="fw-bold {{ $allBalance >= 0 ? 'text-dark' : 'text-danger' }}" style="font-size:.92rem;">{{ money($allBalance) }}</div>
                     </div>
                     <div class="text-center">
                         <div class="text-muted text-uppercase" style="font-size:.6rem;letter-spacing:.04em;">Ingresos</div>
-                        <div class="fw-bold text-success" style="font-size:.92rem;">Bs. {{ number_format($allIncome, 2) }}</div>
+                        <div class="fw-bold text-success" style="font-size:.92rem;">{{ money($allIncome) }}</div>
                     </div>
                     <div class="text-center">
                         <div class="text-muted text-uppercase" style="font-size:.6rem;letter-spacing:.04em;">Egresos</div>
-                        <div class="fw-bold text-danger" style="font-size:.92rem;">Bs. {{ number_format($allExpense, 2) }}</div>
+                        <div class="fw-bold text-danger" style="font-size:.92rem;">{{ money($allExpense) }}</div>
                     </div>
                 </div>
 
@@ -62,7 +62,7 @@
                         <span class="d-flex align-items-center gap-2">
                             <span class="text-success" title="Ingresos">+{{ number_format($bh->income, 2) }}</span>
                             <span class="text-danger" title="Egresos">−{{ number_format($bh->expense, 2) }}</span>
-                            <span class="fw-bold {{ $bh->balance >= 0 ? 'text-dark' : 'text-danger' }}" style="min-width:74px;text-align:right;" title="Balance">Bs. {{ number_format($bh->balance, 2) }}</span>
+                            <span class="fw-bold {{ $bh->balance >= 0 ? 'text-dark' : 'text-danger' }}" style="min-width:74px;text-align:right;" title="Balance">{{ money($bh->balance) }}</span>
                         </span>
                     </div>
                     @endforeach
@@ -216,7 +216,7 @@
                             </div>
                             <div class="min-w-0">
                                 <div class="text-muted text-uppercase" style="font-size:.62rem;letter-spacing:.04em;">Balance del período</div>
-                                <div class="fw-bold fs-5 lh-1 {{ $balance >= 0 ? 'text-dark' : 'text-danger' }}">Bs. {{ number_format($balance, 2) }}</div>
+                                <div class="fw-bold fs-5 lh-1 {{ $balance >= 0 ? 'text-dark' : 'text-danger' }}">{{ money($balance) }}</div>
                             </div>
                         </div>
                     </div>
@@ -232,7 +232,7 @@
                             </div>
                             <div class="min-w-0">
                                 <div class="text-muted text-uppercase" style="font-size:.62rem;letter-spacing:.04em;">Ingresos</div>
-                                <div class="fw-bold fs-5 lh-1 text-success">Bs. {{ number_format($ventas, 2) }}</div>
+                                <div class="fw-bold fs-5 lh-1 text-success">{{ money($ventas) }}</div>
                             </div>
                         </div>
                     </div>
@@ -248,7 +248,7 @@
                             </div>
                             <div class="min-w-0">
                                 <div class="text-muted text-uppercase" style="font-size:.62rem;letter-spacing:.04em;">Egresos</div>
-                                <div class="fw-bold fs-5 lh-1 text-danger">Bs. {{ number_format($gastos, 2) }}</div>
+                                <div class="fw-bold fs-5 lh-1 text-danger">{{ money($gastos) }}</div>
                             </div>
                         </div>
                     </div>
@@ -341,7 +341,7 @@
                                             @endif
                                         </td>
                                         <td class="py-2 fw-semibold text-success">
-                                            Bs. {{ number_format($mov->amount, 2) }}
+                                            {{ money($mov->amount) }}
                                         </td>
                                         <td class="py-2 small text-muted">{{ $mov->method_label }}</td>
                                         <td class="py-2 pe-4">
@@ -401,7 +401,7 @@
                                             @endif
                                         </td>
                                         <td class="py-2 fw-semibold text-danger">
-                                            Bs. {{ number_format($mov->amount, 2) }}
+                                            {{ money($mov->amount) }}
                                         </td>
                                         <td class="py-2 small text-muted">{{ $mov->method_label }}</td>
                                         <td class="py-2 pe-4">
@@ -435,7 +435,7 @@
                                 {{ $porCobrar->total() }} {{ $porCobrar->total() === 1 ? 'pendiente' : 'pendientes' }}
                             </span>
                             <span class="fw-bold text-danger">
-                                Total por cobrar: Bs. {{ number_format($totalCobrar, 2) }}
+                                Total por cobrar: {{ money($totalCobrar) }}
                             </span>
                         </div>
                         @endif
@@ -462,7 +462,7 @@
                                                   style="font-size:.65rem;border-radius:999px;">{{ $item->tag }}</span>
                                         </td>
                                         <td class="py-2 fw-semibold text-danger">
-                                            Bs. {{ number_format($item->value, 2) }}
+                                            {{ money($item->value) }}
                                         </td>
                                         <td class="py-2 small text-muted">
                                             {{ $item->date ? $item->date->format('d/m/Y') : '—' }}
@@ -487,7 +487,7 @@
                                 <tfoot>
                                     <tr class="table-light">
                                         <td colspan="4" class="ps-4 py-2 text-end pe-4 fw-bold text-danger small">
-                                            Total por cobrar: Bs. {{ number_format($totalCobrar, 2) }}
+                                            Total por cobrar: {{ money($totalCobrar) }}
                                         </td>
                                     </tr>
                                 </tfoot>
@@ -509,7 +509,7 @@
                                 {{ $porPagar->total() }} {{ $porPagar->total() === 1 ? 'pendiente' : 'pendientes' }}
                             </span>
                             <span class="fw-bold text-danger">
-                                Total por pagar: Bs. {{ number_format($totalPagar, 2) }}
+                                Total por pagar: {{ money($totalPagar) }}
                             </span>
                         </div>
                         @endif
@@ -534,7 +534,7 @@
                                             <div class="fw-semibold text-dark">{{ $item->concept }}</div>
                                         </td>
                                         <td class="py-2 fw-semibold text-danger">
-                                            Bs. {{ number_format($item->value, 2) }}
+                                            {{ money($item->value) }}
                                         </td>
                                         <td class="py-2 small text-muted">
                                             {{ $item->date ? $item->date->format('d/m/Y') : '—' }}
@@ -559,7 +559,7 @@
                                 <tfoot>
                                     <tr class="table-light">
                                         <td colspan="4" class="ps-4 py-2 text-end pe-4 fw-bold text-danger small">
-                                            Total por pagar: Bs. {{ number_format($totalPagar, 2) }}
+                                            Total por pagar: {{ money($totalPagar) }}
                                         </td>
                                     </tr>
                                 </tfoot>
@@ -635,16 +635,16 @@
                                     <td class="py-2 small text-muted">
                                         {{ $c->cashRegister?->branch?->name ?? '—' }}
                                     </td>
-                                    <td class="py-2 small">Bs. {{ number_format($c->opening_amount, 2) }}</td>
+                                    <td class="py-2 small">{{ money($c->opening_amount) }}</td>
                                     <td class="py-2 small">
                                         @if($isOpen)
                                             <span class="text-warning fw-semibold">Sin cerrar</span>
                                         @else
-                                            Bs. {{ number_format($c->closing_amount, 2) }}
+                                            {{ money($c->closing_amount) }}
                                         @endif
                                     </td>
                                     <td class="py-2 small">
-                                        Bs. {{ number_format($expectedAmt, 2) }}
+                                        {{ money($expectedAmt) }}
                                         @if($isOpen)<div class="text-muted" style="font-size:.7rem;">saldo actual</div>@endif
                                     </td>
                                     <td class="py-2 small fw-semibold {{ $isOpen ? 'text-muted' : $diffClass }}">

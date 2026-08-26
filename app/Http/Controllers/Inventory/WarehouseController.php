@@ -60,6 +60,68 @@ class WarehouseController extends Controller
         }
     }
 
+    /**
+     * Alta rápida de almacén (JSON) desde un modal en otros formularios
+     * (p. ej. crear sucursal). El código es opcional: si va vacío se autogenera.
+     */
+    public function quickStore()
+    {
+        $user      = auth()->user();
+        $companyId = $user->is_super_admin
+            ? (int) request('company_id')
+            : (int) $user->getCurrentCompany()?->id;
+
+        if (!$companyId) {
+            return response()->json(['ok' => false, 'message' => 'Selecciona una empresa.'], 422);
+        }
+
+        // Un usuario no super_admin solo puede crear almacenes en SU empresa.
+        if (!$user->is_super_admin && $companyId !== (int) $user->getCurrentCompany()?->id) {
+            abort(403);
+        }
+
+        $validated = request()->validate([
+            'name'     => 'required|string|max:255',
+            'code'     => ['nullable', 'string', 'max:50', Rule::unique('warehouses', 'code')],
+            'location' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            $warehouse = Warehouse::create([
+                'company_id' => $companyId,
+                'name'       => $validated['name'],
+                'code'       => $validated['code'] ?: $this->generateWarehouseCode($companyId),
+                'location'   => $validated['location'] ?? null,
+                'active'     => true,
+            ]);
+
+            return response()->json([
+                'ok'        => true,
+                'warehouse' => [
+                    'id'   => $warehouse->id,
+                    'name' => $warehouse->name,
+                    'code' => $warehouse->code,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error en alta rápida de almacén', ['msg' => $e->getMessage()]);
+            return response()->json(['ok' => false, 'message' => 'No se pudo crear el almacén.'], 500);
+        }
+    }
+
+    /** Código de almacén genérico y único (global): ALM-001, ALM-002, … */
+    protected function generateWarehouseCode(int $companyId): string
+    {
+        $seq = Warehouse::withoutGlobalScopes()->where('company_id', $companyId)->count() + 1;
+
+        do {
+            $code = 'ALM-' . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
+            $seq++;
+        } while (Warehouse::withoutGlobalScopes()->where('code', $code)->exists());
+
+        return $code;
+    }
+
     public function show(Warehouse $warehouse)
     {
         $this->authorizeWarehouse($warehouse);

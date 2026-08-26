@@ -58,7 +58,7 @@
                                 @endif
                             </td>
                             <td class="py-2 small text-muted">{{ $sale->sale_date->format('d/m/Y') }}</td>
-                            <td class="py-2 text-end fw-semibold">${{ number_format($sale->total, 2) }}</td>
+                            <td class="py-2 text-end fw-semibold">{{ money($sale->total, null, 2) }}</td>
                             <td class="py-2">
                                 <span class="badge bg-{{ $sale->payment_status_color }}-subtle text-{{ $sale->payment_status_color }} border border-{{ $sale->payment_status_color }}-subtle" style="font-size:.68rem;">
                                     {{ $sale->payment_status_label }}

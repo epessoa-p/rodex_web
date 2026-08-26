@@ -22,7 +22,7 @@
                         </div>
                         <div>
                             <div class="text-muted small mb-1">Total por pagar</div>
-                            <div class="fw-bold text-danger fs-4">${{ number_format($totalOwed, 2) }}</div>
+                            <div class="fw-bold text-danger fs-4">{{ money($totalOwed, null, 2) }}</div>
                         </div>
                     </div>
                 </div>
@@ -72,9 +72,9 @@
                             </td>
                             <td class="py-3 small">{{ $purchase->supplier->name }}</td>
                             <td class="py-3 small text-muted">{{ $purchase->purchase_date->format('d/m/Y') }}</td>
-                            <td class="py-3 text-end small">${{ number_format($purchase->total, 2) }}</td>
-                            <td class="py-3 text-end small text-success">${{ number_format($purchase->paid_amount, 2) }}</td>
-                            <td class="py-3 text-end fw-bold text-danger">${{ number_format($purchase->balance, 2) }}</td>
+                            <td class="py-3 text-end small">{{ money($purchase->total, null, 2) }}</td>
+                            <td class="py-3 text-end small text-success">{{ money($purchase->paid_amount, null, 2) }}</td>
+                            <td class="py-3 text-end fw-bold text-danger">{{ money($purchase->balance, null, 2) }}</td>
                             <td class="py-3">
                                 <span class="badge bg-{{ $purchase->payment_status_color }}-subtle text-{{ $purchase->payment_status_color }} border border-{{ $purchase->payment_status_color }}-subtle">
                                     {{ $purchase->payment_status_label }}
@@ -147,15 +147,15 @@
                         <div class="row g-2 small">
                             <div class="col-4">
                                 <div class="text-muted">Total factura</div>
-                                <div class="fw-semibold">${{ number_format($purchase->total, 2) }}</div>
+                                <div class="fw-semibold">{{ money($purchase->total, null, 2) }}</div>
                             </div>
                             <div class="col-4">
                                 <div class="text-muted">Pagado</div>
-                                <div class="fw-semibold text-success">${{ number_format($purchase->paid_amount, 2) }}</div>
+                                <div class="fw-semibold text-success">{{ money($purchase->paid_amount, null, 2) }}</div>
                             </div>
                             <div class="col-4">
                                 <div class="text-muted">Saldo</div>
-                                <div class="fw-bold text-danger fs-6">${{ number_format($purchase->balance, 2) }}</div>
+                                <div class="fw-bold text-danger fs-6">{{ money($purchase->balance, null, 2) }}</div>
                             </div>
                         </div>
                     </div>
@@ -187,7 +187,7 @@
                                 <span class="small fw-semibold text-success-emphasis">
                                     <i class="bi bi-cash-stack me-1"></i>{{ $cashSession->cashRegister->name ?? 'Caja' }}
                                 </span>
-                                <span class="fw-bold text-success">Disponible: Bs. {{ number_format($cashSession->expectedBalance(), 2) }}</span>
+                                <span class="fw-bold text-success">Disponible: {{ money($cashSession->expectedBalance()) }}</span>
                             </div>
                             <div class="form-text">El pago saldrá de tu caja abierta como egreso.</div>
                             @else
@@ -208,7 +208,7 @@
                                 <option value="">— Seleccionar cuenta —</option>
                                 @foreach($accounts as $account)
                                 <option value="{{ $account->id }}" {{ old('treasury_account_id') == $account->id ? 'selected' : '' }}>
-                                    {{ $account->name }} (saldo: ${{ number_format($account->balance, 2) }})
+                                    {{ $account->name }} (saldo: {{ money($account->balance, null, 2) }})
                                 </option>
                                 @endforeach
                             </select>
@@ -222,7 +222,7 @@
                                 Monto <span class="text-danger">*</span>
                             </label>
                             <div class="input-group">
-                                <span class="input-group-text bg-light">$</span>
+                                <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                 <input type="number" id="amt_{{ $purchase->id }}" name="amount"
                                        step="0.01" min="0.01" max="{{ $purchase->balance }}"
                                        class="form-control @error('amount') is-invalid @enderror"

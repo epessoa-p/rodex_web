@@ -26,7 +26,7 @@
                     </div>
                     <div>
                         <div class="text-muted small mb-1">Total en mora</div>
-                        <div class="fw-bold text-danger fs-4">${{ number_format($totalOverdue, 2) }}</div>
+                        <div class="fw-bold text-danger fs-4">{{ money($totalOverdue, null, 2) }}</div>
                     </div>
                 </div>
             </div>
@@ -91,7 +91,7 @@
                                 @endif
                             </td>
                             <td class="py-3 text-end fw-bold text-danger fs-6 pe-4">
-                                ${{ number_format($m->overdue_total, 2) }}
+                                {{ money($m->overdue_total, null, 2) }}
                             </td>
                         </tr>
                         @empty

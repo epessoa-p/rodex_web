@@ -1,5 +1,5 @@
 -- ============================================================================
---  VR Motors — Corrección de marcas de tiempo históricas (UTC → Bolivia)
+--  Rodex — Corrección de marcas de tiempo históricas (UTC → Bolivia)
 -- ----------------------------------------------------------------------------
 --  La aplicación se ejecutaba con timezone UTC. Ahora usa America/La_Paz
 --  (UTC-4). Los registros creados ANTES del cambio guardaron sus horas en

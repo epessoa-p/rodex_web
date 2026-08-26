@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SubscriptionController as AdminSubscriptionController;
+use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\SystemResetController;
 use App\Http\Controllers\Admin\CargoController;
 use App\Http\Controllers\Admin\PersonalController;
@@ -54,6 +55,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/{company}/cancel',      [AdminSubscriptionController::class, 'cancel'])->name('cancel');
     });
 
+    // ── Planes: configuración de la plataforma (solo super_admin) ──
+    Route::middleware('check-role:super_admin')->group(function () {
+        Route::resource('admin/plans', PlanController::class)->names('plans')->except('show');
+    });
+
     // ── Roles (solo super_admin) ──────────────────────────────────
     Route::middleware('check-role:super_admin')->prefix('admin/roles')->name('roles.')->group(function () {
         Route::get('/',           [RoleController::class, 'index'])->name('index');
@@ -90,6 +96,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/',          [BranchController::class, 'index'])->name('index')->middleware('check-permission:branches.view');
         Route::get('/create',    [BranchController::class, 'create'])->name('create')->middleware('check-permission:branches.create');
         Route::post('/',         [BranchController::class, 'store'])->name('store')->middleware('check-permission:branches.create');
+        // Almacenes de una empresa (JSON) para poblar el select según la empresa elegida.
+        Route::get('/warehouses',[BranchController::class, 'warehousesByCompany'])->name('warehouses')->middleware('check-permission:branches.create,branches.edit');
         Route::get('/{branch}',  [BranchController::class, 'show'])->name('show')->middleware('check-permission:branches.view');
         Route::get('/{branch}/edit', [BranchController::class, 'edit'])->name('edit')->middleware('check-permission:branches.edit');
         Route::put('/{branch}',      [BranchController::class, 'update'])->name('update')->middleware('check-permission:branches.edit');
@@ -102,6 +110,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/create',                  [CargoController::class, 'create'])->name('create')->middleware('check-permission:cargos.create');
         Route::post('/',                       [CargoController::class, 'store'])->name('store')->middleware('check-permission:cargos.create');
         Route::get('/role-permissions/{role}', [CargoController::class, 'rolePermissions'])->name('role-permissions')->middleware('check-permission:cargos.view');
+        Route::get('/plan-features',           [CargoController::class, 'planFeatures'])->name('plan-features')->middleware('check-permission:cargos.create,cargos.edit');
         Route::get('/{cargo}/edit',            [CargoController::class, 'edit'])->name('edit')->middleware('check-permission:cargos.edit');
         Route::put('/{cargo}',                 [CargoController::class, 'update'])->name('update')->middleware('check-permission:cargos.edit');
         Route::delete('/{cargo}',              [CargoController::class, 'destroy'])->name('destroy')->middleware('check-permission:cargos.delete');
@@ -114,6 +123,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/',              [PersonalController::class, 'store'])->name('store')->middleware('check-permission:personal.create');
         // Cargos de una empresa (JSON) para poblar el select según la empresa elegida.
         Route::get('/cargos',         [PersonalController::class, 'cargosByCompany'])->name('cargos')->middleware('check-permission:personal.create,personal.edit');
+        // Sucursales de una empresa (JSON) para el select de sucursal según la empresa.
+        Route::get('/branches',       [PersonalController::class, 'branchesByCompany'])->name('branches')->middleware('check-permission:personal.create,personal.edit');
         Route::get('/{personal}/edit',[PersonalController::class, 'edit'])->name('edit')->middleware('check-permission:personal.edit');
         Route::put('/{personal}',     [PersonalController::class, 'update'])->name('update')->middleware('check-permission:personal.edit');
         Route::delete('/{personal}',  [PersonalController::class, 'destroy'])->name('destroy')->middleware('check-permission:personal.delete');

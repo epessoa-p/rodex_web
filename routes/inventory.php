@@ -1,13 +1,25 @@
 <?php
 
+use App\Http\Controllers\Catalog\PublicCatalogController;
+use App\Http\Controllers\Inventory\CatalogController;
 use App\Http\Controllers\Inventory\ProductController;
 use App\Http\Controllers\Inventory\ProductBrandController;
 use App\Http\Controllers\Inventory\ProductCategoryController;
+use App\Http\Controllers\Inventory\ProductOriginController;
+use App\Http\Controllers\Inventory\ProductUnitController;
 use App\Http\Controllers\Inventory\StockController;
 use App\Http\Controllers\Inventory\WarehouseController;
 use Illuminate\Support\Facades\Route;
 
+// ── Catálogo público por sucursal (SIN autenticación) ──────────────
+Route::get('/catalogo/sucursal/{token}',     [PublicCatalogController::class, 'show'])->name('catalog.public');
+Route::get('/catalogo/sucursal/{token}/pdf', [PublicCatalogController::class, 'pdf'])->name('catalog.public.pdf');
+
 Route::middleware(['auth', 'plan:inventory'])->group(function () {
+
+    // Administración del catálogo (QR y enlaces por sucursal)
+    Route::get('inventory/catalog', [CatalogController::class, 'index'])
+        ->name('catalog.index')->middleware('check-permission:products.view');
 
     // ── Inventario (listado editable + migración) ─────────────────────────────
     Route::prefix('inventory/stock')->name('inventory.stock')->group(function () {
@@ -43,6 +55,24 @@ Route::middleware(['auth', 'plan:inventory'])->group(function () {
         Route::delete('/{brand}', [ProductBrandController::class, 'destroy'])->name('destroy')->middleware('check-permission:product-brands.delete');
     });
 
+    // ── Unidades de medida (catálogo por empresa) ─────────────────────────────
+    Route::prefix('inventory/units')->name('product-units.')->group(function () {
+        Route::get('/',            [ProductUnitController::class, 'index'])->name('index')->middleware('check-permission:product-units.view');
+        Route::get('/create',      [ProductUnitController::class, 'create'])->name('create')->middleware('check-permission:product-units.create');
+        Route::post('/',           [ProductUnitController::class, 'store'])->name('store')->middleware('check-permission:product-units.create');
+        Route::get('/{unit}/edit', [ProductUnitController::class, 'edit'])->name('edit')->middleware('check-permission:product-units.edit');
+        Route::put('/{unit}',      [ProductUnitController::class, 'update'])->name('update')->middleware('check-permission:product-units.edit');
+        Route::delete('/{unit}',   [ProductUnitController::class, 'destroy'])->name('destroy')->middleware('check-permission:product-units.delete');
+    });
+
+    // ── Orígenes (países) — alta/edición por modal + AJAX ──────────────────────
+    Route::prefix('inventory/origins')->name('product-origins.')->group(function () {
+        Route::get('/',             [ProductOriginController::class, 'index'])->name('index')->middleware('check-permission:product-origins.view');
+        Route::post('/',            [ProductOriginController::class, 'store'])->name('store')->middleware('check-permission:product-origins.create');
+        Route::put('/{origin}',     [ProductOriginController::class, 'update'])->name('update')->middleware('check-permission:product-origins.edit');
+        Route::delete('/{origin}',  [ProductOriginController::class, 'destroy'])->name('destroy')->middleware('check-permission:product-origins.delete');
+    });
+
     // ── Kardex general ────────────────────────────────────────────────────────
     Route::get('inventory/kardex', [ProductController::class, 'kardexGeneral'])
         ->name('inventory.kardex')
@@ -72,6 +102,8 @@ Route::middleware(['auth', 'plan:inventory'])->group(function () {
         Route::get('/',                       [WarehouseController::class, 'index'])->name('index')->middleware('check-permission:warehouses.view');
         Route::get('/create',                 [WarehouseController::class, 'create'])->name('create')->middleware('check-permission:warehouses.create');
         Route::post('/',                      [WarehouseController::class, 'store'])->name('store')->middleware('check-permission:warehouses.create');
+        // Alta rápida (JSON) desde modal en otros formularios (p. ej. crear sucursal).
+        Route::post('/quick',                 [WarehouseController::class, 'quickStore'])->name('quick-store')->middleware('check-permission:warehouses.create');
         Route::get('/{warehouse}',            [WarehouseController::class, 'show'])->name('show')->middleware('check-permission:warehouses.view');
         Route::get('/{warehouse}/edit',       [WarehouseController::class, 'edit'])->name('edit')->middleware('check-permission:warehouses.edit');
         Route::put('/{warehouse}',            [WarehouseController::class, 'update'])->name('update')->middleware('check-permission:warehouses.edit');

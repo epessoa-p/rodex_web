@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Módulo de Ventas v1 (Fase 1 núcleo)
+--  Rodex — Módulo de Ventas v1 (Fase 1 núcleo)
 --  POS, Ventas contado/crédito, Cuotas, Cobranza, Vehículos
 -- ============================================================
 

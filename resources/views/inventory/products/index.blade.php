@@ -1,6 +1,10 @@
 @extends('layouts.app')
 @section('title', 'Productos')
 @section('page')
+@php
+    $canEditProducts = auth()->user()->is_super_admin
+        || auth()->user()->hasPermissionInCompany('products.edit', auth()->user()->getCurrentCompany());
+@endphp
 <div class="container-fluid">
 
     <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
@@ -13,12 +17,17 @@
             <a href="{{ route('products.import') }}" class="btn btn-light border">
                 <i class="bi bi-file-earmark-spreadsheet me-1"></i> Importar Excel
             </a>
-            <a href="{{ route('products.create') }}" class="btn btn-primary">
-                <i class="bi bi-plus-lg me-1"></i> Nuevo producto
-            </a>
+            <x-plan-limit-button :status="$limitStatus" :href="route('products.create')"
+                label="Nuevo producto" resource="productos" />
         </div>
         @endif
     </div>
+
+    @if($errors->any())
+        <div class="alert alert-danger border-0 shadow-sm">
+            <i class="bi bi-exclamation-triangle me-2"></i>{{ $errors->first() }}
+        </div>
+    @endif
 
     <div class="card border-0 shadow-sm">
         <div class="card-body p-0">
@@ -30,6 +39,7 @@
                             <th class="py-2 fw-semibold text-muted text-uppercase" style="letter-spacing:.04em;font-size:.72rem;">Producto</th>
                             <th class="py-2 fw-semibold text-muted text-uppercase" style="letter-spacing:.04em;font-size:.72rem;">Categoría</th>
                             <th class="py-2 fw-semibold text-muted text-uppercase" style="letter-spacing:.04em;font-size:.72rem;">Marca</th>
+                            <th class="py-2 fw-semibold text-muted text-uppercase" style="letter-spacing:.04em;font-size:.72rem;">Origen</th>
                             <th class="py-2 fw-semibold text-muted text-uppercase text-center" style="letter-spacing:.04em;font-size:.72rem;">Stock</th>
                             <th class="py-2 fw-semibold text-muted text-uppercase text-end" style="letter-spacing:.04em;font-size:.72rem;">Precio</th>
                             <th class="py-2 fw-semibold text-muted text-uppercase" style="letter-spacing:.04em;font-size:.72rem;">Estado</th>
@@ -72,6 +82,22 @@
                                 <span class="text-muted">—</span>
                                 @endif
                             </td>
+                            <td class="py-2">
+                                @if($canEditProducts)
+                                <div class="d-flex align-items-center gap-1">
+                                    <select class="form-select form-select-sm origin-inline" data-no-search
+                                            data-id="{{ $product->id }}" style="min-width:118px;max-width:150px;font-size:.76rem;padding:.15rem 1.4rem .15rem .5rem;">
+                                        <option value="">— Sin origen —</option>
+                                        @foreach($origins as $o)
+                                        <option value="{{ $o->id }}" {{ (string) $product->origin_id === (string) $o->id ? 'selected' : '' }}>{{ $o->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <i class="bi origin-state" data-id="{{ $product->id }}" style="font-size:.85rem;"></i>
+                                </div>
+                                @else
+                                <span class="badge bg-light text-dark border fw-normal" style="font-size:.75rem;">{{ $product->origin?->name ?? '—' }}</span>
+                                @endif
+                            </td>
                             <td class="py-2 text-center">
                                 @php
                                     $stock    = (float) $product->current_stock;
@@ -86,7 +112,7 @@
                                 @endif
                             </td>
                             <td class="py-2 text-end fw-semibold">
-                                ${{ number_format($product->price, 2) }}
+                                {{ money($product->price, null, 2) }}
                             </td>
                             <td class="py-2">
                                 @if($product->active)
@@ -117,7 +143,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8" class="text-center py-5 text-muted">
+                            <td colspan="9" class="text-center py-5 text-muted">
                                 <i class="bi bi-box-seam fs-1 d-block mb-2 opacity-25"></i>
                                 <p class="mb-0">No hay productos registrados.</p>
                                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('products.create', auth()->user()->getCurrentCompany()))
@@ -136,4 +162,41 @@
 
     <div class="mt-4 d-flex justify-content-center">{{ $products->links() }}</div>
 </div>
+
+@if($canEditProducts)
+@push('scripts')
+<script>
+// Guardado inline del ORIGEN del producto (AJAX).
+(function () {
+    const CSRF = '{{ csrf_token() }}';
+    const urlFor = (id) => '{{ url('inventory/stock') }}/' + id + '/field';
+
+    function setIcon(id, cls, color) {
+        const el = document.querySelector('.origin-state[data-id="' + id + '"]');
+        if (!el) return;
+        el.className = 'bi origin-state ' + cls;
+        el.style.color = color;
+        if (cls === 'bi-check-circle-fill') {
+            setTimeout(() => { el.className = 'bi origin-state'; el.style.color = ''; }, 1500);
+        }
+    }
+
+    document.querySelectorAll('.origin-inline').forEach(function (sel) {
+        sel.addEventListener('change', function () {
+            const id = this.dataset.id;
+            setIcon(id, 'bi-arrow-repeat', '#fd7e14');
+            fetch(urlFor(id), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF },
+                body: JSON.stringify({ field: 'origin_id', value: this.value || null }),
+            })
+            .then(r => r.json().then(d => ({ ok: r.ok, d })))
+            .then(({ ok, d }) => setIcon(id, (ok && d.ok) ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill', (ok && d.ok) ? '#198754' : '#dc3545'))
+            .catch(() => setIcon(id, 'bi-exclamation-circle-fill', '#dc3545'));
+        });
+    });
+})();
+</script>
+@endpush
+@endif
 @endsection

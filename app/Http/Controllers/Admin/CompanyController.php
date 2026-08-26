@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCompanyRequest;
 use App\Models\Company;
+use App\Support\MotoBrandDefaults;
+use App\Support\ProductOriginDefaults;
 use Illuminate\Support\Facades\Storage;
 
 class CompanyController extends Controller
@@ -35,6 +37,10 @@ class CompanyController extends Controller
         if ($request->hasFile('logo')) {
             $company->update(['logo' => $this->storeLogo($request, $company)]);
         }
+
+        // Onboarding: catálogos base para arrancar de inmediato.
+        MotoBrandDefaults::seedFor($company->id);
+        ProductOriginDefaults::seedFor($company->id);
 
         return redirect()->route('companies.index')->with('success', 'Empresa creada exitosamente');
     }

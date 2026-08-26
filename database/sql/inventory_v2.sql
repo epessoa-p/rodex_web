@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Inventario v2
+--  Rodex — Inventario v2
 --  Código en productos y categorías + campo "moto" en productos
 -- ============================================================
 

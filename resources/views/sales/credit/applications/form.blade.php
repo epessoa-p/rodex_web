@@ -51,7 +51,7 @@
                                 Monto solicitado <span class="text-danger">*</span>
                             </label>
                             <div class="input-group">
-                                <span class="input-group-text bg-light">$</span>
+                                <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                 <input type="number" id="requested_amount" name="requested_amount"
                                        class="form-control @error('requested_amount') is-invalid @enderror"
                                        value="{{ old('requested_amount', $isEdit ? $application->requested_amount : '') }}"
@@ -64,7 +64,7 @@
                         <div class="col-md-6">
                             <label class="form-label fw-semibold" for="down_payment">Pago inicial</label>
                             <div class="input-group">
-                                <span class="input-group-text bg-light">$</span>
+                                <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                 <input type="number" id="down_payment" name="down_payment"
                                        class="form-control @error('down_payment') is-invalid @enderror"
                                        value="{{ old('down_payment', $isEdit ? $application->down_payment : '0') }}"

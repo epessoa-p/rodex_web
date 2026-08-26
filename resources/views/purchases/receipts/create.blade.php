@@ -78,7 +78,7 @@
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold" for="tax">Impuesto</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light">$</span>
+                                    <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                     <input type="number" id="tax" name="tax" step="0.01" min="0"
                                            class="form-control @error('tax') is-invalid @enderror"
                                            value="{{ old('tax', 0) }}" placeholder="0.00">
@@ -165,7 +165,7 @@
                             <dt class="col-5 text-muted fw-normal">Fecha OC</dt>
                             <dd class="col-7 mb-0">{{ $order->order_date->format('d/m/Y') }}</dd>
                             <dt class="col-5 text-muted fw-normal">Total OC</dt>
-                            <dd class="col-7 mb-0 fw-semibold">${{ number_format($order->total, 2) }}</dd>
+                            <dd class="col-7 mb-0 fw-semibold">{{ money($order->total, null, 2) }}</dd>
                             <dt class="col-5 text-muted fw-normal">Estado</dt>
                             <dd class="col-7 mb-0">
                                 <span class="badge bg-{{ $order->status_color }}-subtle text-{{ $order->status_color }} border border-{{ $order->status_color }}-subtle">

@@ -62,11 +62,11 @@
                         </div>
                         <div class="col-sm-6">
                             <div class="text-muted small mb-1">Monto solicitado</div>
-                            <div class="fw-bold fs-5">${{ number_format($application->requested_amount, 2) }}</div>
+                            <div class="fw-bold fs-5">{{ money($application->requested_amount, null, 2) }}</div>
                         </div>
                         <div class="col-sm-6">
                             <div class="text-muted small mb-1">Pago inicial</div>
-                            <div class="fw-semibold">${{ number_format($application->down_payment ?? 0, 2) }}</div>
+                            <div class="fw-semibold">{{ money($application->down_payment ?? 0, null, 2) }}</div>
                         </div>
                         <div class="col-sm-6">
                             <div class="text-muted small mb-1">Plan de pago</div>
@@ -145,7 +145,7 @@
                         @if($application->approved_amount)
                         <div class="col-sm-6">
                             <div class="text-muted small mb-1">Monto aprobado</div>
-                            <div class="fw-bold text-success fs-5">${{ number_format($application->approved_amount, 2) }}</div>
+                            <div class="fw-bold text-success fs-5">{{ money($application->approved_amount, null, 2) }}</div>
                         </div>
                         @endif
                         @if($application->evaluation_notes)
@@ -202,7 +202,7 @@
                     @elseif($application->status === 'aprobada')
                     <div class="alert border-0 mb-3 py-2 small" style="background:rgba(25,135,84,.07);">
                         <i class="bi bi-check-circle-fill text-success me-1"></i>
-                        Monto aprobado: <strong>${{ number_format($application->approved_amount ?? $application->requested_amount, 2) }}</strong>
+                        Monto aprobado: <strong>{{ money($application->approved_amount ?? $application->requested_amount, null, 2) }}</strong>
                     </div>
                     <a href="{{ route('credit-applications.convert', $application) }}"
                        class="btn btn-primary w-100"
@@ -245,14 +245,14 @@
                 <div class="modal-body p-4">
                     <div class="rounded-3 border bg-light p-3 mb-4 small">
                         <div class="fw-semibold mb-1">{{ $application->code }} — {{ $application->client?->full_name }}</div>
-                        <div class="text-muted">Monto solicitado: <strong>${{ number_format($application->requested_amount, 2) }}</strong></div>
+                        <div class="text-muted">Monto solicitado: <strong>{{ money($application->requested_amount, null, 2) }}</strong></div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold" for="approved_amount">
                             Monto aprobado <span class="text-danger">*</span>
                         </label>
                         <div class="input-group">
-                            <span class="input-group-text bg-light">$</span>
+                            <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                             <input type="number" id="approved_amount" name="approved_amount"
                                    class="form-control"
                                    value="{{ number_format($application->requested_amount, 2, '.', '') }}"

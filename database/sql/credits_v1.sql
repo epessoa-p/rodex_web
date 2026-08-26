@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Expansión CRÉDITOS v1
+--  Rodex — Expansión CRÉDITOS v1
 --  Planes de Pago (con interés) + Solicitudes + ampliación de sales
 -- ============================================================
 

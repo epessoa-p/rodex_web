@@ -1,0 +1,121 @@
+<?php
+
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CashSessionController;
+use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\PurchaseOrderController;
+use App\Http\Controllers\Api\SaleController;
+use App\Http\Controllers\Api\SupplierController;
+use App\Http\Controllers\Api\WorkOrderController;
+use App\Http\Controllers\Api\WorkshopMetaController;
+use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| API (app móvil) — autenticación por token (Sanctum), sin sesión.
+|--------------------------------------------------------------------------
+| Prefijo /api. El tenant se resuelve por el header X-Company-Id (api.tenant).
+*/
+
+// Público
+Route::post('login', [AuthController::class, 'login']);
+
+// Autenticado (token), sin empresa aún: cerrar sesión.
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('logout', [AuthController::class, 'logout']);
+
+    // Todo lo que opera sobre una empresa: token + tenant (header) + suscripción.
+    Route::middleware(['api.tenant', 'api.subscription'])->group(function () {
+
+        Route::get('me', [AuthController::class, 'me']);
+
+        // ── Módulo Ventas / POS (plan: sales) ──────────────────────
+        Route::middleware('api.plan:sales')->group(function () {
+
+            Route::get('products', [ProductController::class, 'index'])
+                ->middleware('api.permission:products.view,pos.access,sales.view');
+            Route::get('products/{product}', [ProductController::class, 'show'])
+                ->middleware('api.permission:products.view,pos.access,sales.view');
+
+            Route::get('clients', [ClientController::class, 'index'])
+                ->middleware('api.permission:clients.view,pos.access,sales.view');
+            Route::post('clients', [ClientController::class, 'store'])
+                ->middleware('api.permission:clients.create');
+
+            // Caja
+            Route::get('cash/current-session', [CashSessionController::class, 'current'])
+                ->middleware('api.permission:cash.operate,pos.access');
+            Route::get('cash/registers', [CashSessionController::class, 'registers'])
+                ->middleware('api.permission:cash.operate,pos.access');
+            Route::post('cash/open', [CashSessionController::class, 'open'])
+                ->middleware('api.permission:cash.operate');
+            Route::post('cash/close', [CashSessionController::class, 'close'])
+                ->middleware('api.permission:cash.operate');
+            Route::get('cash/movements', [CashSessionController::class, 'movements'])
+                ->middleware('api.permission:cash.operate,pos.access');
+            Route::post('cash/expense', [CashSessionController::class, 'storeExpense'])
+                ->middleware('api.permission:cash.operate');
+
+            // Ventas
+            Route::get('sales', [SaleController::class, 'index'])
+                ->middleware('api.permission:sales.view,pos.access');
+            Route::get('sales/summary', [SaleController::class, 'summary'])
+                ->middleware('api.permission:sales.view,pos.access');
+            Route::get('sales/{sale}', [SaleController::class, 'show'])
+                ->middleware('api.permission:sales.view,pos.access');
+            Route::post('sales', [SaleController::class, 'store'])
+                ->middleware('api.permission:pos.access,sales.create');
+        });
+
+        // ── Módulo Taller (plan: workshop) ─────────────────────────
+        Route::middleware('api.plan:workshop')->group(function () {
+            // Catálogos de apoyo
+            Route::get('mechanics', [WorkshopMetaController::class, 'mechanics'])
+                ->middleware('api.permission:workshop.view,mechanics.view');
+            Route::get('vehicles', [WorkshopMetaController::class, 'vehicles'])
+                ->middleware('api.permission:workshop.view,vehicles.view');
+
+            Route::get('work-orders', [WorkOrderController::class, 'index'])
+                ->middleware('api.permission:workshop.view');
+            Route::get('work-orders/{order}', [WorkOrderController::class, 'show'])
+                ->middleware('api.permission:workshop.view');
+            Route::post('work-orders', [WorkOrderController::class, 'store'])
+                ->middleware('api.permission:workshop.create');
+
+            Route::post('work-orders/{order}/services', [WorkOrderController::class, 'addService'])
+                ->middleware('api.permission:workshop.edit');
+            Route::delete('work-orders/{order}/services/{service}', [WorkOrderController::class, 'removeService'])
+                ->middleware('api.permission:workshop.edit');
+            Route::post('work-orders/{order}/parts', [WorkOrderController::class, 'addPart'])
+                ->middleware('api.permission:workshop.edit');
+            Route::delete('work-orders/{order}/parts/{part}', [WorkOrderController::class, 'removePart'])
+                ->middleware('api.permission:workshop.edit');
+            Route::post('work-orders/{order}/status', [WorkOrderController::class, 'changeStatus'])
+                ->middleware('api.permission:workshop.edit');
+            Route::post('work-orders/{order}/deliver', [WorkOrderController::class, 'deliver'])
+                ->middleware('api.permission:workshop.deliver');
+        });
+
+        // ── Módulo Inventario (plan: inventory) ────────────────────
+        Route::middleware('api.plan:inventory')->group(function () {
+            Route::post('products/{product}/stock-adjust', [ProductController::class, 'adjustStock'])
+                ->middleware('api.permission:products.edit');
+        });
+
+        // ── Módulo Compras (plan: purchases) ───────────────────────
+        Route::middleware('api.plan:purchases')->group(function () {
+            Route::get('suppliers', [SupplierController::class, 'index'])
+                ->middleware('api.permission:suppliers.view,purchase-orders.view');
+            Route::post('suppliers', [SupplierController::class, 'store'])
+                ->middleware('api.permission:suppliers.create');
+
+            Route::get('purchase-orders', [PurchaseOrderController::class, 'index'])
+                ->middleware('api.permission:purchase-orders.view,goods-receipts.view');
+            Route::get('purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show'])
+                ->middleware('api.permission:purchase-orders.view,goods-receipts.view');
+            Route::post('purchase-orders/{purchaseOrder}/receive', [PurchaseOrderController::class, 'receive'])
+                ->middleware('api.permission:goods-receipts.create');
+        });
+    });
+});

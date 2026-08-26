@@ -118,7 +118,7 @@
                                     Precio de venta <span class="text-danger">*</span>
                                 </label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light">$</span>
+                                    <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                     <input type="number" id="price" name="price"
                                            class="form-control @error('price') is-invalid @enderror"
                                            value="{{ old('price', '0.00') }}"
@@ -184,7 +184,7 @@
                             <div class="col-md-3">
                                 <label class="form-label small fw-semibold">Pago inicial</label>
                                 <div class="input-group input-group-sm">
-                                    <span class="input-group-text bg-light px-2">$</span>
+                                    <span class="input-group-text bg-light px-2">{{ currency_symbol() }}</span>
                                     <input type="number" id="sch_down" name="down_payment"
                                            class="form-control" min="0" step="0.01"
                                            value="{{ old('down_payment', '0') }}"
@@ -237,15 +237,15 @@
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between mb-2 small">
                             <span class="text-muted">Precio moto</span>
-                            <span class="fw-semibold" id="summaryPrice">$0.00</span>
+                            <span class="fw-semibold" id="summaryPrice">{{ currency_symbol() }} 0.00</span>
                         </div>
                         <div class="d-flex justify-content-between mb-3 small">
                             <span class="text-muted">Interés</span>
-                            <span class="fw-semibold text-info" id="summaryInterest">$0.00</span>
+                            <span class="fw-semibold text-info" id="summaryInterest">{{ currency_symbol() }} 0.00</span>
                         </div>
                         <div class="d-flex justify-content-between fw-bold border-top pt-3">
                             <span>Total</span>
-                            <span id="summaryTotal" class="fs-5">$0.00</span>
+                            <span id="summaryTotal" class="fs-5">{{ currency_symbol() }} 0.00</span>
                         </div>
                     </div>
                     <div class="card-footer bg-white border-top p-4">
@@ -304,7 +304,7 @@ function onUnitChange(sel) {
         document.getElementById('detModel').textContent = model || '—';
         document.getElementById('detChassis').textContent = chassis || '—';
         document.getElementById('detColor').textContent = color || '—';
-        document.getElementById('detPrice').textContent = '$' + price.toFixed(2);
+        document.getElementById('detPrice').textContent = money(price, 2);
         box.style.display = 'block';
         const priceInput = document.getElementById('price');
         priceInput.value = price.toFixed(2);
@@ -321,7 +321,7 @@ function onSaleTypeChange() {
     card.style.cssText = isCredit ? '' : 'display:none!important;';
     if (!isCredit) {
         document.getElementById('interest_input').value = '0';
-        document.getElementById('summaryInterest').textContent = '$0.00';
+        document.getElementById('summaryInterest').textContent = money(0, 2);
         updateSummary();
     }
 }
@@ -331,9 +331,9 @@ function updateSummary() {
     const price    = parseFloat(document.getElementById('price').value) || 0;
     const interest = parseFloat(document.getElementById('interest_input').value) || 0;
     const total    = price + interest;
-    document.getElementById('summaryPrice').textContent    = '$' + price.toFixed(2);
-    document.getElementById('summaryInterest').textContent = '$' + interest.toFixed(2);
-    document.getElementById('summaryTotal').textContent    = '$' + total.toFixed(2);
+    document.getElementById('summaryPrice').textContent    = money(price, 2);
+    document.getElementById('summaryInterest').textContent = money(interest, 2);
+    document.getElementById('summaryTotal').textContent    = money(total, 2);
 }
 
 // ── PLAN SELECTOR ────────────────────────────────────────────────────
@@ -403,7 +403,7 @@ function addSchRow(dateVal, amtVal) {
         </td>
         <td class="py-1">
             <div class="input-group input-group-sm">
-                <span class="input-group-text bg-light px-2">$</span>
+                <span class="input-group-text bg-light px-2">{{ currency_symbol() }}</span>
                 <input type="number" name="installments[${i}][amount]"
                        class="form-control sch-amount text-end"
                        step="0.01" min="0" value="${amtVal || ''}"
@@ -459,16 +459,16 @@ function updateSchBalance() {
 
     let interestBadge = currentRate > 0
         ? `<span class="badge bg-info-subtle text-info border border-info-subtle ms-2">
-               <i class="bi bi-percent me-1"></i>Interés: $${interestAmt.toFixed(2)}
+               <i class="bi bi-percent me-1"></i>Interés: ${money(interestAmt, 2)}
            </span>`
         : '';
 
     ind.innerHTML = ok
         ? `<span class="badge bg-success-subtle text-success border border-success-subtle">
-               <i class="bi bi-check-circle me-1"></i>Cuotas cuadran: $${instSum.toFixed(2)}
+               <i class="bi bi-check-circle me-1"></i>Cuotas cuadran: ${money(instSum, 2)}
            </span>${interestBadge}`
         : `<span class="badge bg-warning-subtle text-warning border border-warning-subtle">
-               <i class="bi bi-exclamation-triangle me-1"></i>Suma cuotas: $${instSum.toFixed(2)} — Requerido: $${remWithInterest.toFixed(2)} (diff: $${diff})
+               <i class="bi bi-exclamation-triangle me-1"></i>Suma cuotas: ${money(instSum, 2)} — Requerido: ${money(remWithInterest, 2)} (diff: ${money(diff, 2)})
            </span>${interestBadge}`;
 }
 

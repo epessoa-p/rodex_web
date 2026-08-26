@@ -20,6 +20,7 @@ class StoreCompanyRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'ruc' => ['nullable', 'string', 'max:20', Rule::unique('companies', 'ruc')->ignore($companyId)],
+            'currency' => 'nullable|string|max:8',
             'address' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',

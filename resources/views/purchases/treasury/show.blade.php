@@ -32,7 +32,7 @@
                 <div class="text-end">
                     <div class="text-muted small mb-1">Saldo actual</div>
                     <div class="fw-bold {{ $account->balance >= 0 ? 'text-success' : 'text-danger' }}" style="font-size:2rem">
-                        ${{ number_format($account->balance, 2) }}
+                        {{ money($account->balance, null, 2) }}
                     </div>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
@@ -91,7 +91,7 @@
                                 @endif
                             </td>
                             <td class="py-3 text-end fw-semibold {{ $mov->type === 'in' ? 'text-success' : 'text-danger' }}">
-                                {{ $mov->type === 'in' ? '+' : '-' }}${{ number_format($mov->amount, 2) }}
+                                {{ $mov->type === 'in' ? '+' : '-' }}{{ money($mov->amount, null, 2) }}
                             </td>
                             <td class="py-3 small text-muted">{{ $mov->description ?: '—' }}</td>
                             <td class="py-3 small text-muted pe-4">{{ $mov->user?->name ?: '—' }}</td>
@@ -132,7 +132,7 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="text-muted small">Saldo actual de <strong>{{ $account->name }}</strong></span>
                             <span class="fw-bold {{ $account->balance >= 0 ? 'text-success' : 'text-danger' }}">
-                                ${{ number_format($account->balance, 2) }}
+                                {{ money($account->balance, null, 2) }}
                             </span>
                         </div>
                     </div>
@@ -159,7 +159,7 @@
                             Monto <span class="text-danger">*</span>
                         </label>
                         <div class="input-group">
-                            <span class="input-group-text bg-light">$</span>
+                            <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                             <input type="number" id="cat_amount" name="amount"
                                    step="0.01" min="0.01"
                                    class="form-control @error('amount') is-invalid @enderror"

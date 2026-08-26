@@ -15,7 +15,7 @@
 
     @if($extraDays > 0)
     <div class="alert alert-warning border-0 shadow-sm">
-        <i class="bi bi-exclamation-triangle me-2"></i>El alquiler venció hace <strong>{{ $extraDays }}</strong> día(s). Mora sugerida: <strong>Bs. {{ number_format($suggestedLateFee, 2) }}</strong>.
+        <i class="bi bi-exclamation-triangle me-2"></i>El alquiler venció hace <strong>{{ $extraDays }}</strong> día(s). Mora sugerida: <strong>{{ money($suggestedLateFee) }}</strong>.
     </div>
     @endif
 
@@ -61,14 +61,14 @@
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold" for="late_fee">Mora por días extra</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light">Bs.</span>
+                                    <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                     <input type="number" id="late_fee" name="late_fee" class="form-control" min="0" step="0.01" value="{{ old('late_fee', number_format($suggestedLateFee, 2, '.', '')) }}" oninput="recalc()">
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold" for="damage_fee">Daños / otros cargos</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light">Bs.</span>
+                                    <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                     <input type="number" id="damage_fee" name="damage_fee" class="form-control" min="0" step="0.01" value="{{ old('damage_fee', '0.00') }}" oninput="recalc()">
                                 </div>
                             </div>
@@ -91,10 +91,10 @@
                         <h6 class="mb-0 fw-semibold"><i class="bi bi-safe2 me-2 text-muted"></i>Liquidación de depósito</h6>
                     </div>
                     <div class="card-body p-4">
-                        <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Depósito retenido</span><span class="fw-semibold">Bs. {{ number_format($rental->deposit, 2) }}</span></div>
-                        <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Penalizaciones previas</span><span class="fw-semibold">Bs. {{ number_format($rental->penalties_total, 2) }}</span></div>
-                        <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Cargos en esta devolución</span><span class="fw-semibold text-danger" id="sumNewFees">Bs. 0.00</span></div>
-                        <div class="d-flex justify-content-between fw-bold border-top pt-2"><span>A reembolsar</span><span class="fs-5" id="sumRefund">Bs. 0.00</span></div>
+                        <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Depósito retenido</span><span class="fw-semibold">{{ money($rental->deposit) }}</span></div>
+                        <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Penalizaciones previas</span><span class="fw-semibold">{{ money($rental->penalties_total) }}</span></div>
+                        <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Cargos en esta devolución</span><span class="fw-semibold text-danger" id="sumNewFees">{{ currency_symbol() }} 0.00</span></div>
+                        <div class="d-flex justify-content-between fw-bold border-top pt-2"><span>A reembolsar</span><span class="fs-5" id="sumRefund">{{ currency_symbol() }} 0.00</span></div>
 
                         <div class="form-check form-switch mt-3 mb-3">
                             <input class="form-check-input" type="checkbox" id="refund_deposit" name="refund_deposit" value="1" {{ old('refund_deposit', '1') ? 'checked' : '' }} onchange="recalc()">
@@ -127,10 +127,10 @@ function recalc() {
     const dmg  = parseFloat(document.getElementById('damage_fee').value) || 0;
     const refund = document.getElementById('refund_deposit').checked;
     const newFees = late + dmg;
-    document.getElementById('sumNewFees').textContent = 'Bs. ' + newFees.toFixed(2);
+    document.getElementById('sumNewFees').textContent = '{{ currency_symbol() }} ' + newFees.toFixed(2);
     const totalPen = PREV_PENALTIES + newFees;
     let refundAmt = refund ? Math.max(0, DEPOSIT - totalPen) : 0;
-    document.getElementById('sumRefund').textContent = 'Bs. ' + refundAmt.toFixed(2);
+    document.getElementById('sumRefund').textContent = '{{ currency_symbol() }} ' + refundAmt.toFixed(2);
 }
 document.addEventListener('DOMContentLoaded', recalc);
 </script>

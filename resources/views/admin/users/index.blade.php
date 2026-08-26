@@ -3,10 +3,15 @@
 @section('page')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1><i class="bi bi-people"></i> Usuarios</h1>
-    <a href="{{ route('users.create') }}" class="btn btn-primary">
-        <i class="bi bi-plus-circle"></i> Nuevo Usuario
-    </a>
+    <x-plan-limit-button :status="$limitStatus" :href="route('users.create')"
+        label="Nuevo Usuario" resource="usuarios" icon="bi-plus-circle" />
 </div>
+
+@if($errors->any())
+    <div class="alert alert-danger border-0 shadow-sm">
+        <i class="bi bi-exclamation-triangle me-2"></i>{{ $errors->first() }}
+    </div>
+@endif
 
 <div class="card">
     <div class="card-body">

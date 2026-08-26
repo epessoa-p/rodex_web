@@ -38,7 +38,7 @@
                             <td class="py-2 small">{{ $c->client?->full_name ?? '—' }}</td>
                             <td class="py-2 small">{{ $c->motoUnit?->display_name ?? '—' }}</td>
                             <td class="py-2 small text-muted">{{ $c->start_date?->format('d/m/Y') }} → {{ $c->end_date?->format('d/m/Y') }}</td>
-                            <td class="py-2 text-end fw-semibold">Bs. {{ number_format($c->total, 2) }}</td>
+                            <td class="py-2 text-end fw-semibold">{{ money($c->total) }}</td>
                             <td class="py-2"><span class="badge bg-{{ $c->status_color }}-subtle text-{{ $c->status_color }} border border-{{ $c->status_color }}-subtle" style="font-size:.68rem;">{{ $c->status_label }}</span></td>
                             <td class="py-2 text-end pe-4"><a href="{{ route('rentals.show', $c) }}" class="btn btn-sm btn-light border"><i class="bi bi-eye"></i></a></td>
                         </tr>

@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Permiso para ajustar diferencias de caja
+--  Rodex — Permiso para ajustar diferencias de caja
 --  Crea 'cash.adjust' y lo asigna a admin y manager.
 --  (Super Admin no requiere asignación: usa is_super_admin=1.)
 --  Seguro de re-ejecutar: usa INSERT IGNORE.

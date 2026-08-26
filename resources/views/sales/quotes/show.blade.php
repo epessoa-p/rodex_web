@@ -138,12 +138,12 @@
                                         @endif
                                     </td>
                                     <td class="py-3 text-end small">{{ number_format($item->quantity, 0) }}</td>
-                                    <td class="py-3 text-end small">${{ number_format($item->unit_price, 2) }}</td>
+                                    <td class="py-3 text-end small">{{ money($item->unit_price, null, 2) }}</td>
                                     <td class="py-3 text-end small text-muted">
-                                        @if($item->discount > 0) ${{ number_format($item->discount, 2) }} @else — @endif
+                                        @if($item->discount > 0) {{ money($item->discount, null, 2) }} @else — @endif
                                     </td>
                                     <td class="py-3 text-end fw-semibold small pe-4">
-                                        ${{ number_format($item->quantity * $item->unit_price - ($item->discount ?? 0), 2) }}
+                                        {{ money($item->quantity * $item->unit_price - ($item->discount ?? 0), null, 2) }}
                                     </td>
                                 </tr>
                                 @empty
@@ -163,23 +163,23 @@
                             @endphp
                             <div class="d-flex justify-content-between mb-1 small text-muted">
                                 <span>Subtotal</span>
-                                <span>${{ number_format($itemsSubtotal, 2) }}</span>
+                                <span>{{ money($itemsSubtotal, null, 2) }}</span>
                             </div>
                             @if($quote->discount)
                             <div class="d-flex justify-content-between mb-1 small text-muted">
                                 <span>Descuento global</span>
-                                <span>-${{ number_format($quote->discount, 2) }}</span>
+                                <span>-{{ money($quote->discount, null, 2) }}</span>
                             </div>
                             @endif
                             @if($quote->tax)
                             <div class="d-flex justify-content-between mb-1 small text-muted">
                                 <span>Impuesto</span>
-                                <span>${{ number_format($quote->tax, 2) }}</span>
+                                <span>{{ money($quote->tax, null, 2) }}</span>
                             </div>
                             @endif
                             <div class="d-flex justify-content-between fw-bold border-top pt-2">
                                 <span>Total</span>
-                                <span>${{ number_format($quote->total, 2) }}</span>
+                                <span>{{ money($quote->total, null, 2) }}</span>
                             </div>
                         </div>
                     </div>

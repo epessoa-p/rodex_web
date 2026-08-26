@@ -1,5 +1,5 @@
 -- =====================================================================
---  VR Motors — Permiso: ver todas las ventas del listado
+--  Rodex — Permiso: ver todas las ventas del listado
 --  Sin este permiso, el personal solo ve en el listado las ventas que
 --  él mismo registró (created_by = usuario logueado).
 --  Se asigna a admin y manager. Ejecutar UNA sola vez. MySQL 8.0+.

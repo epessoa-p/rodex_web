@@ -40,7 +40,32 @@ class CargoController extends Controller
             'companies' => $authUser->is_super_admin
                 ? Company::orderBy('name')->get()
                 : collect([$authUser->getCurrentCompany()])->filter(),
+            // Módulos del plan para gatear el panel de permisos. super_admin no
+            // tiene empresa fija al crear => null (se resuelve por AJAX al elegir).
+            'planFeatures' => $authUser->is_super_admin
+                ? null
+                : $this->planFeaturesFor($authUser->getCurrentCompany()?->id),
         ]);
+    }
+
+    /**
+     * Módulos efectivos de una empresa para gatear el panel de permisos.
+     * Devuelve array de features, o null si no hay empresa (no gatear).
+     * Empresa sin suscripción => [] (se gatean todos los módulos de plan).
+     */
+    private function planFeaturesFor(?int $companyId): ?array
+    {
+        if (!$companyId) {
+            return null;
+        }
+
+        return Company::find($companyId)?->effectiveFeatures() ?? [];
+    }
+
+    /** AJAX: features del plan de una empresa (para el panel de permisos). */
+    public function planFeatures(Request $request)
+    {
+        return response()->json($this->planFeaturesFor((int) $request->query('company_id')) ?? []);
     }
 
     public function store(Request $request)
@@ -128,6 +153,8 @@ class CargoController extends Controller
             'companies' => $authUser->is_super_admin
                 ? Company::orderBy('name')->get()
                 : collect([$authUser->getCurrentCompany()])->filter(),
+            // El cargo siempre pertenece a una empresa => gateamos por su plan.
+            'planFeatures' => $this->planFeaturesFor($cargo->company_id),
         ]);
     }
 

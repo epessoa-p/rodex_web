@@ -85,8 +85,8 @@
                                         @endif
                                     </td>
                                     <td class="py-3 text-end small">{{ number_format($item->quantity, 0) }}</td>
-                                    <td class="py-3 text-end small">${{ number_format($item->unit_cost, 2) }}</td>
-                                    <td class="py-3 text-end fw-semibold small pe-4">${{ number_format($item->quantity * $item->unit_cost, 2) }}</td>
+                                    <td class="py-3 text-end small">{{ money($item->unit_cost, null, 2) }}</td>
+                                    <td class="py-3 text-end fw-semibold small pe-4">{{ money($item->quantity * $item->unit_cost, null, 2) }}</td>
                                 </tr>
                                 @empty
                                 <tr>
@@ -105,25 +105,25 @@
                             @endphp
                             <div class="d-flex justify-content-between mb-1 small text-muted">
                                 <span>Subtotal</span>
-                                <span>${{ number_format($subtotal, 2) }}</span>
+                                <span>{{ money($subtotal, null, 2) }}</span>
                             </div>
                             @if($purchase->tax)
                             <div class="d-flex justify-content-between mb-1 small text-muted">
                                 <span>Impuesto</span>
-                                <span>${{ number_format($purchase->tax, 2) }}</span>
+                                <span>{{ money($purchase->tax, null, 2) }}</span>
                             </div>
                             @endif
                             <div class="d-flex justify-content-between fw-bold border-top pt-2">
                                 <span>Total</span>
-                                <span>${{ number_format($purchase->total, 2) }}</span>
+                                <span>{{ money($purchase->total, null, 2) }}</span>
                             </div>
                             <div class="d-flex justify-content-between small text-success mt-1">
                                 <span>Pagado</span>
-                                <span>${{ number_format($purchase->paid_amount, 2) }}</span>
+                                <span>{{ money($purchase->paid_amount, null, 2) }}</span>
                             </div>
                             <div class="d-flex justify-content-between fw-bold border-top pt-2 {{ $purchase->balance > 0 ? 'text-danger' : 'text-muted' }}">
                                 <span>Saldo</span>
-                                <span>${{ number_format($purchase->balance, 2) }}</span>
+                                <span>{{ money($purchase->balance, null, 2) }}</span>
                             </div>
                         </div>
                     </div>
@@ -140,7 +140,7 @@
                     @forelse($purchase->payments as $payment)
                     <div class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom border-light">
                         <div>
-                            <div class="fw-semibold small">${{ number_format($payment->amount, 2) }}</div>
+                            <div class="fw-semibold small">{{ money($payment->amount, null, 2) }}</div>
                             <div class="text-muted" style="font-size:.78rem">
                                 {{ $payment->payment_date->format('d/m/Y') }}
                                 &middot; {{ $payment->treasuryAccount?->name ?: '—' }}
@@ -202,7 +202,7 @@
             <div class="card border-0 shadow-sm mt-4" style="border-left:4px solid var(--brand-red) !important">
                 <div class="card-body p-4">
                     <div class="text-muted small mb-1">Saldo pendiente de pago</div>
-                    <div class="fw-bold text-danger fs-4">${{ number_format($purchase->balance, 2) }}</div>
+                    <div class="fw-bold text-danger fs-4">{{ money($purchase->balance, null, 2) }}</div>
                     @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('accounts-payable.pay', auth()->user()->getCurrentCompany()))
                     <a href="{{ route('accounts-payable.index') }}" class="btn btn-primary btn-sm w-100 mt-3">
                         <i class="bi bi-cash-coin me-1"></i>Ir a cuentas por pagar
@@ -290,15 +290,15 @@
                         <div class="row g-2 small">
                             <div class="col-4">
                                 <div class="text-muted">Total</div>
-                                <div class="fw-semibold">${{ number_format($purchase->total, 2) }}</div>
+                                <div class="fw-semibold">{{ money($purchase->total, null, 2) }}</div>
                             </div>
                             <div class="col-4">
                                 <div class="text-muted">Pagado</div>
-                                <div class="fw-semibold text-success">${{ number_format($purchase->paid_amount, 2) }}</div>
+                                <div class="fw-semibold text-success">{{ money($purchase->paid_amount, null, 2) }}</div>
                             </div>
                             <div class="col-4">
                                 <div class="text-muted">Saldo</div>
-                                <div class="fw-bold text-danger fs-6">${{ number_format($purchase->balance, 2) }}</div>
+                                <div class="fw-bold text-danger fs-6">{{ money($purchase->balance, null, 2) }}</div>
                             </div>
                         </div>
                     </div>
@@ -330,7 +330,7 @@
                                 <span class="small fw-semibold text-success-emphasis">
                                     <i class="bi bi-cash-stack me-1"></i>{{ $cashSession->cashRegister->name ?? 'Caja' }}
                                 </span>
-                                <span class="fw-bold text-success">Disponible: Bs. {{ number_format($cashSession->expectedBalance(), 2) }}</span>
+                                <span class="fw-bold text-success">Disponible: {{ money($cashSession->expectedBalance()) }}</span>
                             </div>
                             <div class="form-text">El pago saldrá de tu caja abierta como egreso.</div>
                             @else
@@ -351,7 +351,7 @@
                                 <option value="">— Seleccionar cuenta —</option>
                                 @foreach($accounts as $account)
                                 <option value="{{ $account->id }}" {{ old('treasury_account_id') == $account->id ? 'selected' : '' }}>
-                                    {{ $account->name }} (saldo: ${{ number_format($account->balance, 2) }})
+                                    {{ $account->name }} (saldo: {{ money($account->balance, null, 2) }})
                                 </option>
                                 @endforeach
                             </select>
@@ -363,7 +363,7 @@
                         <div class="col-md-6">
                             <label class="form-label fw-semibold" for="amt_{{ $purchase->id }}">Monto <span class="text-danger">*</span></label>
                             <div class="input-group">
-                                <span class="input-group-text bg-light">$</span>
+                                <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                 <input type="number" id="amt_{{ $purchase->id }}" name="amount"
                                        step="0.01" min="0.01" max="{{ $purchase->balance }}"
                                        class="form-control @error('amount') is-invalid @enderror"

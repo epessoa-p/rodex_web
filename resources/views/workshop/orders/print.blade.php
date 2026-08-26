@@ -1,6 +1,6 @@
 @php
     $company = $order->company;
-    $money = fn ($n) => '$' . number_format((float) $n, 2);
+    $money = fn ($n) => money($n, $company?->currency);
 @endphp
 <!DOCTYPE html>
 <html lang="es">

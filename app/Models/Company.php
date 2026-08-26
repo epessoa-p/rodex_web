@@ -15,7 +15,7 @@ class Company extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'name', 'ruc', 'address', 'phone', 'email', 'logo', 'description', 'active',
+        'name', 'ruc', 'currency', 'address', 'phone', 'email', 'logo', 'description', 'active',
         'theme_primary', 'theme_accent',
     ];
 
@@ -123,11 +123,32 @@ class Company extends Model
 
     /**
      * ¿El plan contratado incluye este módulo? (ver Plan::MODULES)
+     * Respeta el override de módulos de la empresa si lo hay.
      * Sin suscripción o sin plan => no.
      */
     public function planAllows(string $feature): bool
     {
-        return (bool) $this->subscription?->plan?->allows($feature);
+        $sub = $this->subscription;
+
+        return $sub !== null && in_array($feature, $sub->effectiveFeatures(), true);
+    }
+
+    /**
+     * Lista de módulos efectivos de la empresa (override o plan).
+     * null si no hay suscripción (no se puede determinar el plan).
+     */
+    public function effectiveFeatures(): ?array
+    {
+        return $this->subscription?->effectiveFeatures();
+    }
+
+    /**
+     * Límite efectivo de un recurso ('users', 'branches', 'products'):
+     * override de la empresa si existe, si no el del plan. null = ilimitado.
+     */
+    public function effectiveLimit(string $key): ?int
+    {
+        return $this->subscription?->effectiveLimitFor($key);
     }
 
     /** Uso actual de un recurso limitado por plan. */
@@ -147,7 +168,7 @@ class Company extends Model
      */
     public function withinLimit(string $key): bool
     {
-        $limit = $this->subscription?->plan?->limitFor($key);
+        $limit = $this->effectiveLimit($key);
 
         if ($limit === null) {
             return true;

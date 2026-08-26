@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Módulo ALQUILERES de motos (Fase 1)
+--  Rodex — Módulo ALQUILERES de motos (Fase 1)
 -- ============================================================
 
 -- ── Ajustes a tablas existentes ──────────────────────────────

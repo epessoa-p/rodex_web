@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Módulo MOTOS v1
+--  Rodex — Módulo MOTOS v1
 --  Marcas, Modelos, Inventario (unidades serializadas),
 --  Ventas (reusan Sale), Entregas, Garantías
 -- ============================================================

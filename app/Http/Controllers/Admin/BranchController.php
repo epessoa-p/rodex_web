@@ -20,25 +20,75 @@ class BranchController extends Controller
             $query->where('company_id', $user->getCurrentCompany()?->id);
         }
 
-        return view('admin.branches.index', ['branches' => $query->paginate(15)]);
+        return view('admin.branches.index', [
+            'branches'    => $query->paginate(15),
+            'limitStatus' => $this->planLimitStatus($user->getCurrentCompany()?->id, 'branches'),
+        ]);
     }
 
     public function create()
     {
-        $user = auth()->user();
-        $companyId = $user->is_super_admin ? request('company_id') : $user->getCurrentCompany()?->id;
+        $user         = auth()->user();
+        $isSuperAdmin = $user->is_super_admin;
 
-        $warehousesQuery = Warehouse::orderBy('name');
-        if ($companyId) {
-            $warehousesQuery->where('company_id', $companyId);
-        } elseif (!$user->is_super_admin) {
-            $warehousesQuery->whereRaw('1 = 0');
+        if ($this->planLimitReached($user->getCurrentCompany()?->id, 'branches')) {
+            return redirect()->route('branches.index')
+                ->withErrors(['error' => $this->planLimitMessage('sucursales')]);
         }
 
+        $companies = $isSuperAdmin
+            ? Company::orderBy('name')->get()
+            : collect([$user->getCurrentCompany()])->filter()->values();
+
+        // Empresa por defecto: la elegida en la petición o la primera de la lista.
+        $companyId = $isSuperAdmin
+            ? ((int) request('company_id') ?: $companies->first()?->id)
+            : $user->getCurrentCompany()?->id;
+
+        $warehouses = $companyId
+            ? Warehouse::where('company_id', $companyId)->orderBy('name')->get()
+            : collect();
+
         return view('admin.branches.create', [
-            'companies' => $user->is_super_admin ? Company::orderBy('name')->get() : collect([$user->getCurrentCompany()])->filter(),
-            'warehouses' => $warehousesQuery->get(),
+            'companies'          => $companies,
+            'warehouses'         => $warehouses,
+            'isSuperAdmin'       => $isSuperAdmin,
+            'selectedCompanyId'  => $companyId,
+            'canCreateWarehouse' => $isSuperAdmin || $user->hasPermissionInCompany('warehouses.create', $user->getCurrentCompany()),
         ]);
+    }
+
+    /**
+     * Almacenes (JSON) de una empresa, para poblar el select según la empresa
+     * elegida por el super_admin en el formulario de sucursal.
+     */
+    public function warehousesByCompany()
+    {
+        $user = auth()->user();
+
+        $companyId = $user->is_super_admin
+            ? (int) request()->integer('company_id')
+            : (int) $user->getCurrentCompany()?->id;
+
+        if (!$companyId) {
+            return response()->json([]);
+        }
+
+        // Un usuario no super_admin solo puede consultar los almacenes de SU empresa.
+        if (!$user->is_super_admin && $companyId !== $user->getCurrentCompany()?->id) {
+            abort(403);
+        }
+
+        $warehouses = Warehouse::where('company_id', $companyId)
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Warehouse $w) => [
+                'id'   => $w->id,
+                'name' => $w->name,
+                'code' => $w->code,
+            ]);
+
+        return response()->json($warehouses);
     }
 
     public function store()
@@ -107,8 +157,11 @@ class BranchController extends Controller
 
         return view('admin.branches.edit', [
             'branch' => $branch,
-            'companies' => $user->is_super_admin ? Company::orderBy('name')->get() : collect([$user->getCurrentCompany()])->filter(),
+            'companies' => $user->is_super_admin ? Company::orderBy('name')->get() : collect([$user->getCurrentCompany()])->filter()->values(),
             'warehouses' => Warehouse::where('company_id', $branch->company_id)->orderBy('name')->get(),
+            'isSuperAdmin' => $user->is_super_admin,
+            'selectedCompanyId' => $branch->company_id,
+            'canCreateWarehouse' => $user->is_super_admin || $user->hasPermissionInCompany('warehouses.create', $user->getCurrentCompany()),
         ]);
     }
 

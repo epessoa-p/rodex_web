@@ -3,19 +3,17 @@
 namespace App\Http\Controllers\Inventory;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Inventory\Concerns\ParsesProductImport;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Inventory\ProductBrand;
 use App\Models\Inventory\ProductCategory;
 use App\Models\InventoryMovement;
-use App\Models\Motos\MotoModel;
 use App\Models\Product;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -24,6 +22,8 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class StockController extends Controller
 {
+    use ParsesProductImport;
+
     /** Listado editable de inventario (tabs de almacén + filtro categorías) */
     public function index(Request $request)
     {
@@ -38,7 +38,7 @@ class StockController extends Controller
         $isAll = $activeWarehouse === 'all' || !$warehouses->firstWhere('id', (int) $activeWarehouse);
         $whId  = $isAll ? null : (int) $activeWarehouse;
 
-        $products = Product::with(['category', 'brand', 'photos'])
+        $products = Product::with(['category', 'brand', 'origin', 'photos'])
             ->when($cid, fn ($q) => $q->where('company_id', $cid))
             ->where('active', true)
             ->orderBy('name')
@@ -71,10 +71,33 @@ class StockController extends Controller
         ));
     }
 
-    /** Actualiza costo o precio (AJAX) */
+    /** Actualiza costo, precio u origen (AJAX) */
     public function updateField(Product $product, Request $request)
     {
         $this->authorizeProduct($product);
+
+        $field = $request->input('field');
+
+        // Origen: la unidad seleccionada (id) o vacío (sin origen).
+        if ($field === 'origin_id') {
+            $request->validate([
+                'value' => ['nullable', 'exists:product_origins,id'],
+            ]);
+            $originId = $request->input('value') ?: null;
+
+            // Coherencia: el origen debe ser de la misma empresa.
+            if ($originId) {
+                $ok = \App\Models\Inventory\ProductOrigin::withoutGlobalScopes()
+                    ->whereKey($originId)->where('company_id', $product->company_id)->exists();
+                if (! $ok) {
+                    return response()->json(['ok' => false, 'message' => 'Origen inválido.'], 422);
+                }
+            }
+
+            $product->update(['origin_id' => $originId]);
+
+            return response()->json(['ok' => true, 'origin_id' => $originId]);
+        }
 
         $validated = $request->validate([
             'field' => 'required|in:cost,price',
@@ -125,22 +148,24 @@ class StockController extends Controller
     /** Descarga la plantilla Excel de inventario */
     public function template()
     {
-        $headers = ['Nombre producto', 'Categoría', 'Marca', 'Cantidad', 'Costo', 'Precio', 'Modelo(s)', 'Detalle', 'Código'];
-        $example = ['Carburador TRUENO', 'Carburacion y aire (999)', 'FULLER', '5', '104', '140', 'CG150, CG200', 'Repuesto original', 'CARB-010'];
+        // Plantilla genérica: se lee por NOMBRE de encabezado (el orden no importa).
+        // Solo "Nombre" es obligatorio; el resto es opcional. Ejemplo (repuestos de moto).
+        $headers = $this->importHeaders();
+        $example = ['Pastillas de freno', 'Frenos', 'Bosch', 'China', '120', '90', '15', 'Unidad', '', 'CG 150, Pulsar 200', 'Juego x2'];
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Inventario');
+        $sheet->setTitle('Productos');
         $sheet->fromArray($headers, null, 'A1');
         $sheet->fromArray($example, null, 'A2');
 
-        // Estilo cabecera
-        $sheet->getStyle('A1:I1')->getFont()->setBold(true);
-        foreach (range('A', 'I') as $col) {
+        $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers));
+        $sheet->getStyle("A1:{$lastCol}1")->getFont()->setBold(true);
+        foreach (range('A', $lastCol) as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        $fileName = 'plantilla_inventario.xlsx';
+        $fileName = 'plantilla_productos.xlsx';
         $tmp = storage_path('app/' . $fileName);
         (new Xlsx($spreadsheet))->save($tmp);
 
@@ -285,7 +310,11 @@ class StockController extends Controller
         $warehouses = Warehouse::when($cid, fn ($q) => $q->where('company_id', $cid))
             ->where('active', true)->orderBy('name')->get();
 
-        return view('inventory.stock.import', compact('warehouses'));
+        // Orígenes de la empresa para autocompletar en el paso de verificación.
+        $origins = \App\Models\Inventory\ProductOrigin::when($cid, fn ($q) => $q->where('company_id', $cid))
+            ->where('active', true)->orderBy('name')->pluck('name');
+
+        return view('inventory.stock.import', compact('warehouses', 'origins'));
     }
 
     /** Resuelve company + warehouse validando pertenencia (helper común). */
@@ -316,7 +345,7 @@ class StockController extends Controller
         try {
             $path     = $request->file('file')->store('imports', 'local');
             $fullPath = Storage::disk('local')->path($path);
-            $rows     = $this->parseRows($fullPath);
+            $rows     = $this->parseImportRows($fullPath);
             Storage::disk('local')->delete($path);
 
             // Enriquecer con estado (nuevo/actualiza) y valores actuales
@@ -402,7 +431,7 @@ class StockController extends Controller
         try {
             $path     = $request->file('file')->store('imports', 'local');
             $fullPath = Storage::disk('local')->path($path);
-            $rows     = $this->parseRows($fullPath);
+            $rows     = $this->parseImportRows($fullPath);
             Storage::disk('local')->delete($path);
 
             $counters = ['created' => 0, 'updated' => 0];
@@ -432,115 +461,18 @@ class StockController extends Controller
     // ── Helpers ───────────────────────────────────────────────
 
     /** Parsea el Excel a un arreglo de filas normalizadas (sin persistir). */
-    private function parseRows(string $fullPath): array
-    {
-        $raw = IOFactory::load($fullPath)->getActiveSheet()->toArray(null, true, true, true);
-        $out = [];
-        foreach ($raw as $rowNum => $row) {
-            if ($rowNum === 1) continue; // cabecera
-            $name = $this->cleanText((string) ($row['A'] ?? ''));
-            if ($name === '') continue;
-
-            // Orden de columnas: A Nombre · B Categoría · C Marca · D Cantidad ·
-            //                    E Costo · F Precio · G Modelos · H Detalle · I Código
-            $catRaw  = (string) ($row['B'] ?? '');
-            $catCode = $this->parseParenCode($catRaw);
-
-            $out[] = [
-                'name'          => $name,                                  // descarta el (núm) del nombre
-                'category'      => $this->cleanText($catRaw),
-                'category_code' => $catCode,                               // (núm) de la categoría
-                'code'          => trim((string) ($row['I'] ?? '')) ?: null, // código propio del producto
-                'brand'         => $this->cleanText((string) ($row['C'] ?? '')),
-                'qty'           => (float) ($row['D'] ?? 0),
-                'cost'          => (float) ($row['E'] ?? 0),
-                'price'         => (float) ($row['F'] ?? 0),
-                'models'        => trim((string) ($row['G'] ?? '')),
-                'notes'         => trim((string) ($row['H'] ?? '')),       // "Detalle" → description
-            ];
-        }
-        return $out;
-    }
-
-    /** Crea/actualiza un producto + categoría/marca/modelos y fija stock. */
+    /**
+     * Crea/actualiza un producto (vía el trait genérico) y fija su stock en el
+     * almacén. La lógica de parseo/upsert vive en ParsesProductImport.
+     */
     private function persistRow(array $d, int $companyId, Warehouse $warehouse, array &$counters): void
     {
-        $name = trim((string) ($d['name'] ?? ''));
-        if ($name === '') return;
-
-        // Categoría
-        $categoryId = null;
-        $catName = trim((string) ($d['category'] ?? ''));
-        $catCode = $d['category_code'] ?? null;
-        if ($catName !== '') {
-            $category = ProductCategory::firstOrCreate(
-                ['company_id' => $companyId, 'name' => $catName],
-                ['code' => $catCode, 'active' => true]
-            );
-            if ($catCode && !$category->code) {
-                $category->update(['code' => $catCode]);
-            }
-            $categoryId = $category->id;
+        if (trim((string) ($d['name'] ?? '')) === '') {
+            return;
         }
 
-        // Marca
-        $brandId = null;
-        $brandName = trim((string) ($d['brand'] ?? ''));
-        if ($brandName !== '') {
-            $brand = ProductBrand::firstOrCreate(
-                ['company_id' => $companyId, 'name' => $brandName],
-                ['active' => true]
-            );
-            $brandId = $brand->id;
-        }
+        $product = $this->upsertProduct($d, $companyId, $counters);
 
-        $payload = [
-            'category_id' => $categoryId,
-            'brand_id'    => $brandId,
-            'code'        => $d['code'] ?? null,
-            'cost'        => (float) ($d['cost'] ?? 0),
-            'price'       => (float) ($d['price'] ?? 0),
-            'description' => trim((string) ($d['notes'] ?? '')) ?: null,
-        ];
-
-        $product = Product::where('company_id', $companyId)
-            ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
-            ->first();
-
-        if ($product) {
-            $product->update($payload);
-            $counters['updated']++;
-        } else {
-            $product = Product::create(array_merge($payload, [
-                'company_id'    => $companyId,
-                'name'          => $name,
-                'sku'           => $this->generateSku($name, $companyId),
-                'unit'          => 'unidad',
-                'min_stock'     => 0,
-                'current_stock' => 0,
-                'active'        => true,
-            ]));
-            $counters['created']++;
-        }
-
-        // Modelos compatibles (CSV): busca o crea cada uno y asocia
-        $models    = $d['models'] ?? '';
-        $modelsRaw = is_array($models) ? implode(',', $models) : (string) $models;
-        if (trim($modelsRaw) !== '') {
-            $modelIds = [];
-            foreach (explode(',', $modelsRaw) as $mRaw) {
-                $mName = $this->cleanText($mRaw);
-                if ($mName === '') continue;
-                $model = MotoModel::firstOrCreate(
-                    ['company_id' => $companyId, 'name' => $mName],
-                    ['active' => true]
-                );
-                $modelIds[] = $model->id;
-            }
-            $product->motoModels()->syncWithoutDetaching($modelIds);
-        }
-
-        // Fijar stock del almacén
         $this->setWarehouseStock($product, $warehouse->id, (float) ($d['qty'] ?? 0), $warehouse->company_id);
     }
 
@@ -596,32 +528,6 @@ class StockController extends Controller
         foreach ($in as $pid => $q)  $map[$pid] = ($map[$pid] ?? 0) + (float) $q;
         foreach ($out as $pid => $q) $map[$pid] = ($map[$pid] ?? 0) - (float) $q;
         return $map;
-    }
-
-    private function cleanText(string $raw): string
-    {
-        return trim(preg_replace('/\s*\(\w+\)\s*/', ' ', $raw));
-    }
-
-    private function parseParenNumber(string $raw): ?int
-    {
-        return preg_match('/\((\d+)\)/', $raw, $m) ? (int) $m[1] : null;
-    }
-
-    private function parseParenCode(string $raw): ?string
-    {
-        return preg_match('/\(([\w-]+)\)/', $raw, $m) ? $m[1] : null;
-    }
-
-    private function generateSku(string $name, int $companyId): string
-    {
-        $base = Str::upper(substr(preg_replace('/[^A-Za-z0-9]/', '', $name), 0, 6)) ?: 'PROD';
-        $i = 1;
-        do {
-            $sku = $base . '-' . str_pad((string) $i, 3, '0', STR_PAD_LEFT);
-            $i++;
-        } while (Product::withTrashed()->where('company_id', $companyId)->where('sku', $sku)->exists());
-        return $sku;
     }
 
     private function authorizeProduct(Product $product): void

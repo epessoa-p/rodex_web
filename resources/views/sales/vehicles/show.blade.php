@@ -53,7 +53,7 @@
         <div class="col-lg-6">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-bottom py-3 px-4">
-                    <h6 class="mb-0 fw-semibold"><i class="bi bi-car-front me-2 text-muted"></i>Datos del vehículo</h6>
+                    <h6 class="mb-0 fw-semibold"><i class="bi bi-bicycle me-2 text-muted"></i>Datos del vehículo</h6>
                 </div>
                 <div class="card-body p-4">
                     <dl class="row g-3 small mb-0">

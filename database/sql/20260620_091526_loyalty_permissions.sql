@@ -1,5 +1,5 @@
 -- =====================================================================
---  VR Motors — Permisos del módulo de Fidelización
+--  Rodex — Permisos del módulo de Fidelización
 --  Fecha: 2026-06-20
 --
 --  Crea los permisos del módulo y los asigna a admin/manager (y a cashier

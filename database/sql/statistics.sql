@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Módulo de Estadísticas (permiso)
+--  Rodex — Módulo de Estadísticas (permiso)
 -- ============================================================
 
 INSERT IGNORE INTO `permissions` (`name`, `slug`, `module`, `description`, `created_at`, `updated_at`) VALUES

@@ -19,6 +19,7 @@ class Personal extends Model
     protected $fillable = [
         'company_id',
         'cargo_id',
+        'branch_id',
         'user_id',
         'full_name',
         'id_number',
@@ -44,6 +45,11 @@ class Personal extends Model
     public function cargo(): BelongsTo
     {
         return $this->belongsTo(Cargo::class);
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     public function user(): BelongsTo

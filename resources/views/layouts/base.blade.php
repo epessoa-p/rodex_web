@@ -435,6 +435,20 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <script>
+    // ── Moneda (por empresa) para formateo en el cliente ─────────────
+    window.APP_CURRENCY = @json(currency_symbol());
+    // Formato con punto decimal (compatible con parseFloat en los subtotales).
+    window.money = function (n, decimals) {
+        decimals = (decimals === undefined) ? 2 : decimals;
+        return window.APP_CURRENCY + ' ' + Number(n || 0).toFixed(decimals);
+    };
+    // Extrae el número de un texto formateado con money() (quita símbolo/separadores).
+    window.parseMoney = function (text) {
+        return parseFloat(String(text).replace(/[^\d.-]/g, '')) || 0;
+    };
+    </script>
+
+    <script>
     // ── Select2 global: búsqueda en todos los <select> ───────────────
     window.initSelect2 = function (scope) {
         if (!window.jQuery || !jQuery.fn.select2) return;

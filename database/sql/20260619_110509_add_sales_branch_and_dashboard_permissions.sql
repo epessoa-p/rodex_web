@@ -1,5 +1,5 @@
 -- =====================================================================
---  VR Motors — Permisos: tabs de sucursal en Ventas + Dashboards
+--  Rodex — Permisos: tabs de sucursal en Ventas + Dashboards
 --  Fecha: 2026-06-19
 --
 --  Crea 4 permisos nuevos y los asigna a los roles admin y manager:

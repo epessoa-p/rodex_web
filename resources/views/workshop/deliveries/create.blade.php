@@ -58,13 +58,13 @@
                             <div class="d-flex justify-content-between small mb-1">
                                 <span>{{ $svc->pivot->description ?? $svc->name }}</span>
                                 <span class="fw-semibold">
-                                    ${{ number_format(($svc->pivot->price ?? $svc->price) * ($svc->pivot->quantity ?? 1), 2) }}
+                                    {{ money(($svc->pivot->price ?? $svc->price) * ($svc->pivot->quantity ?? 1), null, 2) }}
                                 </span>
                             </div>
                             @endforeach
                             <div class="d-flex justify-content-between small border-top pt-2 mt-2 text-muted">
                                 <span>Subtotal servicios</span>
-                                <span id="displaySvcSubtotal">${{ number_format($svcSubtotal, 2) }}</span>
+                                <span id="displaySvcSubtotal">{{ money($svcSubtotal, null, 2) }}</span>
                             </div>
                         </div>
                         @endif
@@ -76,12 +76,12 @@
                             @foreach($order->parts as $part)
                             <div class="d-flex justify-content-between small mb-1">
                                 <span>{{ $part->product?->name ?? '—' }} &times; {{ $part->quantity }}</span>
-                                <span class="fw-semibold">${{ number_format($part->unit_price * $part->quantity, 2) }}</span>
+                                <span class="fw-semibold">{{ money($part->unit_price * $part->quantity, null, 2) }}</span>
                             </div>
                             @endforeach
                             <div class="d-flex justify-content-between small border-top pt-2 mt-2 text-muted">
                                 <span>Subtotal repuestos</span>
-                                <span id="displayPartsSubtotal">${{ number_format($partsSubtotal, 2) }}</span>
+                                <span id="displayPartsSubtotal">{{ money($partsSubtotal, null, 2) }}</span>
                             </div>
                         </div>
                         @endif
@@ -92,7 +92,7 @@
                                 <div class="d-flex justify-content-between align-items-center mb-2 small">
                                     <label class="text-muted mb-0" for="del_discount">Descuento</label>
                                     <div class="input-group input-group-sm" style="width:130px">
-                                        <span class="input-group-text bg-light">$</span>
+                                        <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                         <input type="number" id="del_discount" name="discount"
                                                step="0.01" min="0"
                                                class="form-control text-end"
@@ -103,7 +103,7 @@
                                 <div class="d-flex justify-content-between align-items-center mb-2 small">
                                     <label class="text-muted mb-0" for="del_tax">Impuesto</label>
                                     <div class="input-group input-group-sm" style="width:130px">
-                                        <span class="input-group-text bg-light">$</span>
+                                        <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                         <input type="number" id="del_tax" name="tax"
                                                step="0.01" min="0"
                                                class="form-control text-end"
@@ -113,7 +113,7 @@
                                 </div>
                                 <div class="d-flex justify-content-between fw-bold border-top pt-2">
                                     <span>Total</span>
-                                    <span id="displayDeliveryTotal">${{ number_format($baseTotal, 2) }}</span>
+                                    <span id="displayDeliveryTotal">{{ money($baseTotal, null, 2) }}</span>
                                 </div>
                             </div>
                         </div>
@@ -196,7 +196,7 @@
                             <div class="col-md-3">
                                 <label class="form-label small fw-semibold">Pago inicial</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light px-2">$</span>
+                                    <span class="input-group-text bg-light px-2">{{ currency_symbol() }}</span>
                                     <input type="number" id="sch_down" name="down_payment"
                                            class="form-control" min="0" step="0.01"
                                            value="{{ old('down_payment', '0') }}"
@@ -244,23 +244,23 @@
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between mb-2 small">
                             <span class="text-muted">Subtotal servicios</span>
-                            <span class="fw-semibold" id="sumSvc">${{ number_format($svcSubtotal, 2) }}</span>
+                            <span class="fw-semibold" id="sumSvc">{{ money($svcSubtotal, null, 2) }}</span>
                         </div>
                         <div class="d-flex justify-content-between mb-2 small">
                             <span class="text-muted">Subtotal repuestos</span>
-                            <span class="fw-semibold" id="sumParts">${{ number_format($partsSubtotal, 2) }}</span>
+                            <span class="fw-semibold" id="sumParts">{{ money($partsSubtotal, null, 2) }}</span>
                         </div>
                         <div class="d-flex justify-content-between mb-2 small">
                             <span class="text-muted">Descuento</span>
-                            <span class="fw-semibold" id="sumDiscount">$0.00</span>
+                            <span class="fw-semibold" id="sumDiscount">{{ currency_symbol() }} 0.00</span>
                         </div>
                         <div class="d-flex justify-content-between mb-3 small">
                             <span class="text-muted">Impuesto</span>
-                            <span class="fw-semibold" id="sumTax">$0.00</span>
+                            <span class="fw-semibold" id="sumTax">{{ currency_symbol() }} 0.00</span>
                         </div>
                         <div class="d-flex justify-content-between fw-bold border-top pt-3">
                             <span>Total</span>
-                            <span id="sumTotal" class="fs-5">${{ number_format($baseTotal, 2) }}</span>
+                            <span id="sumTotal" class="fs-5">{{ money($baseTotal, null, 2) }}</span>
                         </div>
                         <div class="d-flex flex-column gap-2 mt-4">
                             <button type="submit" class="btn btn-primary w-100">
@@ -301,7 +301,7 @@ function recalcDeliveryTotal() {
     const disc  = parseFloat(document.getElementById('del_discount').value) || 0;
     const tax   = parseFloat(document.getElementById('del_tax').value) || 0;
     const total = Math.max(0, BASE_SVC_SUBTOTAL + BASE_PARTS_SUBTOTAL - disc + tax);
-    const fmt   = v => '$' + v.toFixed(2);
+    const fmt   = v => money(v, 2);
     document.getElementById('displayDeliveryTotal').textContent = fmt(total);
     document.getElementById('sumDiscount').textContent = fmt(disc);
     document.getElementById('sumTax').textContent      = fmt(tax);
@@ -353,7 +353,7 @@ function addSchRow(dateVal, amtVal) {
         </td>
         <td class="py-1">
             <div class="input-group input-group-sm">
-                <span class="input-group-text bg-light px-2">$</span>
+                <span class="input-group-text bg-light px-2">{{ currency_symbol() }}</span>
                 <input type="number" name="installments[${i}][amount]"
                        class="form-control sch-amount text-end"
                        step="0.01" min="0" value="${amtVal || ''}"
@@ -399,10 +399,10 @@ function updateSchBalance() {
     const ok = Math.abs(parseFloat(diff)) < 0.02;
     ind.innerHTML = ok
         ? `<span class="badge bg-success-subtle text-success border border-success-subtle">
-               <i class="bi bi-check-circle me-1"></i>Cuotas cuadran: $${instSum.toFixed(2)}
+               <i class="bi bi-check-circle me-1"></i>Cuotas cuadran: ${money(instSum, 2)}
            </span>`
         : `<span class="badge bg-warning-subtle text-warning border border-warning-subtle">
-               <i class="bi bi-exclamation-triangle me-1"></i>Suma cuotas: $${instSum.toFixed(2)} — Requerido: $${rem.toFixed(2)} (diff: $${diff})
+               <i class="bi bi-exclamation-triangle me-1"></i>Suma cuotas: ${money(instSum, 2)} — Requerido: ${money(rem, 2)} (diff: ${money(diff, 2)})
            </span>`;
 }
 

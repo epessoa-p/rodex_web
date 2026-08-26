@@ -55,19 +55,19 @@
         <div class="col-sm-6 col-xl-2">
             <div class="card border-0 shadow-sm h-100"><div class="card-body p-3">
                 <div class="text-muted small mb-1"><i class="bi bi-currency-dollar me-1"></i>Total vendido</div>
-                <div class="fw-bold fs-5">${{ number_format($totalSold, 2) }}</div>
+                <div class="fw-bold fs-5">{{ money($totalSold, null, 2) }}</div>
             </div></div>
         </div>
         <div class="col-sm-6 col-xl-2">
             <div class="card border-0 shadow-sm h-100"><div class="card-body p-3">
                 <div class="text-muted small mb-1"><i class="bi bi-cash me-1 text-success"></i>Contado</div>
-                <div class="fw-bold fs-5 text-success">${{ number_format($totalCash, 2) }}</div>
+                <div class="fw-bold fs-5 text-success">{{ money($totalCash, null, 2) }}</div>
             </div></div>
         </div>
         <div class="col-sm-6 col-xl-2">
             <div class="card border-0 shadow-sm h-100"><div class="card-body p-3">
                 <div class="text-muted small mb-1"><i class="bi bi-calendar2-check me-1 text-primary"></i>Crédito</div>
-                <div class="fw-bold fs-5 text-primary">${{ number_format($totalCredit, 2) }}</div>
+                <div class="fw-bold fs-5 text-primary">{{ money($totalCredit, null, 2) }}</div>
             </div></div>
         </div>
         <div class="col-sm-6 col-xl-2">
@@ -79,13 +79,13 @@
         <div class="col-sm-6 col-xl-2">
             <div class="card border-0 shadow-sm h-100"><div class="card-body p-3">
                 <div class="text-muted small mb-1"><i class="bi bi-tag me-1"></i>Ticket promedio</div>
-                <div class="fw-bold fs-5">${{ number_format($avgTicket, 2) }}</div>
+                <div class="fw-bold fs-5">{{ money($avgTicket, null, 2) }}</div>
             </div></div>
         </div>
         <div class="col-sm-6 col-xl-2">
             <div class="card border-0 shadow-sm h-100"><div class="card-body p-3">
                 <div class="text-muted small mb-1"><i class="bi bi-arrow-return-left me-1 text-danger"></i>Devoluciones</div>
-                <div class="fw-bold fs-5">{{ $returnsCount }} <span class="text-muted fw-normal fs-6">(${{ number_format($returnsAmount, 2) }})</span></div>
+                <div class="fw-bold fs-5">{{ $returnsCount }} <span class="text-muted fw-normal fs-6">({{ money($returnsAmount, null, 2) }})</span></div>
             </div></div>
         </div>
     </div>
@@ -140,7 +140,7 @@
                             @forelse($topClients as $tc)
                             <tr>
                                 <td class="ps-4 py-2">{{ $tc['name'] }}<div class="text-muted small">{{ $tc['ventas'] }} venta(s)</div></td>
-                                <td class="py-2 text-end fw-semibold pe-4">${{ number_format($tc['total'], 2) }}</td>
+                                <td class="py-2 text-end fw-semibold pe-4">{{ money($tc['total'], null, 2) }}</td>
                             </tr>
                             @empty
                             <tr><td class="text-center py-4 text-muted small">Sin datos.</td></tr>
@@ -181,7 +181,7 @@
                             <td class="py-2">
                                 <span class="badge bg-{{ $sale->sale_type_color }}-subtle text-{{ $sale->sale_type_color }} border border-{{ $sale->sale_type_color }}-subtle" style="font-size:.68rem;">{{ $sale->sale_type_label }}</span>
                             </td>
-                            <td class="py-2 text-end fw-semibold pe-4">${{ number_format($sale->total, 2) }}</td>
+                            <td class="py-2 text-end fw-semibold pe-4">{{ money($sale->total, null, 2) }}</td>
                         </tr>
                         @empty
                         <tr><td colspan="5" class="text-center py-5 text-muted"><i class="bi bi-receipt fs-2 opacity-25 d-block mb-2"></i>No hay ventas en el período.</td></tr>
@@ -198,7 +198,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const money = (v) => '$' + Number(v).toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const money = (v) => window.money(v);
 
     // Ventas por día
     const byDayEl = document.getElementById('chartByDay');

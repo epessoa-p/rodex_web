@@ -67,7 +67,7 @@
                                     <span class="small">{{ $app->client?->full_name ?? '—' }}</span>
                                 </div>
                             </td>
-                            <td class="py-2 text-end small fw-semibold">${{ number_format($app->requested_amount, 2) }}</td>
+                            <td class="py-2 text-end small fw-semibold">{{ money($app->requested_amount, null, 2) }}</td>
                             <td class="py-2 small text-muted">{{ $app->paymentPlan?->name ?? '—' }}</td>
                             <td class="py-2">
                                 <span class="badge bg-{{ $app->status_color }}-subtle text-{{ $app->status_color }} border border-{{ $app->status_color }}-subtle" style="font-size:.7rem;">

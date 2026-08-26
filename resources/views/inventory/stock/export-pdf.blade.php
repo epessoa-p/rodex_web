@@ -63,8 +63,8 @@
             <tr>
                 <th>Producto</th>
                 <th>Código</th>
-                <th class="num">Precio (Bs.)</th>
-                <th class="num">Costo (Bs.)</th>
+                <th class="num">Precio ({{ currency_symbol() }})</th>
+                <th class="num">Costo ({{ currency_symbol() }})</th>
                 <th class="num">Cantidad disponible</th>
             </tr>
         </thead>

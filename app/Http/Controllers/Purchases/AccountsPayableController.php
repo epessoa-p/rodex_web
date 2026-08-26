@@ -138,7 +138,7 @@ class AccountsPayableController extends Controller
 
         $available = $session->expectedBalance();
         if ($amount > $available + 0.001) {
-            return back()->withErrors(['error' => 'La caja no tiene saldo suficiente (disponible: Bs. ' . number_format($available, 2) . ').']);
+            return back()->withErrors(['error' => 'La caja no tiene saldo suficiente (disponible: ' . money($available) . ').']);
         }
 
         try {

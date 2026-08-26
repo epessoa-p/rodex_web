@@ -26,7 +26,7 @@
                         </div>
                         <span class="badge bg-danger-subtle text-danger border border-danger-subtle small">Por cobrar</span>
                     </div>
-                    <div class="fw-bold fs-4 mb-1 text-danger">${{ number_format($portfolio, 2) }}</div>
+                    <div class="fw-bold fs-4 mb-1 text-danger">{{ money($portfolio, null, 2) }}</div>
                     <div class="text-muted small">Cartera por cobrar</div>
                 </div>
             </div>
@@ -42,7 +42,7 @@
                         </div>
                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle small">Total</span>
                     </div>
-                    <div class="fw-bold fs-4 mb-1">${{ number_format($totalCredit, 2) }}</div>
+                    <div class="fw-bold fs-4 mb-1">{{ money($totalCredit, null, 2) }}</div>
                     <div class="text-muted small">Total financiado</div>
                 </div>
             </div>
@@ -58,7 +58,7 @@
                         </div>
                         <span class="badge bg-success-subtle text-success border border-success-subtle small">Recuperado</span>
                     </div>
-                    <div class="fw-bold fs-4 mb-1 text-success">${{ number_format($totalPaid, 2) }}</div>
+                    <div class="fw-bold fs-4 mb-1 text-success">{{ money($totalPaid, null, 2) }}</div>
                     <div class="text-muted small">Total recuperado</div>
                 </div>
             </div>
@@ -74,7 +74,7 @@
                         </div>
                         <span class="badge bg-success-subtle text-success border border-success-subtle small">Este mes</span>
                     </div>
-                    <div class="fw-bold fs-4 mb-1" style="color:#20c997;">${{ number_format($recoveredThisMonth, 2) }}</div>
+                    <div class="fw-bold fs-4 mb-1" style="color:#20c997;">{{ money($recoveredThisMonth, null, 2) }}</div>
                     <div class="text-muted small">Recuperado del mes</div>
                 </div>
             </div>
@@ -114,7 +114,7 @@
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <span class="small fw-semibold">{{ $cfg['label'] }}</span>
                                 <span class="small fw-bold {{ $val > 0 ? 'text-' . $cfg['color'] : 'text-muted' }}">
-                                    ${{ number_format($val, 2) }}
+                                    {{ money($val, null, 2) }}
                                 </span>
                             </div>
                             <div class="progress" style="height:8px;border-radius:4px;">
@@ -167,7 +167,7 @@
                                     <td class="py-2 text-center small">
                                         <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ $debtor->count }}</span>
                                     </td>
-                                    <td class="py-2 text-end fw-bold text-danger pe-4">${{ number_format($debtor->balance, 2) }}</td>
+                                    <td class="py-2 text-end fw-bold text-danger pe-4">{{ money($debtor->balance, null, 2) }}</td>
                                 </tr>
                                 @endforeach
                             </tbody>

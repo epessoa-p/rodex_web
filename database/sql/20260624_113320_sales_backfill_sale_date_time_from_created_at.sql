@@ -1,5 +1,5 @@
 -- ============================================================================
---  VR Motors — Backfill de la HORA en sales.sale_date desde created_at
+--  Rodex — Backfill de la HORA en sales.sale_date desde created_at
 -- ----------------------------------------------------------------------------
 --  Las ventas históricas guardaban sale_date solo como fecha (hora 00:00:00).
 --  Tras corregir created_at a hora de Bolivia, copiamos la HORA de created_at

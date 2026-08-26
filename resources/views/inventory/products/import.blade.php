@@ -27,8 +27,8 @@
                     <span class="badge bg-success fs-6 fw-normal">
                         <i class="bi bi-box-arrow-in-down me-1"></i>{{ $r['imported'] }} importados
                     </span>
-                    <span class="badge bg-secondary fs-6 fw-normal">
-                        <i class="bi bi-skip-forward me-1"></i>{{ $r['skipped'] }} omitidos (ya existían)
+                    <span class="badge bg-primary fs-6 fw-normal">
+                        <i class="bi bi-arrow-repeat me-1"></i>{{ $r['skipped'] }} actualizados (ya existían)
                     </span>
                 </div>
             </div>
@@ -105,45 +105,28 @@
         <div class="col-lg-5">
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header">
-                    <h6 class="mb-0"><i class="bi bi-info-circle me-2 text-muted"></i>Formato esperado</h6>
+                    <h6 class="mb-0"><i class="bi bi-info-circle me-2 text-muted"></i>Columnas de la plantilla</h6>
                 </div>
                 <div class="card-body p-0">
                     <table class="table table-sm mb-0 align-middle">
                         <thead class="table-light">
                             <tr>
                                 <th class="ps-3">Columna</th>
-                                <th>Campo</th>
                                 <th>Ejemplo</th>
                             </tr>
                         </thead>
                         <tbody>
+                            @foreach([['Nombre *','Pastillas de freno'],['Categoría','Frenos'],['Marca','Bosch'],['Origen','China'],['Precio','120'],['Costo','90'],['Stock','15'],['Unidad','Unidad'],['Código','(se autogenera)'],['Modelos compatibles','CG 150, Pulsar 200'],['Descripción','Juego x2']] as $c)
                             <tr>
-                                <td class="ps-3"><span class="badge bg-primary">A</span></td>
-                                <td class="fw-semibold">Nombre <span class="text-danger">*</span></td>
-                                <td class="text-muted small">(01)Carburador TRUENO</td>
+                                <td class="ps-3 fw-semibold small">{{ $c[0] }}</td>
+                                <td class="text-muted small">{{ $c[1] }}</td>
                             </tr>
-                            <tr>
-                                <td class="ps-3"><span class="badge bg-primary">B</span></td>
-                                <td class="fw-semibold">Categoría</td>
-                                <td class="text-muted small">Carburacion y aire(999)</td>
-                            </tr>
-                            <tr>
-                                <td class="ps-3"><span class="badge bg-primary">C</span></td>
-                                <td class="fw-semibold">Notas</td>
-                                <td class="text-muted small">moto cg150, cg200</td>
-                            </tr>
-                            <tr>
-                                <td class="ps-3"><span class="badge bg-primary">D</span></td>
-                                <td class="fw-semibold">Costo</td>
-                                <td class="text-muted small">104</td>
-                            </tr>
-                            <tr>
-                                <td class="ps-3"><span class="badge bg-primary">E</span></td>
-                                <td class="fw-semibold">Precio venta</td>
-                                <td class="text-muted small">140</td>
-                            </tr>
+                            @endforeach
                         </tbody>
                     </table>
+                </div>
+                <div class="card-footer bg-white text-muted" style="font-size:.76rem;">
+                    <i class="bi bi-info-circle me-1"></i>El orden no importa: las columnas se detectan por el <strong>encabezado</strong>. Solo <strong>Nombre</strong> es obligatorio.
                 </div>
             </div>
 
@@ -154,20 +137,20 @@
                 <div class="card-body">
                     <ul class="list-unstyled mb-0" style="font-size:.85rem;">
                         <li class="d-flex gap-2 mb-2">
-                            <i class="bi bi-eraser text-primary flex-shrink-0 mt-1"></i>
-                            <span>Los códigos entre paréntesis como <code>(01)</code> o <code>(999)</code> se eliminan automáticamente del nombre y la categoría.</span>
-                        </li>
-                        <li class="d-flex gap-2 mb-2">
-                            <i class="bi bi-skip-forward text-secondary flex-shrink-0 mt-1"></i>
-                            <span>Si ya existe un producto con el mismo nombre, la fila se <strong>omite</strong> sin generar error.</span>
+                            <i class="bi bi-arrow-repeat text-primary flex-shrink-0 mt-1"></i>
+                            <span>Si ya existe un producto con el mismo <strong>nombre</strong>, se <strong>actualiza</strong> (precio, costo, categoría, etc.); si no, se crea.</span>
                         </li>
                         <li class="d-flex gap-2 mb-2">
                             <i class="bi bi-tags text-success flex-shrink-0 mt-1"></i>
-                            <span>Si la categoría no existe, se crea automáticamente con el nombre de la columna B.</span>
+                            <span>La <strong>categoría</strong> y la <strong>marca</strong> se crean automáticamente por su nombre si no existen.</span>
+                        </li>
+                        <li class="d-flex gap-2 mb-2">
+                            <i class="bi bi-upc-scan text-info flex-shrink-0 mt-1"></i>
+                            <span>El <strong>Código</strong> es opcional: si lo dejas vacío se genera uno automático ({{ config('inventory.code_prefix') }}-00001).</span>
                         </li>
                         <li class="d-flex gap-2">
-                            <i class="bi bi-upc-scan text-info flex-shrink-0 mt-1"></i>
-                            <span>El SKU se genera automáticamente a partir del nombre del producto.</span>
+                            <i class="bi bi-bicycle text-secondary flex-shrink-0 mt-1"></i>
+                            <span>«Modelos compatibles» son los <strong>modelos de moto</strong> con los que sirve el repuesto (se registran en el catálogo).</span>
                         </li>
                     </ul>
                 </div>

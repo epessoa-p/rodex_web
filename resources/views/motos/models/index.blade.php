@@ -54,7 +54,7 @@
                                 {{ $model->year ?? '—' }}
                             </td>
                             <td class="py-2 text-end fw-semibold">
-                                {{ $model->suggested_price ? '$' . number_format($model->suggested_price, 2) : '—' }}
+                                {{ $model->suggested_price ? money($model->suggested_price, null, 2) : '—' }}
                             </td>
                             <td class="py-2 text-center">
                                 <span class="badge bg-light text-dark border" style="font-size:.75rem;">

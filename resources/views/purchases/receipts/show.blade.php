@@ -79,7 +79,7 @@
                                         {{ number_format($item->quantity, 0) }}
                                     </td>
                                     <td class="py-3 text-end small text-muted pe-4">
-                                        ${{ number_format($item->unit_cost ?? 0, 2) }}
+                                        {{ money($item->unit_cost ?? 0, null, 2) }}
                                     </td>
                                 </tr>
                                 @empty

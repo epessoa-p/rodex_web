@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Color de sucursal
+--  Rodex — Color de sucursal
 --  Color en hexadecimal para usar como referencia visual.
 -- ============================================================
 

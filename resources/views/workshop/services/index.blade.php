@@ -42,7 +42,7 @@
                                 {{ $service->estimated_time ?: '—' }}
                             </td>
                             <td class="py-2 text-end fw-semibold small">
-                                ${{ number_format($service->price, 2) }}
+                                {{ money($service->price, null, 2) }}
                             </td>
                             <td class="py-2">
                                 @if($service->active)

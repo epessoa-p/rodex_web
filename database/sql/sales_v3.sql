@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Ventas v3
+--  Rodex — Ventas v3
 --  Devoluciones: registrar el efectivo realmente reembolsado
 --  (distinto del valor de la mercadería devuelta `total`).
 -- ============================================================

@@ -1,5 +1,5 @@
 -- =====================================================================
---  VR Motors — Módulo de Fidelización (puntos y recompensas) — v1
+--  Rodex — Módulo de Fidelización (puntos y recompensas) — v1
 --  Equivale a la migración: 2026_06_19_000001_create_loyalty_tables.php
 --
 --  Crea: loyalty_settings, loyalty_rewards, loyalty_redemptions,

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Workshop;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Workshop\Concerns\HandlesWorkOrderCharge;
 use App\Models\Client;
+use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Vehicle;
 use App\Models\Workshop\Mechanic;
@@ -22,7 +23,7 @@ class WorkOrderController extends Controller
 {
     use HandlesWorkOrderCharge;
 
-    /** Órdenes de Trabajo activas (no entregadas ni anuladas) */
+    /** Órdenes de Trabajo: todas (incluye entregadas y anuladas), filtrables por estado. */
     public function index(Request $request)
     {
         $cid = $this->companyScope();
@@ -30,7 +31,6 @@ class WorkOrderController extends Controller
         $user = auth()->user();
         $query = WorkOrder::with(['client', 'vehicle', 'mechanic'])
             ->when($cid, fn ($q) => $q->where('company_id', $cid))
-            ->whereNotIn('status', ['entregada', 'anulada'])
             ->latest();
 
         // ¿Puede ver TODAS las órdenes? Sin el permiso, solo las que registró.
@@ -46,12 +46,36 @@ class WorkOrderController extends Controller
         if ($request->mechanic_id) {
             $query->where('mechanic_id', $request->mechanic_id);
         }
+        if ($request->client_id) {
+            $query->where('client_id', $request->client_id);
+        }
+        if ($request->payment_status) {
+            $query->where('payment_status', $request->payment_status);
+        }
+        // Rango por fecha de recepción (la que se muestra en el listado).
+        if ($request->date_from) {
+            $query->whereDate('reception_date', '>=', $request->date_from);
+        }
+        if ($request->date_to) {
+            $query->whereDate('reception_date', '<=', $request->date_to);
+        }
+        // Búsqueda libre: código de OT, placa del vehículo o nombre del cliente.
+        if ($request->filled('q')) {
+            $term = trim($request->q);
+            $query->where(function ($qq) use ($term) {
+                $qq->where('code', 'like', "%{$term}%")
+                    ->orWhereHas('vehicle', fn ($v) => $v->where('plate', 'like', "%{$term}%"))
+                    ->orWhereHas('client', fn ($c) => $c->where('full_name', 'like', "%{$term}%"));
+            });
+        }
 
         $mechanics = Mechanic::when($cid, fn ($q) => $q->where('company_id', $cid))->where('active', true)->orderBy('name')->get();
+        $clients   = Client::when($cid, fn ($q) => $q->where('company_id', $cid))->orderBy('full_name')->get(['id', 'full_name']);
 
         return view('workshop.orders.index', [
             'orders'        => $query->paginate(15)->withQueryString(),
             'mechanics'     => $mechanics,
+            'clients'       => $clients,
             'canAllRecords' => $canAllRecords,
         ]);
     }
@@ -85,7 +109,6 @@ class WorkOrderController extends Controller
             'vehicle.year'       => 'nullable|integer|min:1900|max:2100',
             'vehicle.color'      => 'nullable|string|max:40',
             'vehicle.vin'        => 'nullable|string|max:60',
-            'branch_id'      => 'nullable|exists:branches,id',
             'reception_date' => 'required|date',
             'mileage'        => 'nullable|integer|min:0',
             'fuel_level'     => 'nullable|string|max:20',
@@ -96,8 +119,11 @@ class WorkOrderController extends Controller
             'photos.*'       => 'image|max:5120',
         ]);
 
+        // La sucursal sale de la relación del personal del usuario (no se elige a mano).
+        $branchId = \App\Models\Personal::where('user_id', auth()->id())->value('branch_id');
+
         try {
-            $wo = DB::transaction(function () use ($request, $validated, $companyId, $mode) {
+            $wo = DB::transaction(function () use ($request, $validated, $companyId, $mode, $branchId) {
                 // Resolver el vehículo: registrar uno nuevo o usar el existente.
                 if ($mode === 'new') {
                     $v = $validated['vehicle'] ?? [];
@@ -122,14 +148,14 @@ class WorkOrderController extends Controller
                     'company_id'     => $companyId,
                     'client_id'      => $validated['client_id'],
                     'vehicle_id'     => $vehicleId,
-                    'branch_id'      => $validated['branch_id'] ?? null,
+                    'branch_id'      => $branchId,
                     'reception_date' => $validated['reception_date'],
                     'mileage'        => $validated['mileage'] ?? null,
                     'fuel_level'     => $validated['fuel_level'] ?? null,
                     'reported_issue' => $validated['reported_issue'] ?? null,
                     'received_items' => $validated['received_items'] ?? null,
                     'notes'          => $validated['notes'] ?? null,
-                    'code'           => $this->nextCode($companyId, $validated['branch_id'] ?? null),
+                    'code'           => $this->nextCode($companyId, $branchId),
                     'status'         => 'recibida',
                     'payment_status' => 'pendiente',
                     'created_by'     => auth()->id(),
@@ -322,6 +348,121 @@ class WorkOrderController extends Controller
         return back()->with('success', 'Repuesto agregado.');
     }
 
+    /**
+     * Compra directa de un repuesto desde la OT: resuelve/crea el producto,
+     * registra el INGRESO de stock (con costo) en el almacén de la sucursal y lo
+     * agrega como repuesto de la orden. Pensado para el ítem que se compra al
+     * momento (p. ej. el aceite de un cambio) y no está en inventario o sin stock.
+     */
+    public function directPurchasePart(Request $request, WorkOrder $order)
+    {
+        $this->authorizeOrder($order);
+        $this->guardEditable($order);
+
+        $validated = $request->validate([
+            'product_id'   => 'nullable|exists:products,id',
+            'product_name' => 'nullable|string|max:255',
+            'quantity'     => 'required|integer|min:1',
+            'cost'         => 'required|numeric|min:0',
+            'unit_price'   => 'required|numeric|min:0',
+        ]);
+
+        if (empty($validated['product_id']) && trim((string) ($validated['product_name'] ?? '')) === '') {
+            $msg = 'Elige un producto o escribe el nombre del nuevo.';
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'message' => $msg], 422);
+            }
+            return back()->withErrors(['product_name' => $msg]);
+        }
+
+        try {
+            DB::transaction(function () use ($validated, $order) {
+                $qty  = (int) $validated['quantity'];
+                $cost = (float) $validated['cost'];
+
+                // 1. Resolver el producto: existente por id, por nombre, o crear uno nuevo.
+                if (!empty($validated['product_id'])) {
+                    $product = Product::where('company_id', $order->company_id)
+                        ->findOrFail($validated['product_id']);
+                } else {
+                    $name = trim($validated['product_name']);
+                    $product = Product::where('company_id', $order->company_id)
+                        ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+                        ->first();
+
+                    if (!$product) {
+                        $product = Product::create([
+                            'company_id'    => $order->company_id,
+                            'name'          => $name,
+                            'sku'           => $this->generateProductSku($order->company_id),
+                            'price'         => (float) $validated['unit_price'],
+                            'cost'          => $cost,
+                            'unit'          => 'unidad',
+                            'current_stock' => 0,
+                            'active'        => true,
+                        ]);
+                    }
+                }
+
+                // 2. Ingreso de stock (espejo del descuento de la entrega).
+                $warehouseId = $order->branch?->warehouse_id;
+                if ($warehouseId) {
+                    InventoryMovement::create([
+                        'company_id'    => $order->company_id,
+                        'warehouse_id'  => $warehouseId,
+                        'branch_id'     => $order->branch_id,
+                        'product_id'    => $product->id,
+                        'user_id'       => auth()->id(),
+                        'type'          => 'in',
+                        'quantity'      => $qty,
+                        'unit_cost'     => $cost,
+                        'reference'     => $order->code,
+                        'notes'         => 'Compra directa OT ' . $order->code,
+                        'movement_date' => now(),
+                    ]);
+                }
+                Product::where('id', $product->id)->increment('current_stock', $qty);
+
+                // 3. Agregar el repuesto a la OT.
+                WorkOrderPart::create([
+                    'work_order_id' => $order->id,
+                    'product_id'    => $product->id,
+                    'quantity'      => $qty,
+                    'unit_price'    => (float) $validated['unit_price'],
+                    'subtotal'      => (float) $qty * (float) $validated['unit_price'],
+                ]);
+            });
+        } catch (\Throwable $e) {
+            Log::error('Error en compra directa de repuesto', ['ot' => $order->code, 'msg' => $e->getMessage()]);
+            $msg = 'No se pudo registrar la compra: ' . $e->getMessage();
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'message' => $msg], 422);
+            }
+            return back()->withErrors(['error' => $msg]);
+        }
+
+        $order->recalcTotals();
+
+        if ($request->expectsJson()) {
+            return $this->cardsJson($order, 'Repuesto comprado y agregado.');
+        }
+        return back()->with('success', 'Repuesto comprado y agregado.');
+    }
+
+    /** SKU interno correlativo y único por empresa: {prefijo}-{correlativo}. */
+    private function generateProductSku(int $companyId): string
+    {
+        $prefix = config('inventory.code_prefix', 'PRD');
+        $seq    = Product::withTrashed()->where('company_id', $companyId)->count() + 1;
+
+        do {
+            $sku = $prefix . '-' . str_pad((string) $seq, 5, '0', STR_PAD_LEFT);
+            $seq++;
+        } while (Product::withTrashed()->where('company_id', $companyId)->where('sku', $sku)->exists());
+
+        return $sku;
+    }
+
     public function removePart(WorkOrder $order, WorkOrderPart $part)
     {
         $this->authorizeOrder($order);
@@ -499,6 +640,10 @@ class WorkOrderController extends Controller
         $products  = Product::when($cid, fn ($q) => $q->where('company_id', $cid))->where('active', true)->orderBy('name')->get();
         $branches  = \App\Models\Branch::when($cid, fn ($q) => $q->where('company_id', $cid))->where('active', true)->orderBy('name')->get();
 
-        return compact('clients', 'vehicles', 'mechanics', 'services', 'products', 'branches');
+        // Modelos de moto (catálogo) para sugerir/seleccionar en el registro de vehículo.
+        $motoModels = \App\Models\Motos\MotoModel::when($cid, fn ($q) => $q->where('company_id', $cid))
+            ->with('brand')->orderBy('name')->get();
+
+        return compact('clients', 'vehicles', 'mechanics', 'services', 'products', 'branches', 'motoModels');
     }
 }

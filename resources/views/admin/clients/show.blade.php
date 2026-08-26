@@ -103,7 +103,7 @@
                                     ['link' => route('sales.show', $s), 'text' => $s->code, 'mono' => true],
                                     ['text' => optional($s->sale_date)->format('d/m/Y'), 'muted' => true],
                                     ['badge' => $s->sale_type_label, 'color' => $s->sale_type_color],
-                                    ['text' => '$'.number_format($s->total, 2), 'end' => true, 'bold' => true],
+                                    ['text' => money($s->total), 'end' => true, 'bold' => true],
                                     ['badge' => $s->payment_status_label, 'color' => $s->payment_status_color],
                                 ],
                             ])
@@ -120,7 +120,7 @@
                                     ['link' => route('workshop.orders.show', $o), 'text' => $o->code, 'mono' => true],
                                     ['text' => optional($o->reception_date)->format('d/m/Y'), 'muted' => true],
                                     ['badge' => $o->status_label, 'color' => $o->status_color],
-                                    ['text' => '$'.number_format($o->total, 2), 'end' => true, 'bold' => true],
+                                    ['text' => money($o->total), 'end' => true, 'bold' => true],
                                     ['badge' => $o->payment_status_label, 'color' => $o->payment_status_color],
                                 ],
                             ])
@@ -154,7 +154,7 @@
                                     ['link' => route('rentals.show', $r), 'text' => $r->code, 'mono' => true],
                                     ['text' => $r->motoUnit?->display_name ?? '—'],
                                     ['text' => optional($r->start_date)->format('d/m/Y').' → '.optional($r->end_date)->format('d/m/Y'), 'muted' => true],
-                                    ['text' => 'Bs. '.number_format($r->total, 2), 'end' => true, 'bold' => true],
+                                    ['text' => money($r->total), 'end' => true, 'bold' => true],
                                     ['badge' => $r->status_label, 'color' => $r->status_color],
                                 ],
                             ])
@@ -170,7 +170,7 @@
                                 'render' => fn($q) => [
                                     ['link' => route('quotes.show', $q), 'text' => $q->code, 'mono' => true],
                                     ['text' => optional($q->quote_date)->format('d/m/Y'), 'muted' => true],
-                                    ['text' => '$'.number_format($q->total, 2), 'end' => true, 'bold' => true],
+                                    ['text' => money($q->total), 'end' => true, 'bold' => true],
                                     ['badge' => $q->status_label, 'color' => $q->status_color],
                                     ['text' => ''],
                                 ],

@@ -74,10 +74,10 @@
                         <dd class="col-7 mb-0">{{ $unit->branch?->name ?? '—' }}</dd>
 
                         <dt class="col-5 text-muted fw-normal">Costo</dt>
-                        <dd class="col-7 mb-0">${{ number_format($unit->cost, 2) }}</dd>
+                        <dd class="col-7 mb-0">{{ money($unit->cost, null, 2) }}</dd>
 
                         <dt class="col-5 text-muted fw-normal">Precio venta</dt>
-                        <dd class="col-7 mb-0 fw-bold">${{ number_format($unit->price, 2) }}</dd>
+                        <dd class="col-7 mb-0 fw-bold">{{ money($unit->price, null, 2) }}</dd>
 
                         <dt class="col-5 text-muted fw-normal">Estado</dt>
                         <dd class="col-7 mb-0">
@@ -117,7 +117,7 @@
                         <dt class="col-5 text-muted fw-normal">Fecha</dt>
                         <dd class="col-7 mb-0">{{ $unit->sale->sale_date->format('d/m/Y') }}</dd>
                         <dt class="col-5 text-muted fw-normal">Total</dt>
-                        <dd class="col-7 mb-0 fw-bold">${{ number_format($unit->sale->total, 2) }}</dd>
+                        <dd class="col-7 mb-0 fw-bold">{{ money($unit->sale->total, null, 2) }}</dd>
                     </dl>
                 </div>
             </div>

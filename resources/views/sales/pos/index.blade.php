@@ -39,8 +39,8 @@
             'category_id'      => $p->category_id,
             'brand'            => $p->brand?->name ?? '',
             'description'      => $p->description ?? '',
+            // Modelos compatibles: catálogo estructurado (moto_models) enlazado al producto.
             'compatible_models'=> $p->motoModels->pluck('display_name')->implode(', '),
-            'model_ids'        => $p->motoModels->pluck('id')->values()->all(),
             'photo'            => count($photos) > 0 ? $photos[0] : null,
             'photos'           => $photos,
         ];
@@ -130,28 +130,13 @@
                     @endforeach
                 </div>
             </div>
-            {{-- Category filter bar por CÓDIGO (mismo filtro, muestra el code) --}}
-            <div class="d-flex align-items-center gap-2 mb-2 flex-nowrap">
-                <span class="text-muted flex-shrink-0" style="font-size:.7rem;"><i class="bi bi-upc me-1"></i>Código</span>
-                <div class="cat-filter-bar flex-grow-1" id="catCodeBar" style="min-width:0;">
-                    <button type="button" class="cat-pill active" data-cat="">Todas</button>
-                    @foreach($categories as $cat)
-                    <button type="button" class="cat-pill" data-cat="{{ $cat->id }}">{{ $cat->code ?: '—' }}</button>
-                    @endforeach
-                </div>
-            </div>
-            {{-- Model filter bar (multiselección) --}}
-            @if($motoModels->count())
-            <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap">
+            {{-- Model filter bar (por "Modelos compatibles"; se llena por JS) --}}
+            <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap" id="modelBarWrap" style="display:none;">
                 <span class="text-muted flex-shrink-0" style="font-size:.7rem;"><i class="bi bi-bicycle me-1"></i>Modelo</span>
                 <div class="cat-filter-bar flex-grow-1" id="modelBar" style="min-width:0;">
                     <button type="button" class="cat-pill model-pill active" data-model="">Todos</button>
-                    @foreach($motoModels as $m)
-                    <button type="button" class="cat-pill model-pill" data-model="{{ $m->id }}">{{ $m->display_name }}</button>
-                    @endforeach
                 </div>
             </div>
-            @endif
             {{-- Grid --}}
             <div id="productGrid" class="row g-2 align-content-start pb-2">
                 {{-- Filled by JS --}}
@@ -217,7 +202,7 @@
                         <div class="px-3 pt-2 pb-1">
                             <div class="d-flex justify-content-between align-items-center small mb-1">
                                 <span class="text-muted">Subtotal</span>
-                                <span id="cartSubtotal">$0.00</span>
+                                <span id="cartSubtotal">{{ currency_symbol() }} 0.00</span>
                             </div>
                             <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
                                 <label class="text-muted small mb-0" for="discountPct">Descuento <span class="text-muted" style="font-size:.72rem;">(% s/ ganancia)</span></label>
@@ -235,7 +220,7 @@
                             </div>
                             <div class="d-flex justify-content-between fw-bold border-top pt-2 mt-1">
                                 <span>TOTAL</span>
-                                <span id="cartTotal" class="fs-5 text-dark">$0.00</span>
+                                <span id="cartTotal" class="fs-5 text-dark">{{ currency_symbol() }} 0.00</span>
                             </div>
                         </div>
                         {{-- Action buttons --}}
@@ -334,7 +319,7 @@
                     <div class="col-md-3">
                         <label class="form-label small fw-semibold">Pago inicial</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-light px-2">$</span>
+                            <span class="input-group-text bg-light px-2">{{ currency_symbol() }}</span>
                             <input type="number" id="cm_downpayment" class="form-control" min="0" step="0.01" value="0" placeholder="0.00"
                                    oninput="updateBalanceIndicator()">
                         </div>
@@ -434,7 +419,7 @@
                     <div class="col-7">
                         <label class="form-label small fw-semibold" for="qi_price">Precio unitario <span class="text-danger">*</span></label>
                         <div class="input-group">
-                            <span class="input-group-text bg-light px-2">$</span>
+                            <span class="input-group-text bg-light px-2">{{ currency_symbol() }}</span>
                             <input type="number" id="qi_price" class="form-control" min="0" step="0.01" value="" placeholder="0.00" inputmode="decimal">
                         </div>
                     </div>
@@ -481,18 +466,13 @@
                         @endforeach
                     </div>
                 </div>
-                {{-- Filtro modelo (multiselección) --}}
-                @if($motoModels->count())
-                <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap">
+                {{-- Filtro modelo (por "Modelos compatibles"; se llena por JS) --}}
+                <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap" id="stockModelBarWrap" style="display:none;">
                     <span class="text-muted flex-shrink-0" style="font-size:.7rem;"><i class="bi bi-bicycle me-1"></i>Modelo</span>
                     <div class="cat-filter-bar flex-grow-1" id="stockModelBar" style="min-width:0;">
                         <button type="button" class="cat-pill model-pill active" data-model="">Todos</button>
-                        @foreach($motoModels as $m)
-                        <button type="button" class="cat-pill model-pill" data-model="{{ $m->id }}">{{ $m->display_name }}</button>
-                        @endforeach
                     </div>
                 </div>
-                @endif
                 <div class="table-responsive">
                     <table class="table table-sm table-hover align-middle mb-0" style="font-size:.8rem;">
                         <thead class="table-light"><tr id="stockHead"></tr></thead>
@@ -677,7 +657,34 @@ let installmentCount = 0;
 let directItemSeq = 0;   // secuencia para ítems de "venta rápida" (sin product_id)
 
 // Escapes para insertar texto del usuario en HTML / atributos
-function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Modelos compatibles de un producto, como lista de tokens (texto libre por comas).
+function productModels(p) {
+    return (p.compatible_models || '').split(',').map(s => s.trim()).filter(Boolean);
+}
+
+// Llena las barras de filtro de modelo con los tokens distintos de todos los
+// productos (case-insensitive) y muestra la barra solo si hay modelos.
+function buildModelBars() {
+    const seen = new Map(); // clave en minúscula -> texto a mostrar
+    PRODUCTS.forEach(p => productModels(p).forEach(t => {
+        const k = t.toLowerCase();
+        if (!seen.has(k)) seen.set(k, t);
+    }));
+    const tokens = Array.from(seen.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+    const pills = tokens.map(([k, disp]) =>
+        `<button type="button" class="cat-pill model-pill" data-model="${escHtml(k)}">${escHtml(disp)}</button>`
+    ).join('');
+
+    [['modelBar', 'modelBarWrap'], ['stockModelBar', 'stockModelBarWrap']].forEach(([barId, wrapId]) => {
+        const bar = document.getElementById(barId);
+        const wrap = document.getElementById(wrapId);
+        if (!bar || !wrap) return;
+        bar.insertAdjacentHTML('beforeend', pills);
+        wrap.style.display = tokens.length ? '' : 'none';
+    });
+}
 function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
 const selectedCats   = new Set();
 const selectedModels = new Set();
@@ -724,9 +731,9 @@ function renderStockTable(filter) {
 
     const rows = PRODUCTS.filter(p => {
         if (!WH_STOCK[p.id]) return false; // sin stock en ningún almacén
-        if (q && !(p.name.toLowerCase().includes(q) || (p.code && p.code.toLowerCase().includes(q)) || p.sku.toLowerCase().includes(q))) return false;
+        if (q && !(p.name.toLowerCase().includes(q) || (p.code && p.code.toLowerCase().includes(q)) || p.sku.toLowerCase().includes(q) || (p.compatible_models && p.compatible_models.toLowerCase().includes(q)))) return false;
         if (stockCats.size && !stockCats.has(String(p.category_id))) return false;
-        if (stockModels.size && !(p.model_ids || []).some(id => stockModels.has(String(id)))) return false;
+        if (stockModels.size && !productModels(p).some(m => stockModels.has(m.toLowerCase()))) return false;
         return true;
     });
 
@@ -885,14 +892,15 @@ function renderGrid(filter) {
             p.name.toLowerCase().includes(q) ||
             (p.code && p.code.toLowerCase().includes(q)) ||
             p.sku.toLowerCase().includes(q) ||
-            p.category.toLowerCase().includes(q))
+            p.category.toLowerCase().includes(q) ||
+            (p.compatible_models && p.compatible_models.toLowerCase().includes(q)))
         : PRODUCTS.slice();
 
     if (selectedCats.size) {
         list = list.filter(p => selectedCats.has(String(p.category_id)));
     }
     if (selectedModels.size) {
-        list = list.filter(p => (p.model_ids || []).some(id => selectedModels.has(String(id))));
+        list = list.filter(p => productModels(p).some(m => selectedModels.has(m.toLowerCase())));
     }
 
     if (list.length === 0) {
@@ -927,7 +935,7 @@ function renderGrid(filter) {
                 <div class="mb-1">${codeHtml}</div>
                 <div class="text-muted mb-1 text-truncate" style="font-size:.66rem;" title="${metaEsc}">${meta}</div>
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                    <span class="fw-bold" style="font-size:.85rem;">$${p.price.toFixed(2)}</span>
+                    <span class="fw-bold" style="font-size:.85rem;">${money(p.price, 2)}</span>
                     ${stockBadge}
                 </div>
             </div>
@@ -1034,8 +1042,8 @@ function renderCart() {
                        value="${it.qty}"
                        oninput="updateQty('${key}', this.value)">
             </td>
-            <td class="text-end py-2">$${it.product.price.toFixed(2)}</td>
-            <td class="text-end py-2 fw-semibold">$${sub}</td>
+            <td class="text-end py-2">${money(it.product.price, 2)}</td>
+            <td class="text-end py-2 fw-semibold">${money(sub, 2)}</td>
             <td class="pe-2 py-2">
                 <button type="button" class="btn btn-sm btn-light border text-danger p-0 px-1"
                         onclick="removeFromCart('${key}')" title="Quitar">
@@ -1079,15 +1087,15 @@ function recalcCart() {
     const disc  = Math.max(0, Math.round(Math.max(0, profit) * pct / 100 * 100) / 100);
     const total = Math.max(0, sub - disc);
 
-    document.getElementById('cartSubtotal').textContent = '$' + sub.toFixed(2);
+    document.getElementById('cartSubtotal').textContent = money(sub, 2);
     const dRow = document.getElementById('discountAmountRow');
     if (disc > 0) {
         dRow.style.display = '';
-        document.getElementById('cartDiscount').textContent = '-$' + disc.toFixed(2);
+        document.getElementById('cartDiscount').textContent = '-' + money(disc, 2);
     } else {
         dRow.style.display = 'none';
     }
-    document.getElementById('cartTotal').textContent = '$' + total.toFixed(2);
+    document.getElementById('cartTotal').textContent = money(total, 2);
     return { sub, disc, total, pct, profit };
 }
 
@@ -1194,7 +1202,7 @@ function addInstallmentRow(dateVal, amtVal) {
         </td>
         <td class="py-1">
             <div class="input-group input-group-sm">
-                <span class="input-group-text bg-light px-2">$</span>
+                <span class="input-group-text bg-light px-2">{{ currency_symbol() }}</span>
                 <input type="number" class="form-control inst-amount text-end"
                        step="0.01" min="0" value="${amtVal || ''}"
                        oninput="updateBalanceIndicator()">
@@ -1232,15 +1240,15 @@ function updateBalanceIndicator() {
 
     let recargoLine = pct > 0
         ? `<div class="text-muted small mb-1">
-               Recargo ${pct}%: <strong>$${recargo.toFixed(2)}</strong>
+               Recargo ${pct}%: <strong>${money(recargo, 2)}</strong>
                &nbsp;&middot;&nbsp;
-               Total con recargo: <strong>$${totalConRecargo.toFixed(2)}</strong>
+               Total con recargo: <strong>${money(totalConRecargo, 2)}</strong>
            </div>`
         : '';
 
     ind.innerHTML = recargoLine + (ok
-        ? `<span class="text-success"><i class="bi bi-check-circle me-1"></i>Cuotas OK ($${instSum.toFixed(2)})</span>`
-        : `<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Suma cuotas: $${instSum.toFixed(2)} / Requerido: $${rem.toFixed(2)} (diff: $${diff})</span>`);
+        ? `<span class="text-success"><i class="bi bi-check-circle me-1"></i>Cuotas OK (${money(instSum, 2)})</span>`
+        : `<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Suma cuotas: ${money(instSum, 2)} / Requerido: ${money(rem, 2)} (diff: ${money(diff, 2)})</span>`);
 }
 
 // ── SEARCH ──────────────────────────────────────────────────────────
@@ -1283,8 +1291,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         syncActive();
     }
-    // Categoría: dos barras (nombre + código) sincronizadas sobre el mismo filtro
-    setupMultiBar(['catBar', 'catCodeBar'], 'cat', selectedCats);
+    // Filtro de modelo: pills generadas desde "Modelos compatibles" (texto).
+    buildModelBars();
+    setupMultiBar('catBar', 'cat', selectedCats);
     setupMultiBar('modelBar', 'model', selectedModels);
     // Barras de filtro del modal de stock
     const stockOnChange = function () { renderStockTable(document.getElementById('stockSearch').value); };

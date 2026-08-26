@@ -31,12 +31,17 @@ class Subscription extends Model
     protected $fillable = [
         'company_id', 'plan_id', 'status', 'trial_ends_at',
         'current_period_end', 'grace_days', 'notes', 'created_by',
+        'max_users_override', 'max_branches_override', 'max_products_override', 'features_override',
     ];
 
     protected $casts = [
-        'trial_ends_at'      => 'datetime',
-        'current_period_end' => 'datetime',
-        'grace_days'         => 'integer',
+        'trial_ends_at'         => 'datetime',
+        'current_period_end'    => 'datetime',
+        'grace_days'            => 'integer',
+        'max_users_override'    => 'integer',
+        'max_branches_override' => 'integer',
+        'max_products_override' => 'integer',
+        'features_override'     => 'array',
     ];
 
     public function company(): BelongsTo
@@ -52,6 +57,33 @@ class Subscription extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    // ── Ajustes personalizados por empresa (override sobre el plan) ─────
+
+    /**
+     * Límite efectivo para una clave ('users', 'branches', 'products'):
+     * el override de la empresa si está definido; si no, el del plan.
+     * null = ilimitado.
+     */
+    public function effectiveLimitFor(string $key): ?int
+    {
+        $override = $this->{'max_' . $key . '_override'};
+
+        return $override !== null ? $override : $this->plan?->limitFor($key);
+    }
+
+    /**
+     * Módulos efectivos: el override de la empresa si está definido (reemplaza
+     * al plan); si no, los del plan.
+     */
+    public function effectiveFeatures(): array
+    {
+        if ($this->features_override !== null) {
+            return $this->features_override;
+        }
+
+        return $this->plan?->features ?? [];
     }
 
     // ── Estado efectivo ───────────────────────────────────────────

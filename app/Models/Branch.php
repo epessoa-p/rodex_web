@@ -27,11 +27,25 @@ class Branch extends Model
         'manager_name',
         'color',
         'active',
+        'public_token',
     ];
 
     public function getColorOrDefaultAttribute(): string
     {
         return $this->color ?: '#6c757d';
+    }
+
+    /**
+     * Asegura un token público para el catálogo de esta sucursal y lo devuelve.
+     * (Mismo patrón que LoyaltySetting::ensurePublicToken.)
+     */
+    public function ensurePublicToken(): string
+    {
+        if (! $this->public_token) {
+            $this->forceFill(['public_token' => \Illuminate\Support\Str::random(32)])->save();
+        }
+
+        return $this->public_token;
     }
 
     protected $casts = [

@@ -88,7 +88,7 @@
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold" for="opening_balance">Saldo inicial</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light">$</span>
+                                    <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                     <input type="number" id="opening_balance" name="opening_balance"
                                            step="0.01" min="0"
                                            class="form-control @error('opening_balance') is-invalid @enderror"

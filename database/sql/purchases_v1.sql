@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Módulo de Compras v1
+--  Rodex — Módulo de Compras v1
 --  Flujo: Orden de Compra → Recepción → Factura → Cuenta por Pagar
 --  Tesorería con cuentas de fondos para pagos a proveedores
 -- ============================================================

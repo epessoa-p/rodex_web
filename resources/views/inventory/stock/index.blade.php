@@ -44,7 +44,7 @@
             </a>
             <a href="{{ route('inventory.stock.import') }}"
                class="btn btn-sm btn-primary">
-                <i class="bi bi-upload me-1"></i>Migrar inventario
+                <i class="bi bi-upload me-1"></i>Importar productos
             </a>
             <a href="{{ route('products.index') }}"
                class="btn btn-sm btn-light border">
@@ -143,7 +143,7 @@
                     <div class="d-flex align-items-center gap-2 text-muted" style="font-size:.66rem;letter-spacing:.04em;">
                         <i class="bi bi-cash-stack"></i>VALOR A COSTO
                     </div>
-                    <div class="fw-bold text-dark" style="font-size:1.05rem;">Bs. <span id="kpiCost">{{ number_format($valueCost, 2) }}</span></div>
+                    <div class="fw-bold text-dark" style="font-size:1.05rem;">{{ currency_symbol() }} <span id="kpiCost">{{ number_format($valueCost, 2) }}</span></div>
                 </div>
             </div>
         </div>
@@ -153,7 +153,7 @@
                     <div class="d-flex align-items-center gap-2 text-muted" style="font-size:.66rem;letter-spacing:.04em;">
                         <i class="bi bi-tag"></i>VALOR A VENTA
                     </div>
-                    <div class="fw-bold text-success" style="font-size:1.05rem;">Bs. <span id="kpiPrice">{{ number_format($valuePrice, 2) }}</span></div>
+                    <div class="fw-bold text-success" style="font-size:1.05rem;">{{ currency_symbol() }} <span id="kpiPrice">{{ number_format($valuePrice, 2) }}</span></div>
                 </div>
             </div>
         </div>
@@ -163,7 +163,7 @@
                     <div class="d-flex align-items-center gap-2" style="font-size:.66rem;letter-spacing:.04em;opacity:.8;">
                         <i class="bi bi-graph-up-arrow"></i>GANANCIA POTENCIAL
                     </div>
-                    <div class="fw-bold" style="font-size:1.05rem;">Bs. <span id="kpiProfit">{{ number_format($potentialProfit, 2) }}</span></div>
+                    <div class="fw-bold" style="font-size:1.05rem;">{{ currency_symbol() }} <span id="kpiProfit">{{ number_format($potentialProfit, 2) }}</span></div>
                 </div>
             </div>
         </div>
@@ -256,6 +256,11 @@
                                 <span class="text-muted" style="font-size:.73rem;">
                                     {{ $product->code ?: $product->sku }}
                                 </span>
+                                @if($product->origin)
+                                <span class="badge bg-light text-dark border fw-normal ms-1" style="font-size:.66rem;vertical-align:middle;">
+                                    <i class="bi bi-globe-americas me-1 text-muted"></i>{{ $product->origin->name }}
+                                </span>
+                                @endif
                                 @if($isLow)
                                 <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1"
                                       style="font-size:.68rem;vertical-align:middle;">
@@ -268,7 +273,7 @@
                             <td class="py-2">
                                 <div class="input-group input-group-sm" style="max-width:130px;">
                                     <span class="input-group-text bg-light px-2 text-muted"
-                                          style="font-size:.78rem;">Bs.</span>
+                                          style="font-size:.78rem;">{{ currency_symbol() }}</span>
                                     <input type="number"
                                            class="form-control form-control-sm fld-input"
                                            data-field="price"
@@ -283,7 +288,7 @@
                             <td class="py-2">
                                 <div class="input-group input-group-sm" style="max-width:130px;">
                                     <span class="input-group-text bg-light px-2 text-muted"
-                                          style="font-size:.78rem;">Bs.</span>
+                                          style="font-size:.78rem;">{{ currency_symbol() }}</span>
                                     <input type="number"
                                            class="form-control form-control-sm fld-input"
                                            data-field="cost"
@@ -327,7 +332,7 @@
                                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('products.create', auth()->user()->getCurrentCompany()))
                                 <a href="{{ route('inventory.stock.import') }}"
                                    class="btn btn-sm btn-primary mt-3">
-                                    <i class="bi bi-upload me-1"></i>Migrar inventario
+                                    <i class="bi bi-upload me-1"></i>Importar productos
                                 </a>
                                 @endif
                             </td>

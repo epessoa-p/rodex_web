@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Alquileres: Renta periódica + Fase 2
+--  Rodex — Alquileres: Renta periódica + Fase 2
 -- ============================================================
 
 -- ── 1. Ajustes a rental_contracts ────────────────────────────

@@ -124,12 +124,12 @@
                                         @endif
                                     </td>
                                     <td class="py-3 text-end small">{{ number_format($item->quantity, 0) }}</td>
-                                    <td class="py-3 text-end small">${{ number_format($item->unit_price, 2) }}</td>
+                                    <td class="py-3 text-end small">{{ money($item->unit_price, null, 2) }}</td>
                                     <td class="py-3 text-end small text-muted">
-                                        @if($item->discount > 0) ${{ number_format($item->discount, 2) }} @else — @endif
+                                        @if($item->discount > 0) {{ money($item->discount, null, 2) }} @else — @endif
                                     </td>
                                     <td class="py-3 text-end fw-semibold small pe-4">
-                                        ${{ number_format($item->quantity * $item->unit_price - ($item->discount ?? 0), 2) }}
+                                        {{ money($item->quantity * $item->unit_price - ($item->discount ?? 0), null, 2) }}
                                     </td>
                                 </tr>
                                 @empty
@@ -149,37 +149,37 @@
                             @endphp
                             <div class="d-flex justify-content-between mb-1 small text-muted">
                                 <span>Subtotal</span>
-                                <span>${{ number_format($itemsSubtotal, 2) }}</span>
+                                <span>{{ money($itemsSubtotal, null, 2) }}</span>
                             </div>
                             @if($sale->discount)
                             <div class="d-flex justify-content-between mb-1 small text-muted">
                                 <span>Descuento global</span>
-                                <span>-${{ number_format($sale->discount, 2) }}</span>
+                                <span>-{{ money($sale->discount, null, 2) }}</span>
                             </div>
                             @endif
                             @if($sale->tax)
                             <div class="d-flex justify-content-between mb-1 small text-muted">
                                 <span>Impuesto</span>
-                                <span>${{ number_format($sale->tax, 2) }}</span>
+                                <span>{{ money($sale->tax, null, 2) }}</span>
                             </div>
                             @endif
                             @if($hasReturns)
                             <div class="d-flex justify-content-between mb-1 small text-danger">
                                 <span><i class="bi bi-arrow-return-left me-1"></i>Devoluciones</span>
-                                <span>−${{ number_format($totalReturned, 2) }}</span>
+                                <span>−{{ money($totalReturned, null, 2) }}</span>
                             </div>
                             @endif
                             <div class="d-flex justify-content-between fw-bold border-top pt-2">
                                 <span>Total {{ $hasReturns ? 'neto' : '' }}</span>
-                                <span>${{ number_format($sale->total, 2) }}</span>
+                                <span>{{ money($sale->total, null, 2) }}</span>
                             </div>
                             <div class="d-flex justify-content-between small text-success mt-1">
                                 <span>Pagado</span>
-                                <span>${{ number_format($sale->paid_amount, 2) }}</span>
+                                <span>{{ money($sale->paid_amount, null, 2) }}</span>
                             </div>
                             <div class="d-flex justify-content-between fw-bold border-top pt-2 {{ $sale->balance > 0 ? 'text-danger' : 'text-muted' }}">
                                 <span>Saldo</span>
-                                <span>${{ number_format($sale->balance, 2) }}</span>
+                                <span>{{ money($sale->balance, null, 2) }}</span>
                             </div>
                         </div>
                     </div>
@@ -216,10 +216,10 @@
                                         <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1" style="font-size:.65rem;">VENCIDA</span>
                                         @endif
                                     </td>
-                                    <td class="py-2 text-end small">${{ number_format($inst->amount, 2) }}</td>
-                                    <td class="py-2 text-end small text-success">${{ number_format($inst->paid_amount, 2) }}</td>
+                                    <td class="py-2 text-end small">{{ money($inst->amount, null, 2) }}</td>
+                                    <td class="py-2 text-end small text-success">{{ money($inst->paid_amount, null, 2) }}</td>
                                     <td class="py-2 text-end fw-semibold small {{ $inst->balance > 0 ? 'text-danger' : 'text-muted' }}">
-                                        ${{ number_format($inst->balance, 2) }}
+                                        {{ money($inst->balance, null, 2) }}
                                     </td>
                                     <td class="py-2 pe-4">
                                         <span class="badge bg-{{ $inst->status_color }}-subtle text-{{ $inst->status_color }} border border-{{ $inst->status_color }}-subtle" style="font-size:.68rem;">
@@ -245,7 +245,7 @@
                     @forelse($sale->payments as $payment)
                     <div class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom border-light">
                         <div>
-                            <div class="fw-semibold small">${{ number_format($payment->amount, 2) }}</div>
+                            <div class="fw-semibold small">{{ money($payment->amount, null, 2) }}</div>
                             <div class="text-muted" style="font-size:.78rem;">
                                 {{ $payment->payment_date->format('d/m/Y') }}
                                 @if($payment->method) &middot; {{ ucfirst($payment->method) }} @endif
@@ -268,7 +268,7 @@
             <div class="card card-soft cs-amber mt-4">
                 <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
                     <h6 class="mb-0 fw-semibold"><i class="bi bi-arrow-return-left me-2 text-muted"></i>Devoluciones</h6>
-                    <span class="badge bg-dark text-white">−${{ number_format($totalReturned, 2) }}</span>
+                    <span class="badge bg-dark text-white">−{{ money($totalReturned, null, 2) }}</span>
                 </div>
                 <div class="card-body p-0">
                     @foreach($sale->returns as $ret)
@@ -280,7 +280,7 @@
                                 {{ $ret->return_date->format('d/m/Y') }} &middot; {{ $ret->refund_method_label }}
                             </div>
                         </div>
-                        <div class="fw-semibold small text-danger">−${{ number_format($ret->total, 2) }}</div>
+                        <div class="fw-semibold small text-danger">−{{ money($ret->total, null, 2) }}</div>
                     </a>
                     @endforeach
                 </div>
@@ -323,7 +323,7 @@
             <div class="card card-soft cs-rose">
                 <div class="card-body p-4">
                     <div class="text-muted small mb-1">Saldo pendiente</div>
-                    <div class="fw-bold text-danger fs-4">${{ number_format($sale->balance, 2) }}</div>
+                    <div class="fw-bold text-danger fs-4">{{ money($sale->balance, null, 2) }}</div>
                     @if($sale->sale_type === 'credit')
                         @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('credit.collect', auth()->user()->getCurrentCompany()))
                         <button type="button" class="btn btn-primary btn-sm w-100 mt-3 no-print" data-bs-toggle="modal" data-bs-target="#cobroModal{{ $sale->id }}">

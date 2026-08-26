@@ -167,12 +167,12 @@
                         <div class="px-3 pt-2 pb-1">
                             <div class="d-flex justify-content-between align-items-center small mb-1">
                                 <span class="text-muted">Subtotal</span>
-                                <span id="cartSubtotal">$0.00</span>
+                                <span id="cartSubtotal">{{ currency_symbol() }} 0.00</span>
                             </div>
                             <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
                                 <label class="text-muted small mb-0" for="discount">Descuento</label>
                                 <div class="input-group input-group-sm" style="width:110px;">
-                                    <span class="input-group-text bg-light px-2">$</span>
+                                    <span class="input-group-text bg-light px-2">{{ currency_symbol() }}</span>
                                     <input type="number" id="discount" name="discount"
                                            class="form-control text-end" min="0" step="0.01"
                                            value="0" placeholder="0.00"
@@ -181,7 +181,7 @@
                             </div>
                             <div class="d-flex justify-content-between fw-bold border-top pt-2 mt-1">
                                 <span>TOTAL</span>
-                                <span id="cartTotal" class="fs-5 text-dark">$0.00</span>
+                                <span id="cartTotal" class="fs-5 text-dark">{{ currency_symbol() }} 0.00</span>
                             </div>
                         </div>
 
@@ -423,7 +423,7 @@ function openProductModal(pid) {
     modal.querySelector('#pmGallery').innerHTML = galleryHtml;
     modal.querySelector('#pmName').textContent  = p.name;
     modal.querySelector('#pmSku').textContent   = p.sku;
-    modal.querySelector('#pmPrice').textContent = '$' + p.price.toFixed(2);
+    modal.querySelector('#pmPrice').textContent = money(p.price, 2);
     modal.querySelector('#pmStock').textContent = p.stock > 0 ? p.stock + ' en stock' : 'Sin stock';
     modal.querySelector('#pmStock').className   = 'badge ' + (p.stock > 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle');
     modal.querySelector('#pmCategory').textContent = p.category || '—';
@@ -492,7 +492,7 @@ function renderGrid(filter) {
                 <div class="fw-semibold lh-sm mb-1" style="font-size:.8rem;">${p.name}</div>
                 <div class="text-muted mb-1" style="font-size:.7rem;">${p.sku}</div>
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                    <span class="fw-bold" style="font-size:.85rem;">$${p.price.toFixed(2)}</span>
+                    <span class="fw-bold" style="font-size:.85rem;">${money(p.price, 2)}</span>
                     ${stockBadge}
                 </div>
             </div>
@@ -559,8 +559,8 @@ function renderCart() {
                        value="${it.qty}"
                        oninput="updateQty(${it.product.id}, this.value)">
             </td>
-            <td class="text-end py-2">$${it.product.price.toFixed(2)}</td>
-            <td class="text-end py-2 fw-semibold">$${sub}</td>
+            <td class="text-end py-2">${money(it.product.price, 2)}</td>
+            <td class="text-end py-2 fw-semibold">${money(sub, 2)}</td>
             <td class="pe-2 py-2">
                 <button type="button" class="btn btn-sm btn-light border text-danger p-0 px-1"
                         onclick="removeFromCart(${it.product.id})" title="Quitar">
@@ -591,8 +591,8 @@ function recalcCart() {
     const sub   = items.reduce((s, it) => s + it.qty * it.product.price, 0);
     const disc  = parseFloat(document.getElementById('discount').value) || 0;
     const total = Math.max(0, sub - disc);
-    document.getElementById('cartSubtotal').textContent = '$' + sub.toFixed(2);
-    document.getElementById('cartTotal').textContent    = '$' + total.toFixed(2);
+    document.getElementById('cartSubtotal').textContent = money(sub, 2);
+    document.getElementById('cartTotal').textContent    = money(total, 2);
     return { sub, disc, total };
 }
 

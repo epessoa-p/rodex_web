@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Compras v2: vincular recepciones a facturas
+--  Rodex — Compras v2: vincular recepciones a facturas
 --  Evita doble facturación de recepciones parciales de una OC
 -- ============================================================
 

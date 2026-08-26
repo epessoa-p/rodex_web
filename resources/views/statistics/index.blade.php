@@ -1,18 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Estadísticas')
 @section('page')
-@php
-    $tabs = [
-        'resumen'    => ['Resumen', 'bi-grid-1x2'],
-        'ventas'     => ['Ventas', 'bi-cart'],
-        'personal'   => ['Personal', 'bi-people'],
-        'clientes'   => ['Clientes', 'bi-person-vcard'],
-        'compras'    => ['Compras', 'bi-bag'],
-        'inventario' => ['Inventario', 'bi-box-seam'],
-        'taller'     => ['Taller', 'bi-tools'],
-        'alquileres' => ['Alquileres', 'bi-bicycle'],
-    ];
-@endphp
+{{-- $tabs llega del controlador ya filtrado por el plan de la empresa. --}}
 <div class="container-fluid">
 
     {{-- Header --}}

@@ -38,10 +38,10 @@
             {{-- Main column --}}
             <div class="col-lg-8">
 
-                {{-- Cliente --}}
-                <div class="card border-0 shadow-sm mb-4">
+                {{-- Cliente y mecánico --}}
+                <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #2563eb !important;">
                     <div class="card-header bg-white border-bottom py-3 px-4">
-                        <h6 class="mb-0 fw-semibold"><i class="bi bi-person me-2 text-muted"></i>Cliente</h6>
+                        <h6 class="mb-0 fw-semibold"><i class="bi bi-person me-2" style="color:#2563eb;"></i>Cliente y mecánico</h6>
                     </div>
                     <div class="card-body p-4">
                         <div class="row g-3">
@@ -69,21 +69,28 @@
                                 @error('client_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
 
-                            @if(isset($branches) && $branches->count() > 1)
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold" for="branch_id">Sucursal</label>
-                                <select id="branch_id" name="branch_id"
-                                        class="form-select @error('branch_id') is-invalid @enderror">
-                                    <option value="">— Seleccionar sucursal —</option>
-                                    @foreach($branches as $b)
-                                    <option value="{{ $b->id }}" {{ old('branch_id') == $b->id ? 'selected' : '' }}>
-                                        {{ $b->name }}
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="form-label fw-semibold mb-0" for="mechanic_id">
+                                        Mecánico <span class="text-muted small fw-normal">(opcional)</span>
+                                    </label>
+                                    @if($canCreateMechanic)
+                                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" onclick="openQuickMechanic()">
+                                        <i class="bi bi-person-plus me-1"></i>Nuevo
+                                    </button>
+                                    @endif
+                                </div>
+                                <select id="mechanic_id" name="mechanic_id"
+                                        class="form-select @error('mechanic_id') is-invalid @enderror">
+                                    <option value="">Sin asignar</option>
+                                    @foreach($mechanics as $m)
+                                    <option value="{{ $m->id }}" {{ old('mechanic_id') == $m->id ? 'selected' : '' }}>
+                                        {{ $m->name }}{{ $m->specialty ? ' — ' . $m->specialty : '' }}
                                     </option>
                                     @endforeach
                                 </select>
-                                @error('branch_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                @error('mechanic_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
-                            @endif
                         </div>
                     </div>
                 </div>
@@ -92,7 +99,7 @@
                 @php $vehMode = old('vehicle_mode', 'existing'); @endphp
                 <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid var(--brand-red,#e63946) !important;">
                     <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <h6 class="mb-0 fw-semibold"><i class="bi bi-car-front me-2 text-danger"></i>Vehículo</h6>
+                        <h6 class="mb-0 fw-semibold"><i class="bi bi-bicycle me-2 text-danger"></i>Vehículo</h6>
                         <div class="btn-group btn-group-sm" role="group" id="vehicleModeToggle">
                             <button type="button" class="btn {{ $vehMode !== 'new' ? 'btn-danger' : 'btn-outline-danger' }}"
                                     data-mode="existing"><i class="bi bi-list-check me-1"></i>Existente</button>
@@ -136,10 +143,20 @@
                                     @error('vehicle.brand')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold" for="veh_model">Modelo</label>
-                                    <input type="text" id="veh_model" name="vehicle[model]"
+                                    <label class="form-label fw-semibold" for="veh_model">
+                                        Modelo
+                                        @if($motoModels->count())
+                                        <span class="text-muted small fw-normal">(elige del catálogo o escribe)</span>
+                                        @endif
+                                    </label>
+                                    <input type="text" id="veh_model" name="vehicle[model]" list="motoModelsList"
                                            class="form-control" value="{{ old('vehicle.model') }}" maxlength="100"
-                                           placeholder="Ej: CB 125F, FZ-S…">
+                                           placeholder="Ej: CG 150, FZ-S…" autocomplete="off">
+                                    <datalist id="motoModelsList">
+                                        @foreach($motoModels as $mm)
+                                        <option value="{{ $mm->name }}">{{ $mm->display_name }}</option>
+                                        @endforeach
+                                    </datalist>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label fw-semibold" for="veh_plate">Placa</label>
@@ -179,9 +196,9 @@
                 </div>
 
                 {{-- Datos de recepción --}}
-                <div class="card border-0 shadow-sm mb-4">
+                <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #f59e0b !important;">
                     <div class="card-header bg-white border-bottom py-3 px-4">
-                        <h6 class="mb-0 fw-semibold"><i class="bi bi-clipboard2 me-2 text-muted"></i>Datos de recepción</h6>
+                        <h6 class="mb-0 fw-semibold"><i class="bi bi-clipboard2 me-2" style="color:#f59e0b;"></i>Datos de recepción</h6>
                     </div>
                     <div class="card-body p-4">
                         <div class="row g-3">
@@ -252,9 +269,9 @@
                 </div>
 
                 {{-- Fotos del vehículo (estado al recibir) --}}
-                <div class="card border-0 shadow-sm mb-4">
+                <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #7c3aed !important;">
                     <div class="card-header bg-white border-bottom py-3 px-4">
-                        <h6 class="mb-0 fw-semibold"><i class="bi bi-camera me-2 text-muted"></i>Fotos del vehículo</h6>
+                        <h6 class="mb-0 fw-semibold"><i class="bi bi-camera me-2" style="color:#7c3aed;"></i>Fotos del vehículo</h6>
                     </div>
                     <div class="card-body p-4">
                         <p class="text-muted small mb-3">
@@ -262,38 +279,23 @@
                         </p>
                         <x-media-upload name="photos[]" :multiple="true" :bare="true"
                             label="Fotos" icon="bi-camera" :max-mb="5" :max-files="12"
-                            accent="#e63946" drop-text="Arrastra las fotos o toca para elegir" />
+                            accent="#7c3aed" drop-text="Arrastra las fotos o toca para elegir" />
                     </div>
                 </div>
 
             </div>
 
-            {{-- Right sidebar --}}
+            {{-- Right sidebar: acción --}}
             <div class="col-lg-4">
-                <div class="card border-0 shadow-sm sticky-top" style="top:20px">
+                <div class="card border-0 shadow-sm sticky-top" style="top:20px;border-left:4px solid #16a34a !important;">
                     <div class="card-header bg-white border-bottom py-3 px-4">
-                        <h6 class="mb-0 fw-semibold"><i class="bi bi-person-gear me-2 text-muted"></i>Mecánico asignado</h6>
+                        <h6 class="mb-0 fw-semibold"><i class="bi bi-check2-circle me-2" style="color:#16a34a;"></i>Finalizar</h6>
                     </div>
                     <div class="card-body p-4">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <label class="form-label fw-semibold mb-0" for="mechanic_id">Mecánico (opcional)</label>
-                            @if($canCreateMechanic)
-                            <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" onclick="openQuickMechanic()">
-                                <i class="bi bi-person-plus me-1"></i>Nuevo
-                            </button>
-                            @endif
-                        </div>
-                        <select id="mechanic_id" name="mechanic_id"
-                                class="form-select @error('mechanic_id') is-invalid @enderror">
-                            <option value="">Sin asignar</option>
-                            @foreach($mechanics as $m)
-                            <option value="{{ $m->id }}" {{ old('mechanic_id') == $m->id ? 'selected' : '' }}>
-                                {{ $m->name }}{{ $m->specialty ? ' — ' . $m->specialty : '' }}
-                            </option>
-                            @endforeach
-                        </select>
-                        @error('mechanic_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        <p class="text-muted small mt-2 mb-0">Puedes asignar el mecánico más adelante desde la OT.</p>
+                        <p class="text-muted small mb-0">
+                            Revisa los datos y registra la entrada del vehículo. El mecánico y otros
+                            detalles se pueden ajustar después desde la orden de trabajo.
+                        </p>
                     </div>
                     <div class="card-footer bg-white border-top p-4">
                         <div class="d-flex flex-column gap-2">
@@ -443,6 +445,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Estado inicial (respeta old input tras un error de validación)
     setVehicleMode(document.getElementById('vehicle_mode').value || 'existing');
 });
+
+// ── Modelo de moto: al elegir uno del catálogo, autocompleta marca y cilindrada ──
+const MOTO_MODELS = @json($motoModels->mapWithKeys(fn ($m) => [mb_strtolower($m->name) => ['brand' => $m->brand?->name, 'cc' => $m->engine_cc]]));
+(function () {
+    const model = document.getElementById('veh_model');
+    const brand = document.getElementById('veh_brand');
+    const cc    = document.getElementById('veh_engine_cc');
+    if (!model) return;
+    model.addEventListener('change', function () {
+        const info = MOTO_MODELS[(this.value || '').trim().toLowerCase()];
+        if (!info) return;
+        if (info.brand && brand && !brand.value.trim()) brand.value = info.brand;
+        if (info.cc && cc && !cc.value.trim()) cc.value = info.cc;
+    });
+})();
 
 // ── Alta rápida de cliente / mecánico ───────────────────────────────
 const QUICK_CSRF = '{{ csrf_token() }}';

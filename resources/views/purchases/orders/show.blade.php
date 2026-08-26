@@ -95,8 +95,8 @@
                                             {{ number_format($received, 0) }}
                                         </span>
                                     </td>
-                                    <td class="py-3 text-end small">${{ number_format($item->unit_cost, 2) }}</td>
-                                    <td class="py-3 text-end fw-semibold small pe-4">${{ number_format($item->quantity * $item->unit_cost, 2) }}</td>
+                                    <td class="py-3 text-end small">{{ money($item->unit_cost, null, 2) }}</td>
+                                    <td class="py-3 text-end fw-semibold small pe-4">{{ money($item->quantity * $item->unit_cost, null, 2) }}</td>
                                 </tr>
                                 @empty
                                 <tr>
@@ -115,17 +115,17 @@
                             @endphp
                             <div class="d-flex justify-content-between mb-1 small text-muted">
                                 <span>Subtotal</span>
-                                <span>${{ number_format($subtotal, 2) }}</span>
+                                <span>{{ money($subtotal, null, 2) }}</span>
                             </div>
                             @if($order->tax)
                             <div class="d-flex justify-content-between mb-1 small text-muted">
                                 <span>Impuesto</span>
-                                <span>${{ number_format($order->tax, 2) }}</span>
+                                <span>{{ money($order->tax, null, 2) }}</span>
                             </div>
                             @endif
                             <div class="d-flex justify-content-between fw-bold border-top pt-2">
                                 <span>Total</span>
-                                <span>${{ number_format($order->total, 2) }}</span>
+                                <span>{{ money($order->total, null, 2) }}</span>
                             </div>
                         </div>
                     </div>
@@ -180,7 +180,7 @@
                             <div class="text-muted" style="font-size:.78rem">{{ $purchase->purchase_date->format('d/m/Y') }}</div>
                         </div>
                         <div class="text-end">
-                            <div class="fw-semibold small">${{ number_format($purchase->total, 2) }}</div>
+                            <div class="fw-semibold small">{{ money($purchase->total, null, 2) }}</div>
                             <span class="badge bg-{{ $purchase->payment_status_color }}-subtle text-{{ $purchase->payment_status_color }} border border-{{ $purchase->payment_status_color }}-subtle" style="font-size:.7rem">
                                 {{ $purchase->payment_status_label }}
                             </span>

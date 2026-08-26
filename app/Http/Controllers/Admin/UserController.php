@@ -22,12 +22,20 @@ class UserController extends Controller
             $users = $company->users()->paginate(15);
         }
 
-        return view('admin.users.index', compact('users'));
+        $limitStatus = $this->planLimitStatus($user->getCurrentCompany()?->id, 'users');
+
+        return view('admin.users.index', compact('users', 'limitStatus'));
     }
 
     public function create()
     {
         $user = auth()->user();
+
+        if ($this->planLimitReached($user->getCurrentCompany()?->id, 'users')) {
+            return redirect()->route('users.index')
+                ->withErrors(['error' => $this->planLimitMessage('usuarios')]);
+        }
+
         $roles = Role::all();
         $companies = $user->is_super_admin ? Company::all() : $user->companies()->get();
 

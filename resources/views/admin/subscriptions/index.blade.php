@@ -88,13 +88,19 @@
                                         </a>
 
                                         @if($sub)
-                                            <form action="{{ route('subscriptions.renew', $company) }}" method="POST" class="d-flex gap-1">
+                                            <form action="{{ route('subscriptions.renew', $company) }}" method="POST"
+                                                  title="Extiende el vencimiento la cantidad de meses indicada">
                                                 @csrf
-                                                <input type="number" name="months" value="1" min="1" max="36"
-                                                       class="form-control form-control-sm" style="width:70px;">
-                                                <button class="btn btn-sm btn-success" title="Renovar">
-                                                    <i class="bi bi-arrow-clockwise"></i> Renovar
-                                                </button>
+                                                <div class="input-group input-group-sm" style="width:auto;">
+                                                    <span class="input-group-text">Renovar</span>
+                                                    <input type="number" name="months" value="1" min="1" max="36"
+                                                           class="form-control text-center" style="width:52px;flex:0 0 52px;"
+                                                           aria-label="Meses a renovar">
+                                                    <span class="input-group-text">meses</span>
+                                                    <button class="btn btn-success" title="Aplicar la renovación">
+                                                        <i class="bi bi-arrow-clockwise"></i>
+                                                    </button>
+                                                </div>
                                             </form>
 
                                             @if($sub->status !== 'suspended')

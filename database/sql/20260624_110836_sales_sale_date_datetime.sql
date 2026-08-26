@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Ventas: sale_date pasa de DATE a DATETIME
+--  Rodex — Ventas: sale_date pasa de DATE a DATETIME
 --  Objetivo: conservar la HORA de la venta (zona horaria Bolivia).
 --  Ejecutar en producción una sola vez.
 -- ============================================================

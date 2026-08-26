@@ -1,5 +1,5 @@
 -- =====================================================================
---  VR Motors — Permisos: ver todos los registros (taller y ventas de motos)
+--  Rodex — Permisos: ver todos los registros (taller y ventas de motos)
 --  Sin estos permisos, el personal solo ve en cada listado lo que él mismo
 --  registró (created_by = usuario logueado).
 --  Se asignan a admin y manager. Ejecutar UNA sola vez. MySQL 8.0+.

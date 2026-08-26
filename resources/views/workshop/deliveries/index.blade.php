@@ -44,7 +44,7 @@
                             <td class="py-2 small">{{ $order->client?->full_name ?? '—' }}</td>
                             <td class="py-2 small text-muted">{{ $order->vehicle?->display_name ?? '—' }}</td>
                             <td class="py-2 small text-muted">{{ $order->mechanic?->name ?? '—' }}</td>
-                            <td class="py-2 text-end fw-semibold small">${{ number_format($order->total, 2) }}</td>
+                            <td class="py-2 text-end fw-semibold small">{{ money($order->total, null, 2) }}</td>
                             <td class="py-2 text-end pe-4">
                                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('workshop.deliver', auth()->user()->getCurrentCompany()))
                                 <a href="{{ route('workshop.deliveries.create', $order) }}"
@@ -100,7 +100,7 @@
                             <td class="py-2 small text-muted">
                                 {{ $order->delivered_at ? \Carbon\Carbon::parse($order->delivered_at)->format('d/m/Y') : '—' }}
                             </td>
-                            <td class="py-2 text-end fw-semibold small pe-4">${{ number_format($order->total, 2) }}</td>
+                            <td class="py-2 text-end fw-semibold small pe-4">{{ money($order->total, null, 2) }}</td>
                         </tr>
                         @empty
                         <tr>

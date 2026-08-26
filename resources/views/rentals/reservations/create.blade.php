@@ -70,7 +70,7 @@
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold" for="deposit">Depósito de garantía</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light">Bs.</span>
+                                    <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                     <input type="number" id="deposit" name="deposit" class="form-control @error('deposit') is-invalid @enderror" value="{{ old('deposit', '0.00') }}" step="0.01" min="0" oninput="updateSummary()">
                                 </div>
                                 @error('deposit')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -117,14 +117,14 @@
                                 <div class="col-md-4">
                                     <label class="form-label fw-semibold" for="period_amount">Monto por período</label>
                                     <div class="input-group">
-                                        <span class="input-group-text bg-light">Bs.</span>
+                                        <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                         <input type="number" id="period_amount" name="period_amount" class="form-control" value="{{ old('period_amount', '0.00') }}" step="0.01" min="0" oninput="generateSchedule()">
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label fw-semibold" for="late_fee_per_day">Mora por día (opcional)</label>
                                     <div class="input-group">
-                                        <span class="input-group-text bg-light">Bs.</span>
+                                        <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                         <input type="number" id="late_fee_per_day" name="late_fee_per_day" class="form-control" value="{{ old('late_fee_per_day', '0.00') }}" step="0.01" min="0">
                                     </div>
                                 </div>
@@ -156,7 +156,7 @@
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold" for="daily_rate">Tarifa por día <span class="text-danger">*</span></label>
                                     <div class="input-group">
-                                        <span class="input-group-text bg-light">Bs.</span>
+                                        <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                         <input type="number" id="daily_rate" name="daily_rate" class="form-control" value="{{ old('daily_rate', '0.00') }}" step="0.01" min="0" oninput="updateSummary()">
                                     </div>
                                     <div class="form-text">El alquiler completo se cobra en la entrega.</div>
@@ -176,9 +176,9 @@
                     </div>
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between mb-2 small"><span class="text-muted" id="lblQty">Días</span><span class="fw-semibold" id="sumQty">0</span></div>
-                        <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Total renta/alquiler</span><span class="fw-semibold" id="sumRental">Bs. 0.00</span></div>
-                        <div class="d-flex justify-content-between mb-3 small"><span class="text-muted">Depósito</span><span class="fw-semibold text-info" id="sumDeposit">Bs. 0.00</span></div>
-                        <div class="d-flex justify-content-between fw-bold border-top pt-3"><span id="lblGrand">A cobrar en entrega</span><span id="sumGrand" class="fs-5">Bs. 0.00</span></div>
+                        <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Total renta/alquiler</span><span class="fw-semibold" id="sumRental">{{ currency_symbol() }} 0.00</span></div>
+                        <div class="d-flex justify-content-between mb-3 small"><span class="text-muted">Depósito</span><span class="fw-semibold text-info" id="sumDeposit">{{ currency_symbol() }} 0.00</span></div>
+                        <div class="d-flex justify-content-between fw-bold border-top pt-3"><span id="lblGrand">A cobrar en entrega</span><span id="sumGrand" class="fs-5">{{ currency_symbol() }} 0.00</span></div>
                         <div class="form-text mt-2" id="grandHint"></div>
                     </div>
                     <div class="card-footer bg-white border-top p-4">
@@ -310,7 +310,7 @@ function generateSchedule() {
             <td class="py-1"><input type="date" name="installments[${i}][due_date]" class="form-control form-control-sm" value="${r.due}"></td>
             <td class="py-1">
                 <div class="input-group input-group-sm">
-                    <span class="input-group-text bg-light px-2">Bs.</span>
+                    <span class="input-group-text bg-light px-2">{{ currency_symbol() }}</span>
                     <input type="number" name="installments[${i}][amount]" class="form-control sch-amount text-end" step="0.01" min="0.01" value="${amount.toFixed(2)}" oninput="updateSummary()">
                 </div>
             </td>`;
@@ -321,16 +321,16 @@ function generateSchedule() {
 
 function updateSummary() {
     const deposit = parseFloat(document.getElementById('deposit').value) || 0;
-    document.getElementById('sumDeposit').textContent = 'Bs. ' + deposit.toFixed(2);
+    document.getElementById('sumDeposit').textContent = '{{ currency_symbol() }} ' + deposit.toFixed(2);
 
     if (isRenta()) {
         const amounts = Array.from(document.querySelectorAll('.sch-amount')).map(el => parseFloat(el.value) || 0);
         const total = amounts.reduce((a, b) => a + b, 0);
         document.getElementById('lblQty').textContent = 'N° cuotas';
         document.getElementById('sumQty').textContent = amounts.length;
-        document.getElementById('sumRental').textContent = 'Bs. ' + total.toFixed(2);
+        document.getElementById('sumRental').textContent = '{{ currency_symbol() }} ' + total.toFixed(2);
         document.getElementById('lblGrand').textContent = 'A cobrar en entrega';
-        document.getElementById('sumGrand').textContent = 'Bs. ' + deposit.toFixed(2);
+        document.getElementById('sumGrand').textContent = '{{ currency_symbol() }} ' + deposit.toFixed(2);
         document.getElementById('grandHint').textContent = 'En renta solo se cobra el depósito al entregar; las cuotas se cobran en Cobros.';
     } else {
         const s = parseD(document.getElementById('start_date').value);
@@ -340,9 +340,9 @@ function updateSummary() {
         const rental = days * rate;
         document.getElementById('lblQty').textContent = 'Días';
         document.getElementById('sumQty').textContent = days;
-        document.getElementById('sumRental').textContent = 'Bs. ' + rental.toFixed(2);
+        document.getElementById('sumRental').textContent = '{{ currency_symbol() }} ' + rental.toFixed(2);
         document.getElementById('lblGrand').textContent = 'A cobrar en entrega';
-        document.getElementById('sumGrand').textContent = 'Bs. ' + (rental + deposit).toFixed(2);
+        document.getElementById('sumGrand').textContent = '{{ currency_symbol() }} ' + (rental + deposit).toFixed(2);
         document.getElementById('grandHint').textContent = 'Pago único: alquiler + depósito al entregar.';
     }
 }

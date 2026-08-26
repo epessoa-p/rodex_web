@@ -53,7 +53,7 @@
                                 Precio <span class="text-danger">*</span>
                             </label>
                             <div class="input-group">
-                                <span class="input-group-text bg-light">$</span>
+                                <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                 <input type="number" id="price" name="price"
                                        step="0.01" min="0"
                                        class="form-control @error('price') is-invalid @enderror"

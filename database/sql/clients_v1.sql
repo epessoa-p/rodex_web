@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Módulo de Clientes v1
+--  Rodex — Módulo de Clientes v1
 --  Ejecutar en orden: tablas → permisos → role_permission
 -- ============================================================
 

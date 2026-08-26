@@ -3,35 +3,52 @@
 namespace App\Http\Controllers\Inventory;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Inventory\Concerns\ParsesProductImport;
 use App\Models\Company;
 use App\Models\Inventory\ProductBrand;
 use App\Models\Inventory\ProductCategory;
+use App\Models\Inventory\ProductOrigin;
+use App\Models\Inventory\ProductUnit;
 use App\Models\Inventory\ProductPhoto;
 use App\Models\Product;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ProductController extends Controller
 {
+    use ParsesProductImport;
+
     public function index()
     {
         $user  = auth()->user();
-        $query = Product::with(['company', 'category', 'brand', 'photos'])->latest();
+        $cid   = $user->getCurrentCompany()?->id;
+        $query = Product::with(['company', 'category', 'brand', 'origin', 'photos'])->latest();
 
         if (!$user->is_super_admin) {
-            $query->where('company_id', $user->getCurrentCompany()?->id);
+            $query->where('company_id', $cid);
         }
 
-        return view('inventory.products.index', ['products' => $query->paginate(15)]);
+        // Orígenes de la empresa para el selector editable del listado.
+        $origins = ProductOrigin::when($cid, fn ($q) => $q->where('company_id', $cid))
+            ->where('active', true)->orderBy('name')->get();
+
+        return view('inventory.products.index', [
+            'products'    => $query->paginate(15),
+            'origins'     => $origins,
+            'limitStatus' => $this->planLimitStatus($cid, 'products'),
+        ]);
     }
 
     public function create()
     {
+        if ($this->planLimitReached(auth()->user()->getCurrentCompany()?->id, 'products')) {
+            return redirect()->route('products.index')
+                ->withErrors(['error' => $this->planLimitMessage('productos')]);
+        }
+
         return view('inventory.products.create', $this->formData());
     }
 
@@ -49,7 +66,7 @@ class ProductController extends Controller
         $validated = request()->validate([
             'company_id'         => ['nullable', 'exists:companies,id'],
             'name'               => 'required|string|max:255',
-            'sku'                => ['required', 'string', 'max:100', Rule::unique('products', 'sku')],
+            'sku'                => ['nullable', 'string', 'max:100', Rule::unique('products', 'sku')],
             'code'               => 'nullable|string|max:100',
             'barcode'            => 'nullable|string|max:100',
             'description'        => 'nullable|string',
@@ -66,6 +83,10 @@ class ProductController extends Controller
             'photos.*'           => 'image|max:3072',
             'main_photo_index'   => 'nullable|integer',
         ]);
+
+        if (empty($validated['sku'])) {
+            $validated['sku'] = $this->generateProductCode((int) $companyId);
+        }
 
         try {
             $product = Product::create([
@@ -197,7 +218,7 @@ class ProductController extends Controller
         $validated = request()->validate([
             'company_id'         => ['nullable', 'exists:companies,id'],
             'name'               => 'required|string|max:255',
-            'sku'                => ['required', 'string', 'max:100', Rule::unique('products', 'sku')->ignore($product->id)],
+            'sku'                => ['nullable', 'string', 'max:100', Rule::unique('products', 'sku')->ignore($product->id)],
             'code'               => 'nullable|string|max:100',
             'barcode'            => 'nullable|string|max:100',
             'description'        => 'nullable|string',
@@ -216,6 +237,10 @@ class ProductController extends Controller
             'delete_photos'      => 'nullable|array',
             'delete_photos.*'    => 'exists:product_photos,id',
         ]);
+
+        if (empty($validated['sku'])) {
+            $validated['sku'] = $this->generateProductCode((int) $companyId);
+        }
 
         try {
             $product->update([
@@ -294,12 +319,13 @@ class ProductController extends Controller
         $cid        = $companyId ?? $user->getCurrentCompany()?->id;
         $categories = ProductCategory::where('company_id', $cid)->where('active', true)->orderBy('name')->get();
         $brands     = ProductBrand::where('company_id', $cid)->where('active', true)->orderBy('name')->get();
+        $units      = ProductUnit::where('company_id', $cid)->where('active', true)->orderBy('name')->get();
         $motoModels = \App\Models\Motos\MotoModel::with('brand')->where('company_id', $cid)->orderBy('name')->get();
         $companies  = $user->is_super_admin
             ? Company::orderBy('name')->get()
             : collect([$user->getCurrentCompany()])->filter();
 
-        return compact('categories', 'brands', 'motoModels', 'companies');
+        return compact('categories', 'brands', 'units', 'motoModels', 'companies');
     }
 
     // ── Importación desde Excel ───────────────────────────────
@@ -323,108 +349,34 @@ class ProductController extends Controller
         }
 
         try {
-            $path        = request()->file('file')->store('imports', 'local');
-            $fullPath    = Storage::disk('local')->path($path);
-            $spreadsheet = IOFactory::load($fullPath);
-            $rows        = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
+            $path     = request()->file('file')->store('imports', 'local');
+            $fullPath = Storage::disk('local')->path($path);
 
-            $imported = 0;
-            $skipped  = 0;
+            // Parser genérico por encabezado (compartido con el importador de stock).
+            $rows     = $this->parseImportRows($fullPath);
+            $counters = ['created' => 0, 'updated' => 0];
             $errors   = [];
 
-            foreach ($rows as $rowNum => $row) {
-                if ($rowNum === 1) {
-                    continue; // cabecera
-                }
-
-                $rawName = (string) ($row['A'] ?? '');
-                $name    = $this->cleanText($rawName);
-
-                if ($name === '') {
-                    continue;
-                }
-
-                // Verificar duplicado (case-insensitive)
-                $exists = Product::where('company_id', $companyId)
-                    ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
-                    ->exists();
-
-                if ($exists) {
-                    $skipped++;
-                    continue;
-                }
-
-                // Buscar o crear categoría
-                $categoryId = null;
-                $rawCat     = (string) ($row['B'] ?? '');
-                $catName    = $this->cleanText($rawCat);
-
-                if ($catName !== '') {
-                    $category   = ProductCategory::firstOrCreate(
-                        ['company_id' => $companyId, 'name' => $catName],
-                        ['active' => true]
-                    );
-                    $categoryId = $category->id;
-                }
-
-                $description = trim((string) ($row['C'] ?? '')) ?: null;
-                $cost        = (float) ($row['D'] ?? 0);
-                $price       = (float) ($row['E'] ?? 0);
-
+            foreach ($rows as $d) {
                 try {
-                    Product::create([
-                        'company_id'  => $companyId,
-                        'category_id' => $categoryId,
-                        'name'        => $name,
-                        'sku'         => $this->generateSku($name, $companyId),
-                        'description' => $description,
-                        'cost'        => $cost,
-                        'price'       => $price,
-                        'unit'        => 'unidad',
-                        'min_stock'   => 0,
-                        'current_stock' => 0,
-                        'active'      => true,
-                    ]);
-                    $imported++;
+                    $this->upsertProduct($d, (int) $companyId, $counters);
                 } catch (\Throwable $e) {
-                    $errors[] = "Fila {$rowNum} ({$name}): " . $e->getMessage();
-                    Log::warning("Import product row {$rowNum} failed", ['msg' => $e->getMessage()]);
+                    $errors[] = "«{$d['name']}»: " . $e->getMessage();
+                    Log::warning('Import product row failed', ['name' => $d['name'] ?? '', 'msg' => $e->getMessage()]);
                 }
             }
 
-            // Limpiar archivo temporal
             Storage::disk('local')->delete($path);
 
             return back()->with('import_result', [
-                'imported' => $imported,
-                'skipped'  => $skipped,
+                'imported' => $counters['created'],
+                'skipped'  => $counters['updated'],   // actualizados (por nombre)
                 'errors'   => $errors,
             ]);
         } catch (\Throwable $e) {
             Log::error('Error al importar productos', ['msg' => $e->getMessage()]);
             return back()->withErrors(['error' => 'No se pudo procesar el archivo: ' . $e->getMessage()]);
         }
-    }
-
-    private function cleanText(string $raw): string
-    {
-        // Elimina grupos como (01), (999), (abc) en cualquier posición
-        return trim(preg_replace('/\s*\(\w+\)\s*/', ' ', $raw));
-    }
-
-    private function generateSku(string $name, int $companyId): string
-    {
-        $base = Str::upper(substr(preg_replace('/[^A-Za-z0-9]/', '', $name), 0, 6));
-        if ($base === '') {
-            $base = 'PROD';
-        }
-        $i = 1;
-        do {
-            $sku = $base . '-' . str_pad((string) $i, 3, '0', STR_PAD_LEFT);
-            $i++;
-        } while (Product::withTrashed()->where('company_id', $companyId)->where('sku', $sku)->exists());
-
-        return $sku;
     }
 
     private function handlePhotos(Product $product): void

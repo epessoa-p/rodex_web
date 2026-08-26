@@ -35,7 +35,7 @@
                                 <span class="badge bg-{{ $isRefund ? 'danger' : 'success' }}-subtle text-{{ $isRefund ? 'danger' : 'success' }} border border-{{ $isRefund ? 'danger' : 'success' }}-subtle" style="font-size:.68rem;">{{ $p->type_label }}</span>
                             </td>
                             <td class="py-2 small text-muted">{{ ucfirst($p->method) }}</td>
-                            <td class="py-2 text-end fw-semibold pe-4 {{ $isRefund ? 'text-danger' : '' }}">{{ $isRefund ? '-' : '' }}Bs. {{ number_format($p->amount, 2) }}</td>
+                            <td class="py-2 text-end fw-semibold pe-4 {{ $isRefund ? 'text-danger' : '' }}">{{ $isRefund ? '-' : '' }}{{ money($p->amount) }}</td>
                         </tr>
                         @empty
                         <tr><td colspan="6" class="text-center py-5 text-muted"><i class="bi bi-cash-coin fs-2 opacity-25 d-block mb-2"></i>Sin pagos registrados.</td></tr>

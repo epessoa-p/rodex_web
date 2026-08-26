@@ -80,7 +80,7 @@
                                     <span class="text-muted">—</span>
                                 @endif
                             </td>
-                            <td class="py-2 text-end fw-semibold">${{ number_format($quote->total, 2) }}</td>
+                            <td class="py-2 text-end fw-semibold">{{ money($quote->total, null, 2) }}</td>
                             <td class="py-2">
                                 <span class="badge bg-{{ $quote->status_color }}-subtle text-{{ $quote->status_color }} border border-{{ $quote->status_color }}-subtle" style="font-size:.72rem;">
                                     {{ $quote->status_label }}

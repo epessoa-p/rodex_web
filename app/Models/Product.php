@@ -25,6 +25,7 @@ class Product extends Model
         'company_id',
         'category_id',
         'brand_id',
+        'origin_id',
         'name',
         'sku',
         'code',
@@ -60,6 +61,11 @@ class Product extends Model
     public function brand(): BelongsTo
     {
         return $this->belongsTo(ProductBrand::class, 'brand_id');
+    }
+
+    public function origin(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Inventory\ProductOrigin::class, 'origin_id');
     }
 
     public function photos(): HasMany

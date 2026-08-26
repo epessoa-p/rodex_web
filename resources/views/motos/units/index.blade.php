@@ -107,7 +107,7 @@
                             </td>
                             <td class="py-2 small">{{ $unit->color ?: '—' }}</td>
                             <td class="py-2 text-center small text-muted">{{ $unit->year ?? '—' }}</td>
-                            <td class="py-2 text-end fw-semibold">${{ number_format($unit->price, 2) }}</td>
+                            <td class="py-2 text-end fw-semibold">{{ money($unit->price, null, 2) }}</td>
                             <td class="py-2">
                                 <span class="badge bg-{{ $unit->status_color }}-subtle text-{{ $unit->status_color }} border border-{{ $unit->status_color }}-subtle" style="font-size:.72rem;">
                                     {{ $unit->status_label }}

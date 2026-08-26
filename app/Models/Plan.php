@@ -30,6 +30,71 @@ class Plan extends Model
         'statistics' => 'Estadísticas',
     ];
 
+    /**
+     * Mapa: módulo de un permiso (columna `permissions.module`) → feature del
+     * plan (clave de MODULES) que lo habilita. Derivado de los `plan:X` de las
+     * rutas. Los módulos que NO aparecen aquí son administrativos o de datos
+     * maestros compartidos (usuarios, roles, sucursales, personal, cargos,
+     * empresas, clientes, vehículos, reportes, plantillas): están siempre
+     * disponibles, sin importar el plan.
+     */
+    public const PERMISSION_MODULE_FEATURES = [
+        // Inventario (incluye catálogos de producto y catálogo de motos)
+        'products'           => 'inventory',
+        'inventory'          => 'inventory',
+        'warehouses'         => 'inventory',
+        'product_brands'     => 'inventory',
+        'product_categories' => 'inventory',
+        'product_origins'    => 'inventory',
+        'product_units'      => 'inventory',
+        'moto_brands'        => 'inventory',
+        'moto_models'        => 'inventory',
+        // Ventas / POS
+        'sales'              => 'sales',
+        'sale_returns'       => 'sales',
+        'quotes'             => 'sales',
+        'credit'             => 'sales',
+        'credit_applications' => 'sales',
+        'credit_reports'     => 'sales',
+        'payment_plans'      => 'sales',
+        // Compras
+        'purchases'          => 'purchases',
+        'purchase_orders'    => 'purchases',
+        'suppliers'          => 'purchases',
+        'accounts_payable'   => 'purchases',
+        'goods_receipts'     => 'purchases',
+        'treasury'           => 'purchases',
+        // Taller / Mecánica
+        'workshop'           => 'workshop',
+        'services'           => 'workshop',
+        'mechanics'          => 'workshop',
+        // Alquiler
+        'rentals'            => 'rentals',
+        // Venta de motos
+        'moto_sales'         => 'motos',
+        'moto_units'         => 'motos',
+        'moto_deliveries'    => 'motos',
+        'motos'              => 'motos',
+        'warranties'         => 'motos',
+        // Fidelización
+        'loyalty'            => 'loyalty',
+        // Caja
+        'cash'               => 'cash',
+        'cash_registers'     => 'cash',
+        'expenses'           => 'cash',
+        // Estadísticas
+        'statistics'         => 'statistics',
+    ];
+
+    /**
+     * Feature del plan que habilita un módulo de permisos, o null si el módulo
+     * es administrativo/compartido (siempre disponible).
+     */
+    public static function featureForPermissionModule(string $module): ?string
+    {
+        return self::PERMISSION_MODULE_FEATURES[$module] ?? null;
+    }
+
     public const BILLING_PERIODS = [
         'monthly' => 'Mensual',
         'yearly'  => 'Anual',

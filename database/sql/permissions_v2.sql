@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Permisos v2
+--  Rodex — Permisos v2
 --  Ejecutar DESPUÉS de tener los permisos base (IDs 1-12, 20)
 --  Módulos: branches, products, warehouses, cargos, personal,
 --           document_templates, cash_registers, cash

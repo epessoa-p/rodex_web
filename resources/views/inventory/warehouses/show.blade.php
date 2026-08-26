@@ -172,7 +172,7 @@
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold small" for="unit_cost">Costo unitario</label>
                                 <div class="input-group input-group-sm">
-                                    <span class="input-group-text bg-light">$</span>
+                                    <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                     <input type="number" step="0.01" min="0" id="unit_cost" name="unit_cost"
                                            class="form-control @error('unit_cost') is-invalid @enderror"
                                            value="{{ old('unit_cost') }}" placeholder="0.00">
@@ -268,7 +268,7 @@
                                         </span>
                                     </td>
                                     <td class="py-3 text-end fw-semibold small">{{ number_format($movement->quantity, 0) }}</td>
-                                    <td class="py-3 text-end small text-muted">${{ number_format($movement->unit_cost ?? 0, 2) }}</td>
+                                    <td class="py-3 text-end small text-muted">{{ money($movement->unit_cost ?? 0, null, 2) }}</td>
                                     <td class="py-3 small text-muted pe-4">{{ $movement->user?->name ?: '—' }}</td>
                                 </tr>
                                 @endforeach

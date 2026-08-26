@@ -8,7 +8,10 @@ use App\Http\Controllers\Motos\MotoUnitController;
 use App\Http\Controllers\Motos\WarrantyController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'plan:motos'])->group(function () {
+// ── Catálogo de motos (marcas + modelos) ──────────────────────────
+// Pertenece al INVENTARIO/repuestos: el import de productos crea modelos y el
+// POS los filtra. Por eso se gatea con plan:inventory, no con plan:motos.
+Route::middleware(['auth', 'plan:inventory'])->group(function () {
 
     // ── Marcas ────────────────────────────────────────────────
     Route::prefix('motos/brands')->name('moto-brands.')->group(function () {
@@ -29,6 +32,10 @@ Route::middleware(['auth', 'plan:motos'])->group(function () {
         Route::put('/{model}',    [MotoModelController::class, 'update'])->name('update')->middleware('check-permission:moto-models.edit');
         Route::delete('/{model}', [MotoModelController::class, 'destroy'])->name('destroy')->middleware('check-permission:moto-models.delete');
     });
+});
+
+// ── Venta de motos / concesionaria ────────────────────────────────
+Route::middleware(['auth', 'plan:motos'])->group(function () {
 
     // ── Ventas de Motos ───────────────────────────────────────
     Route::prefix('motos/sales')->name('moto-sales.')->group(function () {

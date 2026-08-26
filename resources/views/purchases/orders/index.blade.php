@@ -71,7 +71,7 @@
                             <td class="py-3 text-center">
                                 <span class="badge bg-light text-muted border">{{ $order->items_count }}</span>
                             </td>
-                            <td class="py-3 text-end fw-semibold">${{ number_format($order->total, 2) }}</td>
+                            <td class="py-3 text-end fw-semibold">{{ money($order->total, null, 2) }}</td>
                             <td class="py-3 text-end pe-4">
                                 <a href="{{ route('purchase-orders.show', $order) }}" class="btn btn-sm btn-light border me-1" title="Ver">
                                     <i class="bi bi-eye"></i>

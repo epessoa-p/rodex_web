@@ -36,7 +36,7 @@
                         <tr class="border-bottom border-light">
                             <td class="ps-4 py-2 fw-semibold">{{ $unit->display_name }}</td>
                             <td class="py-2 small">{{ $unit->sale?->client?->full_name ?? '—' }}</td>
-                            <td class="py-2 text-end fw-semibold">${{ number_format($unit->price, 2) }}</td>
+                            <td class="py-2 text-end fw-semibold">{{ money($unit->price, null, 2) }}</td>
                             <td class="py-2 text-end pe-4">
                                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('moto-deliveries.manage', auth()->user()->getCurrentCompany()))
                                 <a href="{{ route('moto-deliveries.create', $unit) }}" class="btn btn-sm btn-primary">

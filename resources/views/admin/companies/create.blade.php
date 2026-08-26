@@ -27,6 +27,15 @@
             </div>
 
             <div class="form-group mb-3">
+                <label for="currency" class="form-label">Moneda</label>
+                <input type="text" id="currency" name="currency" maxlength="8"
+                       class="form-control @error('currency') is-invalid @enderror"
+                       value="{{ old('currency', 'Bs') }}" placeholder="Bs, $, S/, Gs…">
+                <small class="text-muted">Símbolo que se mostrará en precios y totales de esta empresa.</small>
+                @error('currency')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+
+            <div class="form-group mb-3">
                 <label for="email" class="form-label">Email</label>
                 <input type="email" id="email" name="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}">
             </div>

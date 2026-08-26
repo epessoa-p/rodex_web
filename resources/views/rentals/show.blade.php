@@ -54,10 +54,10 @@
                         <div class="col-md-4"><div class="text-muted">Período</div><div class="fw-semibold">{{ $rental->start_date?->format('d/m/Y') }} → {{ $rental->end_date?->format('d/m/Y') }} ({{ $rental->days }}d)</div></div>
                         <div class="col-md-4"><div class="text-muted">Modalidad</div><div class="fw-semibold">{{ $rental->payment_mode_label }}@if($rental->isRenta()) · {{ $rental->billing_period_label }}@endif</div></div>
                         @if($rental->isRenta())
-                        <div class="col-md-4"><div class="text-muted">Monto por período</div><div class="fw-semibold">Bs. {{ number_format($rental->period_amount, 2) }}</div></div>
-                        <div class="col-md-4"><div class="text-muted">Mora / día</div><div class="fw-semibold">Bs. {{ number_format($rental->late_fee_per_day, 2) }}</div></div>
+                        <div class="col-md-4"><div class="text-muted">Monto por período</div><div class="fw-semibold">{{ money($rental->period_amount) }}</div></div>
+                        <div class="col-md-4"><div class="text-muted">Mora / día</div><div class="fw-semibold">{{ money($rental->late_fee_per_day) }}</div></div>
                         @else
-                        <div class="col-md-4"><div class="text-muted">Tarifa / día</div><div class="fw-semibold">Bs. {{ number_format($rental->daily_rate, 2) }}</div></div>
+                        <div class="col-md-4"><div class="text-muted">Tarifa / día</div><div class="fw-semibold">{{ money($rental->daily_rate) }}</div></div>
                         @endif
                         <div class="col-md-4"><div class="text-muted">Creado por</div><div class="fw-semibold">{{ $rental->createdBy?->name ?? '—' }}</div></div>
                         <div class="col-md-4"><div class="text-muted">Caja</div><div class="fw-semibold">{{ $rental->session?->cashRegister?->name ?? '—' }}</div></div>
@@ -100,11 +100,11 @@
                                         @else
                                             <span class="text-muted">{{ $inst->due_date?->format('d/m/Y') }}</span>
                                         @endif
-                                        @if($inst->accrued_late_fee > 0)<span class="text-danger small ms-1">+mora Bs. {{ number_format($inst->accrued_late_fee, 2) }}</span>@endif
+                                        @if($inst->accrued_late_fee > 0)<span class="text-danger small ms-1">+mora {{ money($inst->accrued_late_fee) }}</span>@endif
                                     </td>
-                                    <td class="py-2 text-end">Bs. {{ number_format($inst->amount, 2) }}</td>
-                                    <td class="py-2 text-end text-success">Bs. {{ number_format($inst->paid_amount, 2) }}</td>
-                                    <td class="py-2 text-end fw-semibold">Bs. {{ number_format($inst->balance, 2) }}</td>
+                                    <td class="py-2 text-end">{{ money($inst->amount) }}</td>
+                                    <td class="py-2 text-end text-success">{{ money($inst->paid_amount) }}</td>
+                                    <td class="py-2 text-end fw-semibold">{{ money($inst->balance) }}</td>
                                     <td class="py-2 text-end pe-4"><span class="badge bg-{{ $inst->status_color }}-subtle text-{{ $inst->status_color }} border border-{{ $inst->status_color }}-subtle" style="font-size:.66rem;">{{ $inst->status_label }}</span></td>
                                 </tr>
                                 @empty
@@ -181,7 +181,7 @@
                                 <td class="ps-4 py-2 text-muted">{{ $p->payment_date?->format('d/m/Y') }}</td>
                                 <td class="py-2">{{ $p->type_label }}</td>
                                 <td class="py-2 text-muted">{{ ucfirst($p->method) }}</td>
-                                <td class="py-2 text-end pe-4 fw-semibold {{ $isRefund ? 'text-danger' : '' }}">{{ $isRefund ? '-' : '' }}Bs. {{ number_format($p->amount, 2) }}</td>
+                                <td class="py-2 text-end pe-4 fw-semibold {{ $isRefund ? 'text-danger' : '' }}">{{ $isRefund ? '-' : '' }}{{ money($p->amount) }}</td>
                             </tr>
                             @empty
                             <tr><td colspan="4" class="text-center py-3 text-muted small">Sin pagos.</td></tr>
@@ -206,7 +206,7 @@
                             <tr>
                                 <td class="ps-4 py-2 text-muted">{{ $p->penalty_date?->format('d/m/Y') }}</td>
                                 <td class="py-2">{{ $p->concept }}</td>
-                                <td class="py-2 text-end pe-4 fw-semibold">Bs. {{ number_format($p->amount, 2) }}</td>
+                                <td class="py-2 text-end pe-4 fw-semibold">{{ money($p->amount) }}</td>
                             </tr>
                             @empty
                             <tr><td colspan="3" class="text-center py-3 text-muted small">Sin penalizaciones.</td></tr>
@@ -222,11 +222,11 @@
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-bottom py-3 px-4"><h6 class="mb-0 fw-semibold"><i class="bi bi-calculator me-2 text-muted"></i>Resumen financiero</h6></div>
                 <div class="card-body p-4">
-                    <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Alquiler</span><span class="fw-semibold">Bs. {{ number_format($rental->rental_total, 2) }}</span></div>
-                    <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Penalizaciones</span><span class="fw-semibold">Bs. {{ number_format($rental->penalties_total, 2) }}</span></div>
-                    <div class="d-flex justify-content-between mb-2 fw-bold border-top pt-2"><span>Total</span><span>Bs. {{ number_format($rental->total, 2) }}</span></div>
-                    <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Pagado</span><span class="fw-semibold text-success">Bs. {{ number_format($rental->paid_amount, 2) }}</span></div>
-                    <div class="d-flex justify-content-between mb-3 small"><span class="text-muted">Saldo</span><span class="fw-semibold text-danger">Bs. {{ number_format($rental->balance, 2) }}</span></div>
+                    <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Alquiler</span><span class="fw-semibold">{{ money($rental->rental_total) }}</span></div>
+                    <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Penalizaciones</span><span class="fw-semibold">{{ money($rental->penalties_total) }}</span></div>
+                    <div class="d-flex justify-content-between mb-2 fw-bold border-top pt-2"><span>Total</span><span>{{ money($rental->total) }}</span></div>
+                    <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Pagado</span><span class="fw-semibold text-success">{{ money($rental->paid_amount) }}</span></div>
+                    <div class="d-flex justify-content-between mb-3 small"><span class="text-muted">Saldo</span><span class="fw-semibold text-danger">{{ money($rental->balance) }}</span></div>
                     <div class="text-center">
                         <span class="badge bg-{{ $rental->payment_status_color }}-subtle text-{{ $rental->payment_status_color }} border border-{{ $rental->payment_status_color }}-subtle">{{ $rental->payment_status_label }}</span>
                     </div>
@@ -235,8 +235,8 @@
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-bottom py-3 px-4"><h6 class="mb-0 fw-semibold"><i class="bi bi-safe2 me-2 text-muted"></i>Depósito de garantía</h6></div>
                 <div class="card-body p-4">
-                    <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Depósito</span><span class="fw-semibold">Bs. {{ number_format($rental->deposit, 2) }}</span></div>
-                    <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Reembolsado</span><span class="fw-semibold">Bs. {{ number_format($rental->deposit_refunded, 2) }}</span></div>
+                    <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Depósito</span><span class="fw-semibold">{{ money($rental->deposit) }}</span></div>
+                    <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Reembolsado</span><span class="fw-semibold">{{ money($rental->deposit_refunded) }}</span></div>
                     <div class="text-center mt-2"><span class="badge bg-light text-dark border">{{ $rental->deposit_status_label }}</span></div>
                 </div>
             </div>
@@ -252,9 +252,9 @@
       @csrf
       <div class="modal-header"><h6 class="modal-title fw-semibold"><i class="bi bi-cash-coin me-2"></i>Registrar pago</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
-        <p class="small text-muted">Saldo pendiente: <strong>Bs. {{ number_format($rental->balance, 2) }}</strong></p>
+        <p class="small text-muted">Saldo pendiente: <strong>{{ money($rental->balance) }}</strong></p>
         <div class="mb-3"><label class="form-label small fw-semibold">Monto *</label>
-            <div class="input-group"><span class="input-group-text bg-light">Bs.</span>
+            <div class="input-group"><span class="input-group-text bg-light">{{ currency_symbol() }}</span>
             <input type="number" name="amount" class="form-control" step="0.01" min="0.01" max="{{ $rental->balance }}" value="{{ number_format($rental->balance, 2, '.', '') }}" required></div></div>
         <div class="mb-3"><label class="form-label small fw-semibold">Método</label>
             <select name="method" class="form-select">
@@ -279,7 +279,7 @@
       <div class="modal-body">
         <div class="mb-3"><label class="form-label small fw-semibold">Concepto *</label><input type="text" name="concept" class="form-control" required placeholder="Ej: Daño en espejo"></div>
         <div class="mb-3"><label class="form-label small fw-semibold">Monto *</label>
-            <div class="input-group"><span class="input-group-text bg-light">Bs.</span>
+            <div class="input-group"><span class="input-group-text bg-light">{{ currency_symbol() }}</span>
             <input type="number" name="amount" class="form-control" step="0.01" min="0.01" required></div></div>
         <div class="mb-3"><label class="form-label small fw-semibold">Fecha</label><input type="date" name="penalty_date" class="form-control" value="{{ now()->format('Y-m-d') }}"></div>
         <div class="mb-0"><label class="form-label small fw-semibold">Notas</label><textarea name="notes" rows="2" class="form-control"></textarea></div>

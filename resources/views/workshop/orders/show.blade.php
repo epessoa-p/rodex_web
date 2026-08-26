@@ -34,7 +34,7 @@
                     </div>
                     <div class="d-flex flex-wrap gap-3 text-muted small mt-1">
                         <span><i class="bi bi-person me-1"></i>{{ $order->client?->full_name ?? '—' }}</span>
-                        <span><i class="bi bi-car-front me-1"></i>{{ $order->vehicle?->display_name ?? '—' }}</span>
+                        <span><i class="bi bi-bicycle me-1"></i>{{ $order->vehicle?->display_name ?? '—' }}</span>
                         @if($order->mechanic)
                         <span><i class="bi bi-person-gear me-1"></i>{{ $order->mechanic->name }}</span>
                         @endif
@@ -172,7 +172,7 @@
                         @if($order->diagnosis){{ $order->diagnosis }}@else<em>Sin diagnóstico registrado.</em>@endif
                     </p>
                     @if($editable && $canEdit)
-                    <form action="{{ route('workshop.orders.diagnosis', $order) }}" method="POST" class="no-print wo-diagnosis-form" id="diagnosisForm">
+                    <form action="{{ route('workshop.orders.diagnosis', $order) }}" method="POST" class="no-print wo-diagnosis-form" id="diagnosisForm" data-no-spinner>
                         @csrf
                         <div class="d-flex gap-2 align-items-start">
                             <textarea name="diagnosis" rows="2"
@@ -241,7 +241,7 @@
                 @if($order->vehicle)
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-header bg-white border-bottom py-3 px-4">
-                        <h6 class="mb-0 fw-semibold"><i class="bi bi-car-front me-2 text-muted"></i>Vehículo</h6>
+                        <h6 class="mb-0 fw-semibold"><i class="bi bi-bicycle me-2 text-muted"></i>Vehículo</h6>
                     </div>
                     <div class="card-body p-4">
                         <div class="fw-semibold mb-1">{{ $order->vehicle->display_name }}</div>
@@ -314,9 +314,9 @@
                                             @endif
                                         </td>
                                         <td class="py-2 text-end small fw-semibold">
-                                            ${{ number_format($inst->amount, 2) }}
+                                            {{ money($inst->amount, null, 2) }}
                                             @if($inst->balance > 0)
-                                            <div class="text-danger" style="font-size:.7rem;">Saldo: ${{ number_format($inst->balance, 2) }}</div>
+                                            <div class="text-danger" style="font-size:.7rem;">Saldo: {{ money($inst->balance, null, 2) }}</div>
                                             @endif
                                         </td>
                                         <td class="py-2 pe-3">
@@ -344,7 +344,7 @@
                         @foreach($order->payments as $payment)
                         <div class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom border-light">
                             <div>
-                                <div class="fw-semibold small">${{ number_format($payment->amount, 2) }}</div>
+                                <div class="fw-semibold small">{{ money($payment->amount, null, 2) }}</div>
                                 <div class="text-muted" style="font-size:.78rem;">
                                     {{ $payment->payment_date->format('d/m/Y') }}
                                     @if($payment->method) &middot; {{ ucfirst($payment->method) }} @endif
@@ -393,15 +393,15 @@
                         <div class="row g-2 small">
                             <div class="col-4">
                                 <div class="text-muted">Total</div>
-                                <div class="fw-semibold">${{ number_format($order->total, 2) }}</div>
+                                <div class="fw-semibold">{{ money($order->total, null, 2) }}</div>
                             </div>
                             <div class="col-4">
                                 <div class="text-muted">Pagado</div>
-                                <div class="fw-semibold text-success">${{ number_format($order->paid_amount, 2) }}</div>
+                                <div class="fw-semibold text-success">{{ money($order->paid_amount, null, 2) }}</div>
                             </div>
                             <div class="col-4">
                                 <div class="text-muted">Saldo</div>
-                                <div class="fw-bold text-danger fs-6">${{ number_format($order->balance, 2) }}</div>
+                                <div class="fw-bold text-danger fs-6">{{ money($order->balance, null, 2) }}</div>
                             </div>
                         </div>
                     </div>
@@ -412,7 +412,7 @@
                                 Monto <span class="text-danger">*</span>
                             </label>
                             <div class="input-group">
-                                <span class="input-group-text bg-light">$</span>
+                                <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                 <input type="number" id="wo_amount" name="amount"
                                        step="0.01" min="0.01" max="{{ $order->balance }}"
                                        class="form-control"
@@ -544,7 +544,25 @@
         else sel.addEventListener('change', handler);
     }
 
-    function bindAll() { bindServiceAutofill(); bindPartAutofill(); }
+    // ── Autollenado de costo/precio en el modal de compra directa ─────
+    function bindPurchaseAutofill() {
+        const name  = document.querySelector('.wo-purchase-name');
+        const cost  = document.querySelector('.wo-purchase-cost');
+        const price = document.querySelector('.wo-purchase-price');
+        if (!name) return;
+        const opts = {};
+        document.querySelectorAll('#wpProducts option').forEach(o => {
+            if (o.value) opts[o.value.trim().toLowerCase()] = { price: o.dataset.price || '', cost: o.dataset.cost || '' };
+        });
+        name.addEventListener('input', function () {
+            const d = opts[this.value.trim().toLowerCase()];
+            if (!d) return;
+            if (price && d.price && !price.value) price.value = parseFloat(d.price).toFixed(2);
+            if (cost  && d.cost  && !cost.value)  cost.value  = parseFloat(d.cost).toFixed(2);
+        });
+    }
+
+    function bindAll() { bindServiceAutofill(); bindPartAutofill(); bindPurchaseAutofill(); }
 
     // ── Envío AJAX de altas/bajas de servicios y repuestos ────────────
     document.addEventListener('submit', function (e) {
@@ -569,9 +587,22 @@
                 if (btn) { btn.disabled = false; btn.innerHTML = original; }
                 return;
             }
+            // Si el envío vino de un modal (p. ej. compra directa), cerrarlo antes
+            // de reemplazar el DOM que lo contiene.
+            const modalEl = form.closest('.modal');
+            if (modalEl && window.bootstrap) {
+                bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+            }
             document.getElementById('servicesCard').innerHTML = d.services;
             document.getElementById('partsCard').innerHTML    = d.parts;
             document.getElementById('totalsCard').innerHTML   = d.totals;
+            // Limpieza por si el modal se removió antes de terminar su transición.
+            if (modalEl) {
+                document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+                document.body.classList.remove('modal-open');
+                document.body.style.removeProperty('overflow');
+                document.body.style.removeProperty('padding-right');
+            }
             bindAll();
             if (window.initSelect2) window.initSelect2(document.getElementById('partsCard'));
             toast(d.message || 'Listo.');

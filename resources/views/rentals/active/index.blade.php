@@ -61,7 +61,7 @@
                                     <span class="text-muted">—</span>
                                 @endif
                             </td>
-                            <td class="py-2 text-end fw-semibold {{ $c->balance > 0 ? '' : 'text-success' }}">Bs. {{ number_format($c->balance, 2) }}</td>
+                            <td class="py-2 text-end fw-semibold {{ $c->balance > 0 ? '' : 'text-success' }}">{{ money($c->balance) }}</td>
                             <td class="py-2 small">
                                 @if($c->end_date && $c->end_date->isPast() && !$c->end_date->isToday())
                                     <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Vencido {{ $c->end_date->format('d/m') }}</span>

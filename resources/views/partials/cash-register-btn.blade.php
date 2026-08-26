@@ -91,7 +91,7 @@
                                 <div class="col-12">
                                     <label class="form-label fw-semibold">Monto físico contado <span class="text-danger">*</span></label>
                                     <div class="input-group">
-                                        <span class="input-group-text">$</span>
+                                        <span class="input-group-text">{{ currency_symbol() }}</span>
                                         <input type="number" name="closing_amount" class="form-control form-control-lg"
                                                step="0.01" min="0" required placeholder="0.00"
                                                id="navClosingAmount">
@@ -160,7 +160,7 @@
                                 <div class="col-12">
                                     <label class="form-label fw-semibold">Monto inicial <span class="text-danger">*</span></label>
                                     <div class="input-group">
-                                        <span class="input-group-text">$</span>
+                                        <span class="input-group-text">{{ currency_symbol() }}</span>
                                         <input type="number" name="opening_amount" class="form-control form-control-lg"
                                                step="0.01" min="0" required placeholder="0.00" value="0">
                                     </div>

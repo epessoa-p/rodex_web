@@ -452,7 +452,7 @@ class RentalController extends Controller
                     $balance = (float) $rental->fresh()->balance;
                     if ((float) $validated['amount'] > $balance + 0.01) {
                         throw ValidationException::withMessages([
-                            'amount' => 'El monto supera el saldo pendiente (Bs. ' . number_format($balance, 2) . ').',
+                            'amount' => 'El monto supera el saldo pendiente (' . money($balance) . ').',
                         ]);
                     }
                     $this->chargeToCaja($rental, 'alquiler', (float) $validated['amount'], $session, $meta + [

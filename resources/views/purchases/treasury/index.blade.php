@@ -21,7 +21,7 @@
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
                 <div>
                     <div class="text-white-50 small mb-1">Balance total en tesorería</div>
-                    <div class="text-white fw-bold" style="font-size:2rem">${{ number_format($totalBalance, 2) }}</div>
+                    <div class="text-white fw-bold" style="font-size:2rem">{{ money($totalBalance, null, 2) }}</div>
                 </div>
                 <div class="rounded-3 d-flex align-items-center justify-content-center"
                      style="width:60px;height:60px;background:rgba(230,57,70,.2)">
@@ -65,7 +65,7 @@
                     <div class="border-top pt-3 mt-3">
                         <div class="text-muted small mb-1">Saldo disponible</div>
                         <div class="fw-bold fs-5 {{ $account->balance >= 0 ? 'text-success' : 'text-danger' }}">
-                            ${{ number_format($account->balance, 2) }}
+                            {{ money($account->balance, null, 2) }}
                         </div>
                     </div>
 

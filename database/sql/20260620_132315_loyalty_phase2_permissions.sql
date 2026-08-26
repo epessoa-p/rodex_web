@@ -1,5 +1,5 @@
 -- =====================================================================
---  VR Motors — Permisos Fidelización Fase 2 (Campañas + Reportes)
+--  Rodex — Permisos Fidelización Fase 2 (Campañas + Reportes)
 --  Ejecutar UNA sola vez en producción. MySQL 8.0+.
 -- =====================================================================
 

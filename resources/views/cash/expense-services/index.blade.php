@@ -36,7 +36,7 @@
                         <tr class="border-bottom border-light">
                             <td class="ps-4 py-2 fw-semibold">{{ $s->name }}@if($s->notes)<div class="text-muted small fw-normal">{{ $s->notes }}</div>@endif</td>
                             <td class="py-2"><span class="badge bg-light text-dark border" style="font-size:.7rem;">{{ $s->type_label }}</span></td>
-                            <td class="py-2 text-end">{{ $s->default_amount ? 'Bs. ' . number_format($s->default_amount, 2) : '—' }}</td>
+                            <td class="py-2 text-end">{{ $s->default_amount ? money($s->default_amount) : '—' }}</td>
                             <td class="py-2"><span class="badge bg-{{ $s->active ? 'success' : 'secondary' }}-subtle text-{{ $s->active ? 'success' : 'secondary' }} border border-{{ $s->active ? 'success' : 'secondary' }}-subtle" style="font-size:.7rem;">{{ $s->active ? 'Activo' : 'Inactivo' }}</span></td>
                             <td class="py-2 text-end pe-4">
                                 @if($canManage)

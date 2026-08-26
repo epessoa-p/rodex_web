@@ -149,28 +149,48 @@
                         <span id="permissions-info">{{ $cargo ? 'Selecciona un rol o crea uno nuevo para configurar permisos.' : 'Marca los permisos que tendrá el nuevo rol de este cargo.' }}</span>
                     </div>
 
+                    @php
+                        $planFeatures = $planFeatures ?? null; // null = no gatear (super_admin sin empresa elegida)
+                        $checkedPerms = old('permissions', $cargo?->role?->permissions?->pluck('id')->toArray() ?? []);
+                    @endphp
                     <div class="row g-3" id="permissions-container">
                         @foreach($permissions as $module => $modulePerms)
-                            <div class="col-md-4">
-                                <div class="border rounded-3 p-3 h-100">
+                            @php
+                                // Feature de plan que habilita este módulo (null = administrativo/compartido, siempre disponible).
+                                $feature = \App\Models\Plan::featureForPermissionModule($module);
+                                $modLocked = $planFeatures !== null && $feature && !in_array($feature, $planFeatures, true);
+                            @endphp
+                            <div class="col-md-4 perm-module" data-feature="{{ $feature }}">
+                                <div class="border rounded-3 p-3 h-100 module-box {{ $modLocked ? 'module-locked' : '' }}">
                                     {{-- Encabezado del módulo con checkbox "marcar todo el módulo" --}}
-                                    <div class="form-check mb-2 pb-2 border-bottom">
-                                        <input class="form-check-input mod-check" type="checkbox"
-                                            id="modcheck_{{ $loop->index }}" data-mod="{{ $loop->index }}">
-                                        <label class="form-check-label text-uppercase text-muted small fw-bold" for="modcheck_{{ $loop->index }}">
+                                    <div class="form-check mb-2 pb-2 border-bottom d-flex align-items-center gap-2">
+                                        <input class="form-check-input mod-check mt-0" type="checkbox"
+                                            id="modcheck_{{ $loop->index }}" data-mod="{{ $loop->index }}" {{ $modLocked ? 'disabled' : '' }}>
+                                        <label class="form-check-label text-uppercase text-muted small fw-bold flex-grow-1" for="modcheck_{{ $loop->index }}">
                                             <i class="bi bi-folder me-1"></i> {{ ucfirst($module) }}
                                         </label>
+                                        <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis border border-warning-subtle module-lock-badge {{ $modLocked ? '' : 'd-none' }}"
+                                              title="Este módulo no está incluido en el plan de la empresa">
+                                            <i class="bi bi-lock-fill"></i> Fuera del plan
+                                        </span>
                                     </div>
                                     @foreach($modulePerms as $permission)
+                                        @php $isChecked = in_array($permission->id, $checkedPerms); @endphp
                                         <div class="form-check mb-1">
                                             <input class="form-check-input perm-check" type="checkbox" name="permissions[]"
                                                 value="{{ $permission->id }}" id="perm_{{ $permission->id }}"
                                                 data-mod="{{ $loop->parent->index }}"
-                                                {{ in_array($permission->id, old('permissions', $cargo?->role?->permissions?->pluck('id')->toArray() ?? [])) ? 'checked' : '' }}>
+                                                {{ $isChecked ? 'checked' : '' }} {{ $modLocked ? 'disabled' : '' }}>
                                             <label class="form-check-label small" for="perm_{{ $permission->id }}">
                                                 {{ $permission->name }}
                                             </label>
                                         </div>
+                                        {{-- Si el módulo quedó fuera del plan pero el cargo YA tenía este permiso,
+                                             lo preservamos (el checkbox disabled no se envía). Evita perder permisos
+                                             al guardar sólo por editar otra cosa; no permite agregar nuevos. --}}
+                                        @if($modLocked && $isChecked)
+                                            <input type="hidden" name="permissions[]" value="{{ $permission->id }}" class="perm-preserve" data-mod="{{ $loop->parent->index }}">
+                                        @endif
                                     @endforeach
                                 </div>
                             </div>
@@ -192,6 +212,14 @@
         </div>
     </form>
 </div>
+
+@push('styles')
+<style>
+    /* Recuadro de un módulo que el plan de la empresa no incluye. */
+    .module-box.module-locked { opacity: .6; background: #f8f9fa; }
+    .module-box.module-locked .form-check-input { cursor: not-allowed; }
+</style>
+@endpush
 
 @push('scripts')
 <script>
@@ -234,18 +262,66 @@ $(function () {
     });
 
     $('#btn-select-all').on('click', function () {
-        $permChecks.prop('checked', true);
+        $permChecks.not(':disabled').prop('checked', true);
         updateCount();
         syncAllModuleHeaders();
     });
     $('#btn-deselect-all').on('click', function () {
-        $permChecks.prop('checked', false);
+        $permChecks.not(':disabled').prop('checked', false);
         updateCount();
         syncAllModuleHeaders();
     });
 
     updateCount();
     syncAllModuleHeaders();
+
+    // ── Gateo de módulos por el plan de la empresa ────────────────────────
+    // Los recuadros de módulos que el plan de la empresa no incluye se
+    // deshabilitan. En server ya vienen gateados; aquí se re-evalúa cuando el
+    // super_admin cambia de empresa en el select.
+    const $companySelect  = $('select[name="company_id"]');
+    const planFeaturesUrl = '{{ route('cargos.plan-features') }}';
+
+    function applyPlanGating(features) {
+        // features: array de claves de plan; null => no gatear (habilitar todo).
+        $('.perm-module').each(function () {
+            const $mod      = $(this);
+            const feature   = ($mod.data('feature') || '').toString();
+            const $box      = $mod.find('.module-box');
+            const $badge    = $mod.find('.module-lock-badge');
+            const $inputs   = $mod.find('.perm-check');
+            const $modCheck = $mod.find('.mod-check');
+            // Sin feature => módulo administrativo/compartido, siempre disponible.
+            const locked = feature && features !== null && features.indexOf(feature) === -1;
+
+            if (locked) {
+                $inputs.prop('checked', false).prop('disabled', true);
+                $modCheck.prop('checked', false).prop('indeterminate', false).prop('disabled', true);
+                $box.addClass('module-locked');
+                $badge.removeClass('d-none');
+                $mod.find('.perm-preserve').remove(); // al cambiar de empresa no se preservan permisos ajenos
+            } else {
+                $inputs.prop('disabled', false);
+                $modCheck.prop('disabled', false);
+                $box.removeClass('module-locked');
+                $badge.addClass('d-none');
+            }
+        });
+        updateCount();
+        syncAllModuleHeaders();
+    }
+
+    if ($companySelect.length) {
+        $companySelect.on('change', function () {
+            const companyId = $(this).val();
+            if (!companyId) { applyPlanGating(null); return; }
+            $.getJSON(planFeaturesUrl, { company_id: companyId })
+                .done(applyPlanGating)
+                .fail(function () { applyPlanGating(null); });
+        });
+        // Si ya hay empresa elegida (reintento tras error de validación), gatear.
+        if ($companySelect.val()) $companySelect.trigger('change');
+    }
 
     // ── Selección/creación de rol: solo existe en el formulario de EDICIÓN ──
     const $existingSection = $('#existing-role-section');
@@ -281,8 +357,8 @@ $(function () {
             $permInfo.text('Cargando permisos...');
             $.getJSON(permissionsUrl.replace(':id', roleId))
                 .done(function (permIds) {
-                    $permChecks.prop('checked', false);
-                    permIds.forEach(function (id) { $('#perm_' + id).prop('checked', true); });
+                    $permChecks.not(':disabled').prop('checked', false);
+                    permIds.forEach(function (id) { $('#perm_' + id).not(':disabled').prop('checked', true); });
                     updateCount();
                     syncAllModuleHeaders();
                     $permInfo.text('Permisos del rol seleccionado (puedes modificarlos).');

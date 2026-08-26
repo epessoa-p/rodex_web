@@ -45,13 +45,29 @@ class SubscriptionController extends Controller
     public function update(Request $request, Company $company)
     {
         $validated = $request->validate([
-            'plan_id'            => ['required', 'exists:plans,id'],
-            'status'             => ['required', Rule::in(array_keys(Subscription::STATUSES))],
-            'trial_ends_at'      => ['nullable', 'date'],
-            'current_period_end' => ['nullable', 'date'],
-            'grace_days'         => ['required', 'integer', 'min:0', 'max:60'],
-            'notes'              => ['nullable', 'string', 'max:1000'],
+            'plan_id'               => ['required', 'exists:plans,id'],
+            'status'                => ['required', Rule::in(array_keys(Subscription::STATUSES))],
+            'trial_ends_at'         => ['nullable', 'date'],
+            'current_period_end'    => ['nullable', 'date'],
+            'grace_days'            => ['required', 'integer', 'min:0', 'max:60'],
+            'notes'                 => ['nullable', 'string', 'max:1000'],
+            // Ajustes personalizados por empresa (override sobre el plan).
+            'max_users_override'    => ['nullable', 'integer', 'min:1'],
+            'max_branches_override' => ['nullable', 'integer', 'min:1'],
+            'max_products_override' => ['nullable', 'integer', 'min:1'],
+            'features_override'     => ['nullable', 'array'],
+            'features_override.*'   => [Rule::in(array_keys(\App\Models\Plan::MODULES))],
         ]);
+
+        // Overrides numéricos: campo vacío => null (hereda del plan).
+        foreach (['max_users_override', 'max_branches_override', 'max_products_override'] as $k) {
+            $validated[$k] = $request->filled($k) ? (int) $request->input($k) : null;
+        }
+
+        // Módulos: si el switch "personalizar" está apagado, hereda del plan (null).
+        $validated['features_override'] = $request->boolean('customize_features')
+            ? array_values($request->input('features_override', []))
+            : null;
 
         $subscription = $company->subscription;
 

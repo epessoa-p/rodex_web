@@ -27,12 +27,12 @@
                     <tr class="border-bottom border-light">
                         <td class="ps-4 py-2 small">{{ $svc->description ?: $svc->service?->name }}</td>
                         <td class="py-2 small text-muted">{{ $svc->mechanic?->name ?? '—' }}</td>
-                        <td class="py-2 text-end small">${{ number_format($svc->price, 2) }}</td>
+                        <td class="py-2 text-end small">{{ money($svc->price, null, 2) }}</td>
                         <td class="py-2 text-center small">{{ $svc->quantity }}</td>
-                        <td class="py-2 text-end fw-semibold small">${{ number_format($svc->subtotal, 2) }}</td>
+                        <td class="py-2 text-end fw-semibold small">{{ money($svc->subtotal, null, 2) }}</td>
                         @if($editable && $canEdit)
                         <td class="py-2 pe-3">
-                            <form action="{{ route('workshop.orders.services.remove', [$order, $svc]) }}" method="POST" class="d-inline wo-ajax-form">
+                            <form action="{{ route('workshop.orders.services.remove', [$order, $svc]) }}" method="POST" class="d-inline wo-ajax-form" data-no-spinner>
                                 @csrf @method('DELETE')
                                 <button class="btn btn-sm btn-light border text-danger py-0 px-1" title="Quitar servicio">
                                     <i class="bi bi-x"></i>
@@ -57,7 +57,7 @@
     @if($editable && $canEdit)
     <div class="card-footer bg-light border-top p-4">
         <p class="small fw-semibold mb-3"><i class="bi bi-plus-circle me-1" style="color:#2563eb;"></i>Agregar servicio</p>
-        <form action="{{ route('workshop.orders.services.add', $order) }}" method="POST" class="wo-ajax-form wo-add-form">
+        <form action="{{ route('workshop.orders.services.add', $order) }}" method="POST" class="wo-ajax-form wo-add-form" data-no-spinner>
             @csrf
             <div class="row g-2 align-items-end">
                 <div class="col-md-4">
@@ -75,7 +75,7 @@
                 <div class="col-md-2">
                     <label class="form-label form-label-sm fw-semibold mb-1">Precio</label>
                     <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white">$</span>
+                        <span class="input-group-text bg-white">{{ currency_symbol() }}</span>
                         <input type="number" name="price" class="form-control wo-svc-price"
                                step="0.01" min="0" required placeholder="0.00">
                     </div>

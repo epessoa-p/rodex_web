@@ -80,10 +80,10 @@
                                 <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1" style="font-size:.62rem;">VENCIDA</span>
                                 @endif
                             </td>
-                            <td class="py-2 text-end small">${{ number_format($inst->amount, 2) }}</td>
-                            <td class="py-2 text-end small text-success">${{ number_format($inst->paid_amount, 2) }}</td>
+                            <td class="py-2 text-end small">{{ money($inst->amount, null, 2) }}</td>
+                            <td class="py-2 text-end small text-success">{{ money($inst->paid_amount, null, 2) }}</td>
                             <td class="py-2 text-end fw-semibold small {{ $inst->balance > 0 ? 'text-danger' : 'text-muted' }}">
-                                ${{ number_format($inst->balance, 2) }}
+                                {{ money($inst->balance, null, 2) }}
                             </td>
                             <td class="py-2 pe-4">
                                 <span class="badge bg-{{ $inst->status_color }}-subtle text-{{ $inst->status_color }} border border-{{ $inst->status_color }}-subtle" style="font-size:.68rem;">

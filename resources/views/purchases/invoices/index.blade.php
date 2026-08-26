@@ -64,10 +64,10 @@
                             <td class="py-3 small">{{ $purchase->supplier->name }}</td>
                             <td class="py-3 small text-muted">{{ $purchase->invoice_number ?: '—' }}</td>
                             <td class="py-3 small text-muted">{{ $purchase->purchase_date->format('d/m/Y') }}</td>
-                            <td class="py-3 text-end fw-semibold small">${{ number_format($purchase->total, 2) }}</td>
-                            <td class="py-3 text-end small text-success">${{ number_format($purchase->paid_amount, 2) }}</td>
+                            <td class="py-3 text-end fw-semibold small">{{ money($purchase->total, null, 2) }}</td>
+                            <td class="py-3 text-end small text-success">{{ money($purchase->paid_amount, null, 2) }}</td>
                             <td class="py-3 text-end fw-bold small {{ $purchase->balance > 0 ? 'text-danger' : 'text-muted' }}">
-                                ${{ number_format($purchase->balance, 2) }}
+                                {{ money($purchase->balance, null, 2) }}
                             </td>
                             <td class="py-3">
                                 <span class="badge bg-{{ $purchase->payment_status_color }}-subtle text-{{ $purchase->payment_status_color }} border border-{{ $purchase->payment_status_color }}-subtle">

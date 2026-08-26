@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Fix cash_movements
+--  Rodex — Fix cash_movements
 --  La tabla legacy no coincidía con el modelo CashMovement.
 --  Se recrea con el esquema correcto (tabla estaba vacía).
 -- ============================================================

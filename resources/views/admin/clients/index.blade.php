@@ -90,7 +90,7 @@
                             <td class="py-2 text-end">
                                 @if((float) $client->credit_due > 0.001)
                                     <span class="badge bg-danger-subtle text-danger border border-danger-subtle" title="Saldo pendiente por cobrar">
-                                        <i class="bi bi-exclamation-circle me-1"></i>${{ number_format($client->credit_due, 2) }}
+                                        <i class="bi bi-exclamation-circle me-1"></i>{{ money($client->credit_due, null, 2) }}
                                     </span>
                                 @else
                                     <span class="text-muted">—</span>

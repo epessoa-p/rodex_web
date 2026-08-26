@@ -8,7 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     @php
         $logo = $company?->logo_url ?? asset(config('brand.logo'));
-        $money = fn ($n) => '$' . number_format((float) $n, 2);
+        $money = fn ($n) => money($n, $company?->currency);
         $ruleAmount = rtrim(rtrim(number_format((float) $settings->earn_amount, 2), '0'), '.');
     @endphp
     <style>

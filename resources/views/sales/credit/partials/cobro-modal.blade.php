@@ -28,15 +28,15 @@
                         <div class="row g-2 small">
                             <div class="col-4">
                                 <div class="text-muted">Total venta</div>
-                                <div class="fw-semibold">${{ number_format($sale->total, 2) }}</div>
+                                <div class="fw-semibold">{{ money($sale->total, null, 2) }}</div>
                             </div>
                             <div class="col-4">
                                 <div class="text-muted">Pagado</div>
-                                <div class="fw-semibold text-success">${{ number_format($sale->paid_amount, 2) }}</div>
+                                <div class="fw-semibold text-success">{{ money($sale->paid_amount, null, 2) }}</div>
                             </div>
                             <div class="col-4">
                                 <div class="text-muted">Saldo</div>
-                                <div class="fw-bold text-danger fs-6">${{ number_format($sale->balance, 2) }}</div>
+                                <div class="fw-bold text-danger fs-6">{{ money($sale->balance, null, 2) }}</div>
                             </div>
                         </div>
                     </div>
@@ -50,7 +50,7 @@
                             <button type="button" class="inst-card active" data-value="" data-amount-val="{{ number_format($sale->balance, 2, '.', '') }}">
                                 <div class="ic-title"><i class="bi bi-shuffle me-1"></i>Automático</div>
                                 <div class="ic-sub">Distribuir saldo</div>
-                                <div class="ic-amt">${{ number_format($sale->balance, 2) }}</div>
+                                <div class="ic-amt">{{ money($sale->balance, null, 2) }}</div>
                             </button>
                             @foreach($allInst as $inst)
                             @php $isPaid = (float) $inst->balance <= 0.001; @endphp
@@ -66,7 +66,7 @@
                                     @endif
                                 </div>
                                 <div class="ic-sub"><i class="bi bi-calendar3 me-1"></i>{{ $inst->due_date->format('d/m/Y') }}</div>
-                                <div class="ic-amt">{{ $isPaid ? '$'.number_format($inst->amount, 2) : '$'.number_format($inst->balance, 2) }}</div>
+                                <div class="ic-amt">{{ $isPaid ? money($inst->amount) : money($inst->balance) }}</div>
                             </button>
                             @endforeach
                         </div>
@@ -79,7 +79,7 @@
                                 Monto <span class="text-danger">*</span>
                             </label>
                             <div class="input-group">
-                                <span class="input-group-text bg-light">$</span>
+                                <span class="input-group-text bg-light">{{ currency_symbol() }}</span>
                                 <input type="number" id="amt_{{ $sale->id }}" name="amount"
                                        step="0.01" min="0.01" max="{{ $sale->balance }}"
                                        class="form-control @error('amount') is-invalid @enderror"

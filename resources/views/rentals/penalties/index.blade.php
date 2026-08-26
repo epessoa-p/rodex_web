@@ -30,7 +30,7 @@
                             <td class="py-2"><a href="{{ route('rentals.show', $p->rental_contract_id) }}" class="text-decoration-none fw-semibold text-dark font-monospace" style="font-size:.8rem;">{{ $p->contract?->code }}</a></td>
                             <td class="py-2 small">{{ $p->contract?->client?->full_name ?? '—' }}</td>
                             <td class="py-2 small">{{ $p->concept }}</td>
-                            <td class="py-2 text-end fw-semibold pe-4">Bs. {{ number_format($p->amount, 2) }}</td>
+                            <td class="py-2 text-end fw-semibold pe-4">{{ money($p->amount) }}</td>
                         </tr>
                         @empty
                         <tr><td colspan="5" class="text-center py-5 text-muted"><i class="bi bi-exclamation-triangle fs-2 opacity-25 d-block mb-2"></i>Sin penalizaciones registradas.</td></tr>

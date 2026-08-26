@@ -22,6 +22,7 @@
                         <tr>
                             <th class="ps-3">Nombre</th>
                             <th>Cargo</th>
+                            <th>Sucursal</th>
                             <th>Usuario</th>
                             <th>Empresa</th>
                             <th class="text-center">Estado</th>
@@ -38,6 +39,13 @@
                                 <td>
                                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ $personal->cargo?->name ?? '-' }}</span>
                                     <div><small class="text-muted">Rol: {{ $personal->cargo?->role?->name ?? '-' }}</small></div>
+                                </td>
+                                <td>
+                                    @if($personal->branch)
+                                        <span class="badge bg-light text-dark border"><i class="bi bi-diagram-2 me-1"></i>{{ $personal->branch->name }}</span>
+                                    @else
+                                        <span class="text-muted small">—</span>
+                                    @endif
                                 </td>
                                 <td>
                                     <div class="fw-semibold">{{ $personal->user?->name ?? '-' }}</div>
@@ -57,7 +65,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="text-center py-5 text-muted">No hay personal registrado.</td></tr>
+                            <tr><td colspan="7" class="text-center py-5 text-muted">No hay personal registrado.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

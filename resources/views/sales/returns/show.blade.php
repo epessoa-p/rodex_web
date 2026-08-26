@@ -62,13 +62,13 @@
     @if($return->refunded_amount > 0)
     <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center gap-2 mb-3">
         <i class="bi bi-cash-coin flex-shrink-0 fs-5"></i>
-        <span>Se reembolsaron <strong>${{ number_format($return->refunded_amount, 2) }}</strong> en efectivo (egreso de caja).</span>
+        <span>Se reembolsaron <strong>{{ money($return->refunded_amount, null, 2) }}</strong> en efectivo (egreso de caja).</span>
     </div>
     @endif
     @if($balanceCancelled > 0)
     <div class="alert alert-info border-0 shadow-sm d-flex align-items-center gap-2 mb-4">
         <i class="bi bi-calendar2-x flex-shrink-0 fs-5"></i>
-        <span>Se canceló <strong>${{ number_format($balanceCancelled, 2) }}</strong> del saldo de crédito pendiente (cuotas reducidas).</span>
+        <span>Se canceló <strong>{{ money($balanceCancelled, null, 2) }}</strong> del saldo de crédito pendiente (cuotas reducidas).</span>
     </div>
     @endif
 
@@ -102,9 +102,9 @@
                                         @endif
                                     </td>
                                     <td class="py-3 text-end small">{{ number_format($item->quantity, 0) }}</td>
-                                    <td class="py-3 text-end small">${{ number_format($item->unit_price, 2) }}</td>
+                                    <td class="py-3 text-end small">{{ money($item->unit_price, null, 2) }}</td>
                                     <td class="py-3 text-end fw-semibold small pe-4">
-                                        ${{ number_format($item->quantity * $item->unit_price, 2) }}
+                                        {{ money($item->quantity * $item->unit_price, null, 2) }}
                                     </td>
                                 </tr>
                                 @empty
@@ -122,17 +122,17 @@
                             @php $balanceCancelled = (float) $return->total - (float) $return->refunded_amount; @endphp
                             <div class="d-flex justify-content-between mb-1 small text-muted">
                                 <span>Valor mercadería devuelta</span>
-                                <span>${{ number_format($return->total, 2) }}</span>
+                                <span>{{ money($return->total, null, 2) }}</span>
                             </div>
                             @if($balanceCancelled > 0)
                             <div class="d-flex justify-content-between mb-1 small text-muted">
                                 <span>Saldo de crédito cancelado</span>
-                                <span>−${{ number_format($balanceCancelled, 2) }}</span>
+                                <span>−{{ money($balanceCancelled, null, 2) }}</span>
                             </div>
                             @endif
                             <div class="d-flex justify-content-between fw-bold border-top pt-2">
                                 <span>Efectivo reembolsado</span>
-                                <span class="text-danger">${{ number_format($return->refunded_amount, 2) }}</span>
+                                <span class="text-danger">{{ money($return->refunded_amount, null, 2) }}</span>
                             </div>
                         </div>
                     </div>

@@ -55,7 +55,7 @@
                         </div>
                         <span class="badge bg-danger-subtle text-danger border border-danger-subtle small">Este mes</span>
                     </div>
-                    <div class="fw-bold fs-4 mb-1">${{ number_format($incomeThisMonth, 2) }}</div>
+                    <div class="fw-bold fs-4 mb-1">{{ money($incomeThisMonth, null, 2) }}</div>
                     <div class="text-muted small">Ingresos del mes</div>
                 </div>
             </div>
@@ -70,7 +70,7 @@
                         </div>
                         <span class="badge bg-warning-subtle text-warning border border-warning-subtle small">Por cobrar</span>
                     </div>
-                    <div class="fw-bold fs-4 mb-1 text-danger">${{ number_format($receivable, 2) }}</div>
+                    <div class="fw-bold fs-4 mb-1 text-danger">{{ money($receivable, null, 2) }}</div>
                     <div class="text-muted small">Por cobrar</div>
                 </div>
             </div>
@@ -145,7 +145,7 @@
                                             {{ $order->status_label }}
                                         </span>
                                     </td>
-                                    <td class="py-2 text-end fw-semibold small pe-4">${{ number_format($order->total, 2) }}</td>
+                                    <td class="py-2 text-end fw-semibold small pe-4">{{ money($order->total, null, 2) }}</td>
                                 </tr>
                                 @empty
                                 <tr>

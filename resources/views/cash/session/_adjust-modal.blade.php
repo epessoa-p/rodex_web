@@ -64,7 +64,7 @@
                                     <span class="text-muted fw-normal" style="font-size:.75rem;">(sugerido: la diferencia)</span>
                                 </label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light px-2">Bs.</span>
+                                    <span class="input-group-text bg-light px-2">{{ currency_symbol() }}</span>
                                     <input type="number" name="amount" id="adjAmount" class="form-control"
                                            step="0.01" min="0.01" required>
                                 </div>
@@ -97,7 +97,7 @@
                                     <span class="text-muted fw-normal" style="font-size:.75rem;">(sugerido: el esperado)</span>
                                 </label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light px-2">Bs.</span>
+                                    <span class="input-group-text bg-light px-2">{{ currency_symbol() }}</span>
                                     <input type="number" name="counted_amount" id="adjNewCount" class="form-control"
                                            step="0.01" min="0" required>
                                 </div>
@@ -221,8 +221,8 @@
         var regLabel = document.getElementById('adjustRegisterLabel');
         if (regLabel) regLabel.innerHTML = '<i class="bi bi-safe2 me-1"></i>' + (btn.dataset.register || 'Caja');
 
-        document.getElementById('adjExpected').textContent = 'Bs. ' + fmt(expected);
-        document.getElementById('adjCounted').textContent  = 'Bs. ' + fmt(counted);
+        document.getElementById('adjExpected').textContent = '{{ currency_symbol() }} ' + fmt(expected);
+        document.getElementById('adjCounted').textContent  = '{{ currency_symbol() }} ' + fmt(counted);
         var diffEl = document.getElementById('adjDifference');
         diffEl.textContent = (adjustDiff > 0 ? '+' : '') + fmt(adjustDiff);
         diffEl.className = 'fw-bold ' + (adjustDiff > 0 ? 'text-success' : (adjustDiff < 0 ? 'text-danger' : 'text-muted'));

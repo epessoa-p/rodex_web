@@ -96,14 +96,13 @@
                         </div>
 
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold" for="sku">
-                                SKU <span class="text-danger">*</span>
-                            </label>
+                            <label class="form-label fw-semibold" for="sku">SKU</label>
                             <input type="text" id="sku" name="sku"
                                    class="form-control @error('sku') is-invalid @enderror"
                                    value="{{ old('sku', $isEdit ? $product->sku : '') }}"
-                                   required maxlength="100"
-                                   placeholder="REP-001">
+                                   maxlength="100"
+                                   placeholder="Se autogenera si lo dejas vacío">
+                            <div class="form-text">Opcional. Si lo dejas vacío se genera automáticamente ({{ config('inventory.code_prefix') }}-00001).</div>
                             @error('sku')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
@@ -127,8 +126,28 @@
                             @error('barcode')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
-                        {{-- La unidad de medida siempre es "unidad" --}}
-                        <input type="hidden" name="unit" value="unidad">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" for="unit">
+                                Unidad de medida <span class="text-danger">*</span>
+                                <a href="{{ route('product-units.create') }}" class="ms-1 small text-muted" title="Crear nueva unidad" target="_blank">
+                                    <i class="bi bi-plus-circle"></i>
+                                </a>
+                            </label>
+                            @php
+                                $currentUnit = old('unit', $isEdit ? $product->unit : config('inventory.default_unit', 'Unidad'));
+                                $unitNames   = ($units ?? collect())->pluck('name');
+                            @endphp
+                            <select id="unit" name="unit" class="form-select @error('unit') is-invalid @enderror" required>
+                                @foreach($unitNames as $u)
+                                <option value="{{ $u }}" {{ (string) $currentUnit === (string) $u ? 'selected' : '' }}>{{ $u }}</option>
+                                @endforeach
+                                {{-- La unidad actual del producto puede no estar en el catálogo (legado): la conservamos. --}}
+                                @if(filled($currentUnit) && !$unitNames->contains($currentUnit))
+                                <option value="{{ $currentUnit }}" selected>{{ $currentUnit }}</option>
+                                @endif
+                            </select>
+                            @error('unit')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
 
                         <div class="col-12">
                             <label class="form-label fw-semibold" for="moto_models">
@@ -188,7 +207,7 @@
                                 Precio de compra <span class="text-danger">*</span>
                             </label>
                             <div class="input-group">
-                                <span class="input-group-text bg-light border-end-0">$</span>
+                                <span class="input-group-text bg-light border-end-0">{{ currency_symbol() }}</span>
                                 <input type="number" id="cost" name="cost" step="0.01" min="0"
                                        class="form-control border-start-0 @error('cost') is-invalid @enderror"
                                        value="{{ old('cost', $isEdit ? $product->cost : '') }}"
@@ -203,7 +222,7 @@
                                 Precio de venta <span class="text-danger">*</span>
                             </label>
                             <div class="input-group">
-                                <span class="input-group-text bg-light border-end-0">$</span>
+                                <span class="input-group-text bg-light border-end-0">{{ currency_symbol() }}</span>
                                 <input type="number" id="price" name="price" step="0.01" min="0"
                                        class="form-control border-start-0 @error('price') is-invalid @enderror"
                                        value="{{ old('price', $isEdit ? $product->price : '') }}"

@@ -9,8 +9,15 @@
             <h1 class="mb-1"><i class="bi bi-diagram-2"></i> Sucursales</h1>
             <p class="text-muted mb-0">Administra las sucursales disponibles por empresa.</p>
         </div>
-        <a href="{{ route('branches.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nueva sucursal</a>
+        <x-plan-limit-button :status="$limitStatus" :href="route('branches.create')"
+            label="Nueva sucursal" resource="sucursales" />
     </div>
+
+    @if($errors->any())
+        <div class="alert alert-danger border-0 shadow-sm">
+            <i class="bi bi-exclamation-triangle me-2"></i>{{ $errors->first() }}
+        </div>
+    @endif
     <div class="card border-0 shadow-sm">
         <div class="card-body p-0">
             <div class="table-responsive">

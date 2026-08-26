@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Agregar columna 'placa' (opcional) a moto_units
+--  Rodex — Agregar columna 'placa' (opcional) a moto_units
 --  Placa de la unidad registrada al crearla (distinta de
 --  'assigned_plate', que se asigna en la entrega).
 --  Seguro de re-ejecutar: valida existencia previa.

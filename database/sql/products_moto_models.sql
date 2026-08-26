@@ -1,5 +1,5 @@
 -- ============================================================
---  VR Motors — Productos: compatibilidad con Modelos de motos
+--  Rodex — Productos: compatibilidad con Modelos de motos
 -- ============================================================
 
 -- ── 1. Pivote producto ↔ modelo de moto ──────────────────────

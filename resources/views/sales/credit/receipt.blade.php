@@ -1,7 +1,7 @@
 @php
     $company = $sale->company;
     $branch  = $sale->branch;
-    $money   = fn ($n) => '$' . number_format((float) $n, 2);
+    $money   = fn ($n) => money($n, $company?->currency);
     $dateC   = \Illuminate\Support\Carbon::parse($date);
     $methodLabel = ['efectivo' => 'Efectivo', 'transferencia' => 'Transferencia', 'tarjeta' => 'Tarjeta'][$method] ?? ucfirst($method);
 @endphp

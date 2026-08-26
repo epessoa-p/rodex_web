@@ -33,4 +33,57 @@ abstract class Controller extends BaseController
     {
         return "Alcanzaste el límite de {$label} de tu plan. Contacta a tu proveedor para ampliarlo.";
     }
+
+    /**
+     * Estado del cupo del plan para pintar el botón "crear" en las vistas:
+     * uso actual, tope efectivo (con override de empresa) y si ya se alcanzó.
+     * Claves válidas: 'users', 'branches', 'products'.
+     *
+     * El super_admin no está sujeto a límites => nunca "reached".
+     */
+    protected function planLimitStatus(?int $companyId, string $key): array
+    {
+        if (!$companyId || auth()->user()?->is_super_admin) {
+            return ['reached' => false, 'usage' => 0, 'max' => null, 'unlimited' => true];
+        }
+
+        $company = Company::find($companyId);
+
+        if ($company === null) {
+            return ['reached' => false, 'usage' => 0, 'max' => null, 'unlimited' => true];
+        }
+
+        $max   = $company->effectiveLimit($key);
+        $usage = $company->usageFor($key);
+
+        return [
+            'reached'   => $max !== null && $usage >= $max,
+            'usage'     => $usage,
+            'max'       => $max,
+            'unlimited' => $max === null,
+        ];
+    }
+
+    /**
+     * Estado de cupos de una empresa para MOSTRAR (indicador de "quedan N"),
+     * siempre referido a la empresa indicada, sin la excepción de super_admin
+     * (que sí aplica para el bloqueo en planLimitStatus). Útil cuando el
+     * super_admin edita datos de una empresa y quiere ver sus cupos reales.
+     */
+    protected function companyLimitStatus(?int $companyId, string $key): array
+    {
+        $company = $companyId ? Company::find($companyId) : null;
+
+        if ($company === null) {
+            return ['usage' => 0, 'max' => null, 'unlimited' => true];
+        }
+
+        $max = $company->effectiveLimit($key);
+
+        return [
+            'usage'     => $company->usageFor($key),
+            'max'       => $max,
+            'unlimited' => $max === null,
+        ];
+    }
 }

@@ -34,7 +34,7 @@
                         </div>
                         <span class="badge bg-danger-subtle text-danger border border-danger-subtle small">Este mes</span>
                     </div>
-                    <div class="fw-bold fs-4 mb-1">${{ number_format($purchasedThisMonth, 2) }}</div>
+                    <div class="fw-bold fs-4 mb-1">{{ money($purchasedThisMonth, null, 2) }}</div>
                     <div class="text-muted small">Compras del mes</div>
                 </div>
             </div>
@@ -49,7 +49,7 @@
                         </div>
                         <span class="badge bg-warning-subtle text-warning border border-warning-subtle small">Por pagar</span>
                     </div>
-                    <div class="fw-bold fs-4 mb-1 text-danger">${{ number_format($totalPayable, 2) }}</div>
+                    <div class="fw-bold fs-4 mb-1 text-danger">{{ money($totalPayable, null, 2) }}</div>
                     <div class="text-muted small">Total por pagar</div>
                 </div>
             </div>
@@ -64,7 +64,7 @@
                         </div>
                         <span class="badge bg-success-subtle text-success border border-success-subtle small">Disponible</span>
                     </div>
-                    <div class="fw-bold fs-4 mb-1 text-success">${{ number_format($treasuryBalance, 2) }}</div>
+                    <div class="fw-bold fs-4 mb-1 text-success">{{ money($treasuryBalance, null, 2) }}</div>
                     <div class="text-muted small">Saldo en tesorería</div>
                 </div>
             </div>
@@ -119,7 +119,7 @@
                                     </td>
                                     <td class="py-3 small">{{ $purchase->supplier->name }}</td>
                                     <td class="py-3 small text-muted">{{ $purchase->purchase_date->format('d/m/Y') }}</td>
-                                    <td class="py-3 text-end fw-semibold small">${{ number_format($purchase->total, 2) }}</td>
+                                    <td class="py-3 text-end fw-semibold small">{{ money($purchase->total, null, 2) }}</td>
                                     <td class="py-3 pe-4">
                                         <span class="badge bg-{{ $purchase->payment_status_color }}-subtle text-{{ $purchase->payment_status_color }} border border-{{ $purchase->payment_status_color }}-subtle">
                                             {{ $purchase->payment_status_label }}
@@ -173,7 +173,7 @@
                                             {{ $order->status_label }}
                                         </span>
                                     </td>
-                                    <td class="py-3 text-end fw-semibold small pe-4">${{ number_format($order->total, 2) }}</td>
+                                    <td class="py-3 text-end fw-semibold small pe-4">{{ money($order->total, null, 2) }}</td>
                                 </tr>
                                 @empty
                                 <tr>
@@ -217,7 +217,7 @@
                             </div>
                         </div>
                         <div class="fw-bold small {{ $account->balance >= 0 ? 'text-success' : 'text-danger' }}">
-                            ${{ number_format($account->balance, 2) }}
+                            {{ money($account->balance, null, 2) }}
                         </div>
                     </div>
                     @empty
@@ -248,7 +248,7 @@
                                 <div class="progress-bar bg-danger" style="width:{{ $maxVal > 0 ? ($supplier->total_purchased / $maxVal * 100) : 0 }}%"></div>
                             </div>
                         </div>
-                        <div class="fw-semibold small text-muted flex-shrink-0">${{ number_format($supplier->total_purchased, 0) }}</div>
+                        <div class="fw-semibold small text-muted flex-shrink-0">{{ money($supplier->total_purchased, null, 0) }}</div>
                     </div>
                     @empty
                     <div class="text-center py-3 text-muted small">

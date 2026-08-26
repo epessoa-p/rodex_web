@@ -4,7 +4,7 @@
     $expected = $session->expectedBalance();
     $isOpen   = $session->isOpen();
     $diff     = (float) $session->difference;
-    $money    = fn ($n) => 'Bs. ' . number_format((float) $n, 2);
+    $money    = fn ($n) => money($n);
 @endphp
 
 <div class="session-detail p-3 p-lg-4">

@@ -7,6 +7,8 @@ use Illuminate\Foundation\Configuration\Middleware;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
+        apiPrefix: 'api',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function () {
@@ -45,6 +47,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'set-tenant' => \App\Http\Middleware\SetTenant::class,
             'subscription' => \App\Http\Middleware\EnsureSubscriptionActive::class,
             'plan' => \App\Http\Middleware\CheckPlanModule::class,
+
+            // ── API (tokens, sin sesión) ──────────────────────────
+            'api.tenant' => \App\Http\Middleware\Api\SetTenantFromApi::class,
+            'api.subscription' => \App\Http\Middleware\Api\EnsureSubscriptionActiveApi::class,
+            'api.plan' => \App\Http\Middleware\Api\CheckPlanModuleApi::class,
+            'api.permission' => \App\Http\Middleware\Api\CheckPermissionApi::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

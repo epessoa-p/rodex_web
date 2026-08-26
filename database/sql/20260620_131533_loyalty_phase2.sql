@@ -1,5 +1,5 @@
 -- =====================================================================
---  VR Motors — Fidelización Fase 2: vencimiento (lotes FIFO) + campañas
+--  Rodex — Fidelización Fase 2: vencimiento (lotes FIFO) + campañas
 --  Equivale a la migración: 2026_06_20_000001_loyalty_phase2.php
 --  Ejecutar UNA sola vez en producción. MySQL 8.0+.
 -- =====================================================================

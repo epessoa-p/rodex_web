@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Migrar inventario desde Excel')
+@section('title', 'Importar productos desde Excel')
 
 @section('page')
 <div class="container-fluid">
@@ -9,7 +9,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <h1 class="mb-1 fw-bold fs-5">
-                <i class="bi bi-cloud-upload me-2 text-danger"></i>Migrar inventario
+                <i class="bi bi-cloud-upload me-2 text-danger"></i>Importar productos
             </h1>
             <p class="text-muted mb-0 small">
                 Carga masiva con verificación previa: revisa y ajusta antes de confirmar.
@@ -101,21 +101,23 @@
             <div class="col-lg-5">
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-header bg-white border-bottom py-3 px-4">
-                        <h6 class="mb-0 fw-semibold"><i class="bi bi-table me-2 text-muted"></i>Columnas del archivo</h6>
+                        <h6 class="mb-0 fw-semibold"><i class="bi bi-table me-2 text-muted"></i>Columnas de la plantilla</h6>
                     </div>
                     <div class="card-body p-0">
                         <table class="table table-sm mb-0 align-middle">
-                            <thead class="table-light"><tr><th class="ps-4" style="width:46px;">Col.</th><th>Campo</th><th class="pe-4">Ejemplo</th></tr></thead>
+                            <thead class="table-light"><tr><th class="ps-4">Columna</th><th class="pe-4">Ejemplo</th></tr></thead>
                             <tbody>
-                                @foreach([['A','Nombre producto *','(01) Carburador Trueno'],['B','Categoría','Carburación (999)'],['C','Marca','Trueno'],['D','Cantidad','25'],['E','Costo','104'],['F','Precio','140'],['G','Modelo(s)','CG150, CG200'],['H','Detalle','Incluye filtro'],['I','Código','CARB-010']] as $c)
+                                @foreach([['Nombre *','Pastillas de freno'],['Categoría','Frenos'],['Marca','Bosch'],['Origen','China'],['Precio','120'],['Costo','90'],['Stock','15'],['Unidad','Unidad'],['Código','(se autogenera)'],['Modelos compatibles','CG 150, Pulsar 200'],['Descripción','Juego x2']] as $c)
                                 <tr>
-                                    <td class="ps-4"><span class="badge bg-dark" style="font-size:.72rem;">{{ $c[0] }}</span></td>
-                                    <td class="fw-semibold small">{{ $c[1] }}</td>
-                                    <td class="text-muted small pe-4">{{ $c[2] }}</td>
+                                    <td class="ps-4 fw-semibold small">{{ $c[0] }}</td>
+                                    <td class="text-muted small pe-4">{{ $c[1] }}</td>
                                 </tr>
                                 @endforeach
                             </tbody>
                         </table>
+                    </div>
+                    <div class="card-footer bg-white border-top text-muted" style="font-size:.76rem;">
+                        <i class="bi bi-info-circle me-1"></i>El orden de las columnas no importa: se detectan por el <strong>encabezado</strong>. Solo <strong>Nombre</strong> es obligatorio.
                     </div>
                 </div>
                 <div class="card border-0 shadow-sm">
@@ -157,17 +159,21 @@
                                 <th class="py-2" style="font-size:.66rem;min-width:180px;">Nombre</th>
                                 <th class="py-2" style="font-size:.66rem;min-width:120px;">Categoría</th>
                                 <th class="py-2" style="font-size:.66rem;min-width:100px;">Marca</th>
+                                <th class="py-2" style="font-size:.66rem;min-width:100px;">Origen</th>
                                 <th class="py-2 text-center" style="font-size:.66rem;width:80px;">Cant.</th>
                                 <th class="py-2 text-end" style="font-size:.66rem;width:90px;">Costo</th>
                                 <th class="py-2 text-end" style="font-size:.66rem;width:90px;">Precio</th>
-                                <th class="py-2" style="font-size:.66rem;min-width:120px;">Modelo(s)</th>
-                                <th class="py-2" style="font-size:.66rem;min-width:120px;">Detalle</th>
+                                <th class="py-2" style="font-size:.66rem;min-width:120px;">Modelos compatibles</th>
+                                <th class="py-2" style="font-size:.66rem;min-width:120px;">Descripción</th>
                                 <th class="py-2" style="font-size:.66rem;min-width:110px;">Código</th>
                                 <th class="py-2 pe-3" style="width:32px;"></th>
                             </tr>
                         </thead>
                         <tbody id="prevBody"></tbody>
                     </table>
+                    <datalist id="originList">
+                        @foreach(($origins ?? collect()) as $o)<option value="{{ $o }}"></option>@endforeach
+                    </datalist>
                 </div>
             </div>
             <div class="card-footer bg-white border-top d-flex justify-content-between p-3">
@@ -204,12 +210,12 @@
             </div>
             <div class="col-6 col-lg">
                 <div class="card border-0 shadow-sm h-100"><div class="card-body py-2 px-3">
-                    <div class="text-muted" style="font-size:.66rem;">VALOR A COSTO</div><div class="fw-bold fs-6">Bs. <span id="sumCost">0.00</span></div>
+                    <div class="text-muted" style="font-size:.66rem;">VALOR A COSTO</div><div class="fw-bold fs-6">{{ currency_symbol() }} <span id="sumCost">0.00</span></div>
                 </div></div>
             </div>
             <div class="col-6 col-lg">
                 <div class="card border-0 shadow-sm h-100"><div class="card-body py-2 px-3">
-                    <div class="text-success" style="font-size:.66rem;">VALOR A VENTA</div><div class="fw-bold fs-6 text-success">Bs. <span id="sumPrice">0.00</span></div>
+                    <div class="text-success" style="font-size:.66rem;">VALOR A VENTA</div><div class="fw-bold fs-6 text-success">{{ currency_symbol() }} <span id="sumPrice">0.00</span></div>
                 </div></div>
             </div>
         </div>
@@ -269,11 +275,6 @@
 .wiz-line { flex:1; height:2px; background:#e9ecef; min-width:24px; max-width:80px; }
 #prevTable input { font-size:.76rem; padding:.15rem .4rem; }
 #prevTable .form-control-sm { min-width:60px; }
-#prevTable .r-code.code-missing {
-    border-color: #dc3545;
-    box-shadow: 0 0 0 .15rem rgba(220,53,69,.12);
-    background: #fff5f5;
-}
 </style>
 @endpush
 
@@ -377,29 +378,24 @@
             const badge = r.status === 'update'
                 ? '<span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size:.62rem;">Actualiza</span>'
                 : '<span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.62rem;">Nuevo</span>';
-            return '<tr class="prev-row" data-status="' + r.status + '" data-catcode="' + esc(r.category_code) + '">' +
+            return '<tr class="prev-row" data-status="' + r.status + '" data-catcode="' + esc(r.category_code) + '" data-unit="' + esc(r.unit) + '">' +
                 '<td class="ps-3">' + badge + '</td>' +
                 '<td><input class="form-control form-control-sm r-name" value="' + esc(r.name) + '"></td>' +
                 '<td><input class="form-control form-control-sm r-category" value="' + esc(r.category) + '"></td>' +
                 '<td><input class="form-control form-control-sm r-brand" value="' + esc(r.brand) + '"></td>' +
+                '<td><input class="form-control form-control-sm r-origin" value="' + esc(r.origin) + '" list="originList"></td>' +
                 '<td><input type="number" step="1" min="0" class="form-control form-control-sm text-center r-qty" value="' + (r.qty ?? 0) + '"></td>' +
                 '<td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end r-cost" value="' + (r.cost ?? 0) + '"></td>' +
                 '<td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end r-price" value="' + (r.price ?? 0) + '"></td>' +
                 '<td><input class="form-control form-control-sm r-models" value="' + esc(r.models) + '"></td>' +
                 '<td><input class="form-control form-control-sm r-notes" value="' + esc(r.notes) + '"></td>' +
-                '<td><input class="form-control form-control-sm r-code ' + (r.code ? '' : 'code-missing') + '" value="' + esc(r.code) + '" placeholder="Sin código" title="Producto sin código"></td>' +
+                '<td><input class="form-control form-control-sm r-code" value="' + esc(r.code) + '" placeholder="Se autogenera" title="Opcional: si lo dejas vacío se genera automáticamente"></td>' +
                 '<td class="pe-3 text-center"><button type="button" class="btn btn-sm btn-light border text-danger p-0 px-1 row-del" title="Quitar"><i class="bi bi-x"></i></button></td>' +
                 '</tr>';
         }).join('');
         updateRowCount();
         body.querySelectorAll('.row-del').forEach(function (b) {
             b.addEventListener('click', function () { this.closest('tr').remove(); updateRowCount(); });
-        });
-        // Alerta visual: marcar en rojo los códigos vacíos (actualiza al escribir)
-        body.querySelectorAll('.r-code').forEach(function (inp) {
-            inp.addEventListener('input', function () {
-                this.classList.toggle('code-missing', this.value.trim() === '');
-            });
         });
     }
     function updateRowCount() {
@@ -423,8 +419,10 @@
                 name: row.querySelector('.r-name').value.trim(),
                 category: row.querySelector('.r-category').value.trim(),
                 category_code: row.dataset.catcode || null,
+                unit: row.dataset.unit || '',
                 code: row.querySelector('.r-code').value.trim() || null,
                 brand: row.querySelector('.r-brand').value.trim(),
+                origin: row.querySelector('.r-origin').value.trim(),
                 models: row.querySelector('.r-models').value.trim(),
                 notes: row.querySelector('.r-notes').value.trim(),
                 cost: parseFloat(row.querySelector('.r-cost').value) || 0,

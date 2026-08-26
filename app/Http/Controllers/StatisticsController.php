@@ -87,19 +87,45 @@ class StatisticsController extends Controller
         $monthValue    = $period === 'monthly'   ? $base->format('Y-m')   : Carbon::now()->format('Y-m');
         $quincenaValue = $period === 'quincenal' ? $base->format('Y-m-d') : Carbon::now()->format('Y-m-d');
 
-        $stats = [
-            'ventas'     => $this->salesStats($cid, $base, $cur, $prev),
-            'personal'   => $this->staffStats($cid, $cur),
-            'clientes'   => $this->clientsStats($cid, $base, $cur, $prev),
-            'compras'    => $this->purchasesStats($cid, $base, $cur, $prev),
-            'inventario' => $this->inventoryStats($cid),
-            'taller'     => $this->workshopStats($cid, $cur, $prev),
-            'alquileres' => $this->rentalsStats($cid, $cur, $prev),
+        // Módulos del plan de la empresa (con override). null = super_admin => todos.
+        $features = $cid ? (\App\Models\Company::find($cid)?->effectiveFeatures() ?? []) : null;
+        $allows   = fn (?string $f) => $f === null || $features === null || in_array($f, $features, true);
+
+        // Sub-tabs de estadísticas, cada uno gateado por su módulo del plan.
+        // resumen/personal/clientes no dependen de un módulo opcional => siempre.
+        $tabDefs = [
+            'resumen'    => ['Resumen', 'bi-grid-1x2', null],
+            'ventas'     => ['Ventas', 'bi-cart', 'sales'],
+            'personal'   => ['Personal', 'bi-people', null],
+            'clientes'   => ['Clientes', 'bi-person-vcard', null],
+            'compras'    => ['Compras', 'bi-bag', 'purchases'],
+            'inventario' => ['Inventario', 'bi-box-seam', 'inventory'],
+            'taller'     => ['Taller', 'bi-tools', 'workshop'],
+            'alquileres' => ['Alquileres', 'bi-bicycle', 'rentals'],
         ];
+        // Tabs visibles (label + icono) para la vista, ya filtrados por plan.
+        $tabs = [];
+        foreach ($tabDefs as $key => [$label, $icon, $feature]) {
+            if ($allows($feature)) {
+                $tabs[$key] = [$label, $icon];
+            }
+        }
+
+        // Calcular stats solo de los módulos permitidos (evita consultas de módulos no contratados).
+        $stats = [
+            'personal' => $this->staffStats($cid, $cur),
+            'clientes' => $this->clientsStats($cid, $base, $cur, $prev),
+        ];
+        if ($allows('sales'))     $stats['ventas']     = $this->salesStats($cid, $base, $cur, $prev);
+        if ($allows('purchases')) $stats['compras']    = $this->purchasesStats($cid, $base, $cur, $prev);
+        if ($allows('inventory')) $stats['inventario'] = $this->inventoryStats($cid);
+        if ($allows('workshop'))  $stats['taller']     = $this->workshopStats($cid, $cur, $prev);
+        if ($allows('rentals'))   $stats['alquileres'] = $this->rentalsStats($cid, $cur, $prev);
+
         $stats['resumen'] = $this->summaryStats($stats);
         $chartData = $this->buildChartData($stats);
 
-        $viewData = compact('stats', 'period', 'periodLabel', 'dateValue', 'weekValue', 'monthValue', 'quincenaValue', 'chartData', 'branches', 'branch');
+        $viewData = compact('stats', 'tabs', 'period', 'periodLabel', 'dateValue', 'weekValue', 'monthValue', 'quincenaValue', 'chartData', 'branches', 'branch');
 
         // AJAX: devolver solo el contenido (panes + datos de gráficos) para refrescar sin recargar
         if ($request->boolean('partial')) {
@@ -116,19 +142,20 @@ class StatisticsController extends Controller
     /** Arma el arreglo de datos para los gráficos (compartido por vista inicial y AJAX). */
     private function buildChartData(array $stats): array
     {
+        // Cada entrada tolera módulos ausentes (no incluidos en el plan) => null.
         return [
-            'ventasTrend'      => $stats['ventas']['trend'],
-            'ventasCashCredit' => $stats['ventas']['cashCredit'],
-            'ventasTop'        => $stats['ventas']['topProducts'],
-            'ventasComparison' => $stats['ventas']['comparison'],
-            'personal'         => $stats['personal']['chart'],
-            'clientesNew'      => $stats['clientes']['newTrend'],
-            'clientesTop'      => $stats['clientes']['topBuyers'],
-            'comprasTrend'     => $stats['compras']['trend'],
-            'comprasTop'       => $stats['compras']['topSuppliers'],
-            'inventario'       => $stats['inventario']['distribution'],
-            'taller'           => $stats['taller']['distribution'],
-            'alquileres'       => $stats['alquileres']['fleet'],
+            'ventasTrend'      => $stats['ventas']['trend'] ?? null,
+            'ventasCashCredit' => $stats['ventas']['cashCredit'] ?? null,
+            'ventasTop'        => $stats['ventas']['topProducts'] ?? null,
+            'ventasComparison' => $stats['ventas']['comparison'] ?? null,
+            'personal'         => $stats['personal']['chart'] ?? null,
+            'clientesNew'      => $stats['clientes']['newTrend'] ?? null,
+            'clientesTop'      => $stats['clientes']['topBuyers'] ?? null,
+            'comprasTrend'     => $stats['compras']['trend'] ?? null,
+            'comprasTop'       => $stats['compras']['topSuppliers'] ?? null,
+            'inventario'       => $stats['inventario']['distribution'] ?? null,
+            'taller'           => $stats['taller']['distribution'] ?? null,
+            'alquileres'       => $stats['alquileres']['fleet'] ?? null,
         ];
     }
 
@@ -310,7 +337,7 @@ class StatisticsController extends Controller
 
     private function fmt(float $n): string
     {
-        return 'Bs. ' . number_format($n, 2);
+        return money($n);
     }
 
     // ── VENTAS ─────────────────────────────────────────────────
@@ -675,7 +702,7 @@ class StatisticsController extends Controller
         $rank = ['danger' => 0, 'warning' => 1, 'good' => 2, 'info' => 3];
         $all = [];
         foreach (['ventas', 'personal', 'clientes', 'compras', 'inventario', 'taller', 'alquileres'] as $tab) {
-            foreach ($stats[$tab]['insights'] as $ins) {
+            foreach (($stats[$tab]['insights'] ?? []) as $ins) {
                 $ins['tab'] = $tab;
                 $all[] = $ins;
             }
