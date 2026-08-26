@@ -93,36 +93,40 @@ class BranchController extends Controller
 
     public function store()
     {
+        $user = auth()->user();
+        // Cast a int: para super_admin request('company_id') es string y rompía
+        // la comparación estricta con $warehouse->company_id (int).
+        $companyId = $user->is_super_admin ? (int) request('company_id') : (int) $user->getCurrentCompany()?->id;
+
+        if (empty($companyId)) {
+            return back()->withInput()->withErrors(['company_id' => 'Debes seleccionar una empresa.']);
+        }
+
+        if ($this->planLimitReached($companyId, 'branches')) {
+            return back()->withInput()->withErrors(['error' => $this->planLimitMessage('sucursales')]);
+        }
+
+        // La validación va FUERA del try para que sus errores se muestren en la
+        // vista (antes los tragaba el catch genérico).
+        $validated = request()->validate([
+            'company_id' => ['nullable', 'exists:companies,id'],
+            'name' => 'required|string|max:255',
+            'code' => ['nullable', 'string', 'max:50', Rule::unique('branches', 'code')->where('company_id', $companyId)],
+            'phone' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:255',
+            'manager_name' => 'nullable|string|max:255',
+            'color' => 'nullable|string|max:7',
+            'warehouse_id' => ['required', 'exists:warehouses,id'],
+            'active' => 'sometimes|boolean',
+        ], [
+            'code.unique' => 'Ya existe una sucursal con ese código en esta empresa.',
+        ]);
+
         try {
-            $user = auth()->user();
-            $companyId = $user->is_super_admin ? request('company_id') : $user->getCurrentCompany()?->id;
-
-            if ($this->planLimitReached($companyId, 'branches')) {
-                return back()->withInput()->withErrors(['error' => $this->planLimitMessage('sucursales')]);
-            }
-
-            $validated = request()->validate([
-                'company_id' => ['nullable', 'exists:companies,id'],
-                'name' => 'required|string|max:255',
-                'code' => ['nullable', 'string', 'max:50', Rule::unique('branches', 'code')->where('company_id', $companyId)],
-                'phone' => 'nullable|string|max:20',
-                'email' => 'nullable|email|max:255',
-                'address' => 'nullable|string|max:255',
-                'manager_name' => 'nullable|string|max:255',
-                'color' => 'nullable|string|max:7',
-                'warehouse_id' => ['required', 'exists:warehouses,id'],
-                'active' => 'sometimes|boolean',
-            ], [
-                'code.unique' => 'Ya existe una sucursal con ese código en esta empresa.',
-            ]);
-
-            if ($user->is_super_admin && empty($companyId)) {
-                return back()->withInput()->withErrors(['company_id' => 'Debes seleccionar una empresa.']);
-            }
-
             $warehouse = Warehouse::findOrFail($validated['warehouse_id']);
-            if ($warehouse->company_id !== $companyId) {
-                abort(403);
+            if ((int) $warehouse->company_id !== $companyId) {
+                return back()->withInput()->withErrors(['warehouse_id' => 'El almacén seleccionado no pertenece a la empresa.']);
             }
 
             Branch::create([
@@ -171,32 +175,32 @@ class BranchController extends Controller
     {
         $this->authorizeBranch($branch);
 
+        $user = auth()->user();
+        $companyId = $user->is_super_admin ? (int) request('company_id', $branch->company_id) : (int) $branch->company_id;
+
+        if (empty($companyId)) {
+            return back()->withInput()->withErrors(['company_id' => 'Debes seleccionar una empresa.']);
+        }
+
+        $validated = request()->validate([
+            'company_id' => ['nullable', 'exists:companies,id'],
+            'name' => 'required|string|max:255',
+            'code' => ['nullable', 'string', 'max:50', Rule::unique('branches', 'code')->ignore($branch->id)->where('company_id', $companyId)],
+            'phone' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:255',
+            'manager_name' => 'nullable|string|max:255',
+            'color' => 'nullable|string|max:7',
+            'warehouse_id' => ['required', 'exists:warehouses,id'],
+            'active' => 'sometimes|boolean',
+        ], [
+            'code.unique' => 'Ya existe una sucursal con ese código en esta empresa.',
+        ]);
+
         try {
-            $user = auth()->user();
-            $companyId = $user->is_super_admin ? request('company_id', $branch->company_id) : $branch->company_id;
-
-            $validated = request()->validate([
-                'company_id' => ['nullable', 'exists:companies,id'],
-                'name' => 'required|string|max:255',
-                'code' => ['nullable', 'string', 'max:50', Rule::unique('branches', 'code')->ignore($branch->id)->where('company_id', $companyId)],
-                'phone' => 'nullable|string|max:20',
-                'email' => 'nullable|email|max:255',
-                'address' => 'nullable|string|max:255',
-                'manager_name' => 'nullable|string|max:255',
-                'color' => 'nullable|string|max:7',
-                'warehouse_id' => ['required', 'exists:warehouses,id'],
-                'active' => 'sometimes|boolean',
-            ], [
-                'code.unique' => 'Ya existe una sucursal con ese código en esta empresa.',
-            ]);
-
-            if ($user->is_super_admin && empty($companyId)) {
-                return back()->withInput()->withErrors(['company_id' => 'Debes seleccionar una empresa.']);
-            }
-
             $warehouse = Warehouse::findOrFail($validated['warehouse_id']);
-            if ($warehouse->company_id !== $companyId) {
-                abort(403);
+            if ((int) $warehouse->company_id !== $companyId) {
+                return back()->withInput()->withErrors(['warehouse_id' => 'El almacén seleccionado no pertenece a la empresa.']);
             }
 
             $branch->update([
