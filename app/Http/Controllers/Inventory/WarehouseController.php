@@ -39,10 +39,12 @@ class WarehouseController extends Controller
         $validated = request()->validate([
             'company_id'  => ['nullable', 'exists:companies,id'],
             'name'        => 'required|string|max:255',
-            'code'        => ['required', 'string', 'max:50', Rule::unique('warehouses', 'code')],
+            'code'        => ['required', 'string', 'max:50', Rule::unique('warehouses', 'code')->where('company_id', $companyId)],
             'location'    => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'active'      => 'sometimes|boolean',
+        ], [
+            'code.unique' => 'Ya existe un almacén con ese código en esta empresa.',
         ]);
 
         try {
@@ -82,8 +84,10 @@ class WarehouseController extends Controller
 
         $validated = request()->validate([
             'name'     => 'required|string|max:255',
-            'code'     => ['nullable', 'string', 'max:50', Rule::unique('warehouses', 'code')],
+            'code'     => ['nullable', 'string', 'max:50', Rule::unique('warehouses', 'code')->where('company_id', $companyId)],
             'location' => 'nullable|string|max:255',
+        ], [
+            'code.unique' => 'Ya existe un almacén con ese código en esta empresa.',
         ]);
 
         try {
@@ -109,7 +113,7 @@ class WarehouseController extends Controller
         }
     }
 
-    /** Código de almacén genérico y único (global): ALM-001, ALM-002, … */
+    /** Código de almacén genérico y único POR EMPRESA: ALM-001, ALM-002, … */
     protected function generateWarehouseCode(int $companyId): string
     {
         $seq = Warehouse::withoutGlobalScopes()->where('company_id', $companyId)->count() + 1;
@@ -117,7 +121,7 @@ class WarehouseController extends Controller
         do {
             $code = 'ALM-' . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
             $seq++;
-        } while (Warehouse::withoutGlobalScopes()->where('code', $code)->exists());
+        } while (Warehouse::withoutGlobalScopes()->where('company_id', $companyId)->where('code', $code)->exists());
 
         return $code;
     }
@@ -162,10 +166,12 @@ class WarehouseController extends Controller
         $validated = request()->validate([
             'company_id'  => ['nullable', 'exists:companies,id'],
             'name'        => 'required|string|max:255',
-            'code'        => ['required', 'string', 'max:50', Rule::unique('warehouses', 'code')->ignore($warehouse->id)],
+            'code'        => ['required', 'string', 'max:50', Rule::unique('warehouses', 'code')->ignore($warehouse->id)->where('company_id', $companyId)],
             'location'    => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'active'      => 'sometimes|boolean',
+        ], [
+            'code.unique' => 'Ya existe un almacén con ese código en esta empresa.',
         ]);
 
         try {

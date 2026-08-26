@@ -140,7 +140,7 @@ CREATE TABLE warehouses (
     updated_at TIMESTAMP NULL DEFAULT NULL,
     deleted_at TIMESTAMP NULL DEFAULT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY warehouses_code_unique (code),
+    UNIQUE KEY warehouses_company_id_code_unique (company_id, code),
     KEY warehouses_company_id_name_index (company_id, name),
     KEY warehouses_branch_id_index (branch_id),
     CONSTRAINT warehouses_company_id_foreign FOREIGN KEY (company_id) REFERENCES companies (id) ON DELETE CASCADE,
