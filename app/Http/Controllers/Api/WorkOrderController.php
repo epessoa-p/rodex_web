@@ -28,8 +28,9 @@ class WorkOrderController extends Controller
         $user = $request->user();
         $company = $request->attributes->get('tenant_company');
 
+        // Incluye entregadas (para consultarlas); oculta solo las anuladas.
         $query = WorkOrder::with(['client', 'vehicle', 'mechanic'])
-            ->whereNotIn('status', ['entregada', 'anulada'])
+            ->whereNotIn('status', ['anulada'])
             ->latest();
 
         // Sin el permiso "ver todo", solo las que registró el usuario.
@@ -114,6 +115,24 @@ class WorkOrderController extends Controller
         });
 
         return response()->json(['data' => $this->detail($order)], 201);
+    }
+
+    /** Guardar/actualizar el diagnóstico (recibida → diagnosticada). */
+    public function diagnosis(Request $request, WorkOrder $order)
+    {
+        if (in_array($order->status, ['entregada', 'anulada'], true)) {
+            return response()->json(['message' => 'La orden está cerrada y no se puede modificar.'], 422);
+        }
+
+        $data = $request->validate(['diagnosis' => ['required', 'string']]);
+
+        $order->update([
+            'diagnosis'      => $data['diagnosis'],
+            'diagnosis_date' => now()->toDateString(),
+            'status'         => $order->status === 'recibida' ? 'diagnosticada' : $order->status,
+        ]);
+
+        return response()->json(['data' => $this->detail($order->fresh())]);
     }
 
     public function show(WorkOrder $order)
