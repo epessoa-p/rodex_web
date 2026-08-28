@@ -42,6 +42,69 @@ class PurchaseOrderController extends Controller
         return response()->json(['data' => $orders]);
     }
 
+    /**
+     * Crea una orden de compra desde el móvil (estado 'sent' para que quede
+     * lista para recibir). Requiere permiso purchase-orders.create.
+     */
+    public function store(Request $request)
+    {
+        $cid = $request->attributes->get('tenant_company')?->id;
+
+        $data = $request->validate([
+            'supplier_id'        => ['required', Rule::exists('suppliers', 'id')->where('company_id', $cid)],
+            'branch_id'          => ['nullable', Rule::exists('branches', 'id')->where('company_id', $cid)],
+            'expected_date'      => ['nullable', 'date'],
+            'notes'              => ['nullable', 'string', 'max:1000'],
+            'items'              => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', Rule::exists('products', 'id')->where('company_id', $cid)],
+            'items.*.quantity'   => ['required', 'integer', 'min:1'],
+            'items.*.unit_cost'  => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $order = DB::transaction(function () use ($data, $cid) {
+            $subtotal = collect($data['items'])
+                ->sum(fn ($i) => (float) $i['quantity'] * (float) $i['unit_cost']);
+
+            $order = PurchaseOrder::create([
+                'company_id'    => $cid,
+                'supplier_id'   => $data['supplier_id'],
+                'branch_id'     => $data['branch_id'] ?? null,
+                'code'          => 'OC-' . str_pad((string) (PurchaseOrder::withTrashed()->where('company_id', $cid)->count() + 1), 5, '0', STR_PAD_LEFT),
+                'status'        => 'sent',
+                'order_date'    => now()->toDateString(),
+                'expected_date' => $data['expected_date'] ?? null,
+                'subtotal'      => $subtotal,
+                'tax'           => 0,
+                'total'         => $subtotal,
+                'notes'         => $data['notes'] ?? null,
+                'created_by'    => auth()->id(),
+            ]);
+
+            foreach ($data['items'] as $item) {
+                PurchaseOrderItem::create([
+                    'purchase_order_id' => $order->id,
+                    'product_id'        => $item['product_id'],
+                    'quantity'          => $item['quantity'],
+                    'unit_cost'         => $item['unit_cost'],
+                    'subtotal'          => (float) $item['quantity'] * (float) $item['unit_cost'],
+                    'received_quantity' => 0,
+                ]);
+            }
+
+            return $order;
+        });
+
+        $order->load('supplier:id,name');
+
+        return response()->json(['data' => [
+            'id'       => $order->id,
+            'code'     => $order->code,
+            'supplier' => $order->supplier?->name,
+            'status'   => $order->status,
+            'total'    => (float) $order->total,
+        ]], 201);
+    }
+
     /** Detalle de una OC con items (pendiente por recibir) + almacenes. */
     public function show(PurchaseOrder $purchaseOrder)
     {

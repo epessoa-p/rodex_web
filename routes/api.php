@@ -131,6 +131,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
             Route::get('purchase-orders', [PurchaseOrderController::class, 'index'])
                 ->middleware('api.permission:purchase-orders.view,goods-receipts.view');
+            Route::post('purchase-orders', [PurchaseOrderController::class, 'store'])
+                ->middleware('api.permission:purchase-orders.create');
             Route::get('purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show'])
                 ->middleware('api.permission:purchase-orders.view,goods-receipts.view');
             Route::post('purchase-orders/{purchaseOrder}/receive', [PurchaseOrderController::class, 'receive'])
