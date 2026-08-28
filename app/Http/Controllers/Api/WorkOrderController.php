@@ -68,12 +68,16 @@ class WorkOrderController extends Controller
             'mileage'           => ['nullable', 'integer', 'min:0'],
             'fuel_level'        => ['nullable', 'string', 'max:20'],
             'reported_issue'    => ['nullable', 'string'],
+            'received_items'    => ['nullable', 'string'],
             'notes'             => ['nullable', 'string'],
         ]);
 
         $userId = $request->user()->id;
+        // Sucursal base del personal del usuario (como en el web); permite que la
+        // entrega descuente stock del almacén de esa sucursal.
+        $branchId = \App\Models\Personal::where('user_id', $userId)->value('branch_id');
 
-        $order = DB::transaction(function () use ($data, $companyId, $mode, $userId) {
+        $order = DB::transaction(function () use ($data, $companyId, $mode, $userId, $branchId) {
             $vehicleId = $data['vehicle_id'] ?? null;
 
             if ($mode === 'new') {
@@ -95,12 +99,14 @@ class WorkOrderController extends Controller
                 'company_id'     => $companyId,
                 'client_id'      => $data['client_id'],
                 'vehicle_id'     => $vehicleId,
+                'branch_id'      => $branchId,
                 'reception_date' => now()->toDateTimeString(),
                 'mileage'        => $data['mileage'] ?? null,
                 'fuel_level'     => $data['fuel_level'] ?? null,
                 'reported_issue' => $data['reported_issue'] ?? null,
+                'received_items' => $data['received_items'] ?? null,
                 'notes'          => $data['notes'] ?? null,
-                'code'           => $this->nextCode($companyId, null),
+                'code'           => $this->nextCode($companyId, $branchId),
                 'status'         => 'recibida',
                 'payment_status' => 'pendiente',
                 'created_by'     => $userId,
@@ -294,6 +300,9 @@ class WorkOrderController extends Controller
             'reported_issue'    => $o->reported_issue,
             'diagnosis'         => $o->diagnosis,
             'mileage'           => $o->mileage,
+            'fuel_level'        => $o->fuel_level,
+            'received_items'    => $o->received_items,
+            'notes'             => $o->notes,
             'subtotal_services' => (float) $o->subtotal_services,
             'subtotal_parts'    => (float) $o->subtotal_parts,
             'discount'          => (float) $o->discount,
