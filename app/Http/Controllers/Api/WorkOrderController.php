@@ -49,6 +49,38 @@ class WorkOrderController extends Controller
         return response()->json(['data' => $orders]);
     }
 
+    /**
+     * Resumen de OTs del día para el inicio del móvil: recibidas hoy y activas
+     * (no entregadas/anuladas). Respeta "solo las mías" salvo permiso de ver todo.
+     */
+    public function todaySummary(Request $request)
+    {
+        $user  = $request->user();
+        $company = $request->attributes->get('tenant_company');
+        $today = today();
+
+        $canAll = $user->is_super_admin
+            || $user->hasPermissionInCompany('workshop.view-all-records', $company);
+
+        $base = fn () => tap(WorkOrder::query(), function ($q) use ($canAll, $user) {
+            if (! $canAll) {
+                $q->where('created_by', $user->id);
+            }
+        });
+
+        $receivedToday = $base()->whereDate('reception_date', $today)->count();
+        $active = $base()->whereNotIn('status', ['entregada', 'anulada'])->count();
+
+        return response()->json([
+            'data' => [
+                'date'           => $today->toDateString(),
+                'received_today' => $receivedToday,
+                'active'         => $active,
+                'scope'          => $canAll ? 'all' : 'own',
+            ],
+        ]);
+    }
+
     /** Recepción: crea la OT (con vehículo existente o nuevo). */
     public function store(Request $request)
     {
@@ -66,6 +98,7 @@ class WorkOrderController extends Controller
             'vehicle.plate'     => ['nullable', 'string', 'max:20'],
             'vehicle.year'      => ['nullable', 'integer', 'min:1900', 'max:2100'],
             'vehicle.color'     => ['nullable', 'string', 'max:40'],
+            'reception_date'    => ['nullable', 'date'],
             'mileage'           => ['nullable', 'integer', 'min:0'],
             'fuel_level'        => ['nullable', 'string', 'max:20'],
             'reported_issue'    => ['nullable', 'string'],
@@ -101,7 +134,7 @@ class WorkOrderController extends Controller
                 'client_id'      => $data['client_id'],
                 'vehicle_id'     => $vehicleId,
                 'branch_id'      => $branchId,
-                'reception_date' => now()->toDateTimeString(),
+                'reception_date' => $data['reception_date'] ?? now()->toDateTimeString(),
                 'mileage'        => $data['mileage'] ?? null,
                 'fuel_level'     => $data['fuel_level'] ?? null,
                 'reported_issue' => $data['reported_issue'] ?? null,

@@ -77,6 +77,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('vehicles', [WorkshopMetaController::class, 'vehicles'])
                 ->middleware('api.permission:workshop.view,vehicles.view');
 
+            Route::get('work-orders/summary', [WorkOrderController::class, 'todaySummary'])
+                ->middleware('api.permission:workshop.view');
             Route::get('work-orders', [WorkOrderController::class, 'index'])
                 ->middleware('api.permission:workshop.view');
             Route::get('work-orders/{order}', [WorkOrderController::class, 'show'])
