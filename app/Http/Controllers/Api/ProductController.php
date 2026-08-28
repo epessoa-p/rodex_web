@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Inventory\ProductBrand;
+use App\Models\Inventory\ProductCategory;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Warehouse;
@@ -12,6 +14,98 @@ use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
+    /** Catálogos para el alta rápida de producto: categorías, marcas, almacenes. */
+    public function formData(Request $request)
+    {
+        $cid = $request->attributes->get('tenant_company')?->id;
+
+        $opts = fn ($q) => $q->where('company_id', $cid)->where('active', true)
+            ->orderBy('name')->get(['id', 'name'])
+            ->map(fn ($m) => ['id' => $m->id, 'name' => $m->name])->values();
+
+        return response()->json(['data' => [
+            'categories' => $opts(ProductCategory::query()),
+            'brands'     => $opts(ProductBrand::query()),
+            'warehouses' => $opts(Warehouse::query()),
+        ]]);
+    }
+
+    /**
+     * Alta rápida de producto desde el móvil: nombre + precio (mínimo), con
+     * costo, unidad, código de barras, categoría/marca y stock inicial opcional.
+     * El SKU se autogenera por empresa. Requiere permiso products.create.
+     */
+    public function store(Request $request)
+    {
+        $cid = $request->attributes->get('tenant_company')?->id;
+
+        $data = $request->validate([
+            'name'          => ['required', 'string', 'max:255'],
+            'price'         => ['required', 'numeric', 'min:0'],
+            'cost'          => ['nullable', 'numeric', 'min:0'],
+            'unit'          => ['nullable', 'string', 'max:50'],
+            'barcode'       => ['nullable', 'string', 'max:100'],
+            'category_id'   => ['nullable', Rule::exists('product_categories', 'id')->where('company_id', $cid)],
+            'brand_id'      => ['nullable', Rule::exists('product_brands', 'id')->where('company_id', $cid)],
+            'initial_stock' => ['nullable', 'numeric', 'min:0'],
+            'warehouse_id'  => ['nullable', Rule::exists('warehouses', 'id')->where('company_id', $cid)],
+        ]);
+
+        $initial = (float) ($data['initial_stock'] ?? 0);
+        if ($initial > 0 && empty($data['warehouse_id'])) {
+            return response()->json(['message' => 'Selecciona un almacén para el stock inicial.'], 422);
+        }
+
+        $product = DB::transaction(function () use ($data, $cid, $initial) {
+            $product = Product::create([
+                'company_id'    => $cid,
+                'name'          => trim($data['name']),
+                'sku'           => $this->generateProductSku($cid),
+                'price'         => (float) $data['price'],
+                'cost'          => (float) ($data['cost'] ?? 0),
+                'unit'          => $data['unit'] ?: 'unidad',
+                'barcode'       => $data['barcode'] ?? null,
+                'category_id'   => $data['category_id'] ?? null,
+                'brand_id'      => $data['brand_id'] ?? null,
+                'current_stock' => 0,
+                'active'        => true,
+            ]);
+
+            if ($initial > 0) {
+                InventoryMovement::create([
+                    'company_id'    => $cid,
+                    'warehouse_id'  => $data['warehouse_id'],
+                    'product_id'    => $product->id,
+                    'user_id'       => auth()->id(),
+                    'type'          => 'in',
+                    'quantity'      => $initial,
+                    'unit_cost'     => $product->cost,
+                    'reference'     => 'ALTA-MOVIL',
+                    'notes'         => 'Stock inicial (alta desde móvil)',
+                    'movement_date' => now(),
+                ]);
+                Product::where('id', $product->id)->increment('current_stock', $initial);
+            }
+
+            return $product->fresh();
+        });
+
+        return response()->json(['data' => $this->payload($product)], 201);
+    }
+
+    /** SKU interno correlativo y único por empresa: {prefijo}-{correlativo}. */
+    private function generateProductSku(int $companyId): string
+    {
+        $prefix = config('inventory.code_prefix', 'PRD');
+        $seq    = Product::withTrashed()->where('company_id', $companyId)->count() + 1;
+
+        do {
+            $sku = $prefix . '-' . str_pad((string) $seq, 5, '0', STR_PAD_LEFT);
+            $seq++;
+        } while (Product::withTrashed()->where('company_id', $companyId)->where('sku', $sku)->exists());
+
+        return $sku;
+    }
     /**
      * Ajuste rápido de stock desde el móvil: entrada (in), salida (out) o fijar
      * a una cantidad (set) en un almacén, con motivo. Crea el movimiento de

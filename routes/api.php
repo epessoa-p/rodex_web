@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CashRegisterController;
 use App\Http\Controllers\Api\CashSessionController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\ProductController;
@@ -97,10 +98,26 @@ Route::middleware('auth:sanctum')->group(function () {
                 ->middleware('api.permission:workshop.deliver');
         });
 
+        // ── Cajas: gestión y asignación a personal (plan: cash) ────
+        Route::middleware('api.plan:cash')->group(function () {
+            Route::get('cash-registers', [CashRegisterController::class, 'index'])
+                ->middleware('api.permission:cash-registers.view');
+            Route::get('cash-registers/form-data', [CashRegisterController::class, 'formData'])
+                ->middleware('api.permission:cash-registers.create,cash-registers.edit');
+            Route::post('cash-registers', [CashRegisterController::class, 'store'])
+                ->middleware('api.permission:cash-registers.create');
+            Route::put('cash-registers/{cashRegister}', [CashRegisterController::class, 'update'])
+                ->middleware('api.permission:cash-registers.edit');
+        });
+
         // ── Módulo Inventario (plan: inventory) ────────────────────
         Route::middleware('api.plan:inventory')->group(function () {
             Route::post('products/{product}/stock-adjust', [ProductController::class, 'adjustStock'])
                 ->middleware('api.permission:products.edit');
+            Route::get('product-form-data', [ProductController::class, 'formData'])
+                ->middleware('api.permission:products.create');
+            Route::post('products', [ProductController::class, 'store'])
+                ->middleware('api.permission:products.create');
         });
 
         // ── Módulo Compras (plan: purchases) ───────────────────────

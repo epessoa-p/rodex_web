@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="{{ asset(config('brand.logo_sm')) }}">
     <title>@yield('title', config('brand.name'))</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Chakra+Petch:wght@600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --brand-red:      #e63946;
@@ -149,6 +150,31 @@
             color: #fff;
             margin: 0;
             letter-spacing: -0.02em;
+        }
+
+        /* Logo de la plataforma en el login (badge blanco con el ícono). */
+        .brand-logo {
+            width: 96px;
+            height: 96px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto 10px;
+            background: #fff;
+            border-radius: 22px;
+            padding: 8px;
+            box-shadow: 0 10px 26px rgba(0,0,0,.30);
+        }
+
+        /* Nombre de la marca (RODEX) con tipografía técnica (Chakra Petch,
+           alternativa libre similar a TT Autonomous). */
+        .auth-header h1.brand-name {
+            font-family: 'Chakra Petch', 'Inter', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 700;
+            font-size: 1.9rem;
+            color: #fff;
+            margin: 4px 0 0;
         }
 
         .auth-header .brand-accent {

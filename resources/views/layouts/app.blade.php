@@ -13,9 +13,10 @@
                 <i class="bi bi-list fs-4"></i>
             </button>
             @if(auth()->user()->is_super_admin)
-                {{-- Modo global: firma de la plataforma (SCZ SOFT). --}}
+                {{-- Modo global: marca de la plataforma (Rodex). --}}
                 <div class="brand-global">
                     <img src="{{ asset(config('brand.logo')) }}" alt="{{ config('brand.name') }}">
+                    <div class="brand-global-name">{{ config('brand.name') }}</div>
                     <small class="brand-subtitle d-block mt-2">Modo global</small>
                 </div>
             @else
@@ -732,7 +733,10 @@
             @if(auth()->user()->is_super_admin)
                 <img src="{{ asset(config('brand.logo')) }}" alt="{{ config('brand.name') }}"
                      style="height:38px;width:auto;border-radius:8px;">
-                <span class="small text-muted">Modo global</span>
+                <span class="d-flex flex-column lh-1">
+                    <span style="font-family:'Chakra Petch','Inter',sans-serif;text-transform:uppercase;letter-spacing:.1em;font-weight:700;">{{ config('brand.name') }}</span>
+                    <span class="small text-muted" style="font-size:.7rem;">Modo global</span>
+                </span>
             @else
                 <span class="brand-icon">
                     <img src="{{ $currentCompany?->logo_url ?? asset(config('brand.logo_sm')) }}"
@@ -1107,12 +1111,22 @@
     .brand-global { flex: 1; min-width: 0; text-align: center; }
     .brand-global img {
         width: 100%;
-        max-width: 190px;
+        max-width: 120px;
         height: auto;
-        border-radius: 10px;
+        border-radius: 14px;
         box-shadow: 0 4px 14px rgba(0,0,0,.4);
         display: block;
         margin: 0 auto;
+    }
+    /* Nombre de la plataforma (RODEX) con tipografía técnica (Chakra Petch). */
+    .brand-global-name {
+        font-family: 'Chakra Petch', 'Inter', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: #fff;
+        margin-top: 8px;
     }
 
     /* ── Section titles ─────────────────────────────────────────── */

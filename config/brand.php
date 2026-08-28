@@ -16,12 +16,12 @@ return [
     |
     */
 
-    'name' => env('BRAND_NAME', 'SCZ SOFT'),
+    'name' => env('BRAND_NAME', 'Rodex'),
 
     // Rutas relativas a public/
     // 'logo' es la firma/logo completo (con texto) que se muestra en el login y
     // en el modo global del super_admin. 'logo_sm' es el ícono pequeño de respaldo.
-    'logo'    => env('BRAND_LOGO', 'images/brand-scz.png'),
-    'logo_sm' => env('BRAND_LOGO_SM', 'images/brand-scz.png'),
+    'logo'    => env('BRAND_LOGO', 'images/rodex-logo.png'),
+    'logo_sm' => env('BRAND_LOGO_SM', 'images/rodex-logo.png'),
 
 ];

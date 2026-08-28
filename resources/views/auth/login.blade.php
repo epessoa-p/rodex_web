@@ -6,10 +6,8 @@
 <div class="auth-container">
     <div class="auth-card">
         <div class="auth-header">
-            {{-- Login: icono neutro de la plataforma (sin imagen de logo). --}}
-            <div class="logo">
-                <i class="bi bi-tools"></i>
-            </div>
+            <img class="brand-logo" src="{{ asset(config('brand.logo')) }}" alt="{{ config('brand.name') }}">
+            <h1 class="brand-name">{{ config('brand.name') }}</h1>
             <p>Accede al sistema de gestión</p>
         </div>
 
