@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Sales\Concerns\ResolvesCashSession;
+use App\Models\CashMovement;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Purchases\GoodsReceipt;
@@ -11,6 +13,7 @@ use App\Models\Purchases\Purchase;
 use App\Models\Purchases\PurchaseItem;
 use App\Models\Purchases\PurchaseOrder;
 use App\Models\Purchases\PurchaseOrderItem;
+use App\Models\Purchases\SupplierPayment;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +27,128 @@ use Illuminate\Validation\Rule;
  */
 class PurchaseOrderController extends Controller
 {
+    use ResolvesCashSession;
+
+    /**
+     * Compra directa (contado): registra la compra, suma el stock al almacén y
+     * paga desde la caja abierta (gasto), todo en un paso. Requiere caja abierta.
+     */
+    public function directPurchase(Request $request)
+    {
+        $cid = $request->attributes->get('tenant_company')?->id;
+
+        $data = $request->validate([
+            'supplier_id'        => ['required', Rule::exists('suppliers', 'id')->where('company_id', $cid)],
+            'warehouse_id'       => ['required', Rule::exists('warehouses', 'id')->where('company_id', $cid)],
+            'invoice_number'     => ['nullable', 'string', 'max:100'],
+            'notes'              => ['nullable', 'string', 'max:1000'],
+            'method'             => ['nullable', 'string', 'max:30'],
+            'items'              => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', Rule::exists('products', 'id')->where('company_id', $cid)],
+            'items.*.quantity'   => ['required', 'integer', 'min:1'],
+            'items.*.unit_cost'  => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $session = $this->currentOpenSession();
+        if (! $session) {
+            return response()->json([
+                'message' => 'Necesitas tu caja abierta para registrar la compra.',
+                'code'    => 'cash_session_required',
+            ], 422);
+        }
+
+        try {
+            $purchase = DB::transaction(function () use ($data, $cid, $session) {
+                $subtotal = collect($data['items'])
+                    ->sum(fn ($i) => (float) $i['quantity'] * (float) $i['unit_cost']);
+                $method = $data['method'] ?? 'efectivo';
+
+                $purchase = Purchase::create([
+                    'company_id'     => $cid,
+                    'supplier_id'    => $data['supplier_id'],
+                    'code'           => 'COM-' . str_pad((string) (Purchase::withTrashed()->where('company_id', $cid)->count() + 1), 5, '0', STR_PAD_LEFT),
+                    'invoice_number' => $data['invoice_number'] ?? null,
+                    'purchase_date'  => now()->toDateString(),
+                    'subtotal'       => $subtotal,
+                    'tax'            => 0,
+                    'total'          => $subtotal,
+                    'paid_amount'    => 0,
+                    'payment_status' => 'pending',
+                    'notes'          => $data['notes'] ?? null,
+                    'created_by'     => auth()->id(),
+                ]);
+
+                foreach ($data['items'] as $item) {
+                    PurchaseItem::create([
+                        'purchase_id' => $purchase->id,
+                        'product_id'  => $item['product_id'],
+                        'quantity'    => $item['quantity'],
+                        'unit_cost'   => $item['unit_cost'],
+                        'subtotal'    => (float) $item['quantity'] * (float) $item['unit_cost'],
+                    ]);
+
+                    InventoryMovement::create([
+                        'company_id'    => $cid,
+                        'warehouse_id'  => $data['warehouse_id'],
+                        'product_id'    => $item['product_id'],
+                        'user_id'       => auth()->id(),
+                        'type'          => 'in',
+                        'quantity'      => $item['quantity'],
+                        'unit_cost'     => $item['unit_cost'],
+                        'reference'     => $purchase->code,
+                        'notes'         => 'Compra directa ' . $purchase->code,
+                        'movement_date' => now(),
+                    ]);
+
+                    Product::where('id', $item['product_id'])->increment('current_stock', $item['quantity']);
+                }
+
+                // Pago desde caja (concilia la compra + registra el gasto).
+                SupplierPayment::create([
+                    'company_id'          => $cid,
+                    'purchase_id'         => $purchase->id,
+                    'treasury_account_id' => null,
+                    'amount'              => $subtotal,
+                    'payment_date'        => now()->toDateString(),
+                    'method'              => $method,
+                    'reference'           => 'CAJA',
+                    'notes'               => 'Compra directa (móvil)',
+                    'user_id'             => auth()->id(),
+                ]);
+                $purchase->increment('paid_amount', $subtotal);
+                $purchase->refresh()->recalcPaymentStatus();
+
+                CashMovement::create([
+                    'company_id'               => $cid,
+                    'cash_register_id'         => $session->cash_register_id,
+                    'cash_register_session_id' => $session->id,
+                    'user_id'                  => auth()->id(),
+                    'type'                     => 'expense',
+                    'category'                 => 'expense_supplier',
+                    'amount'                   => $subtotal,
+                    'method'                   => $method,
+                    'reference_type'           => Purchase::class,
+                    'reference_id'             => $purchase->id,
+                    'description'              => 'Compra ' . $purchase->code,
+                    'movement_date'            => now(),
+                ]);
+
+                return $purchase;
+            });
+        } catch (\Throwable $e) {
+            Log::error('Error compra directa móvil', ['msg' => $e->getMessage()]);
+            return response()->json(['message' => 'No se pudo registrar la compra: ' . $e->getMessage()], 500);
+        }
+
+        $purchase->load('supplier:id,name');
+
+        return response()->json(['data' => [
+            'code'     => $purchase->code,
+            'supplier' => $purchase->supplier?->name,
+            'total'    => (float) $purchase->total,
+        ]], 201);
+    }
+
     /** Órdenes de compra por recibir (enviadas o parciales). */
     public function index()
     {
