@@ -25,24 +25,20 @@ class AppointmentController extends Controller
     {
         $companyId = auth()->user()->getCurrentCompany()?->id;
 
+        $view = in_array($request->query('view'), ['day', 'week', 'month'], true)
+            ? $request->query('view') : 'day';
+
         $date = $request->filled('date')
             ? Carbon::parse($request->query('date'))->startOfDay()
             : Carbon::today();
 
-        // Citas del día seleccionado
-        $appointments = Appointment::with(['client', 'vehicle', 'service', 'mechanic', 'workOrder'])
-            ->whereDate('scheduled_at', $date)
-            ->orderBy('scheduled_at')
-            ->get();
-
-        // Tira de la semana (lun-dom) con conteo de citas activas por día
         $weekStart = $date->copy()->startOfWeek(Carbon::MONDAY);
         $weekEnd   = $weekStart->copy()->endOfWeek(Carbon::SUNDAY);
+
+        // Tira de la semana (lun-dom) con conteo por día (para la vista de día)
         $weekCounts = Appointment::whereBetween('scheduled_at', [$weekStart, $weekEnd->copy()->endOfDay()])
             ->selectRaw('DATE(scheduled_at) as d, COUNT(*) as total')
-            ->groupBy('d')
-            ->pluck('total', 'd');
-
+            ->groupBy('d')->pluck('total', 'd');
         $week = [];
         for ($i = 0; $i < 7; $i++) {
             $d = $weekStart->copy()->addDays($i);
@@ -54,13 +50,51 @@ class AppointmentController extends Controller
             ];
         }
 
-        // Resumen del día por estado
-        $stats = [
-            'total'      => $appointments->count(),
-            'programada' => $appointments->where('status', 'programada')->count(),
-            'confirmada' => $appointments->where('status', 'confirmada')->count(),
-            'completada' => $appointments->where('status', 'completada')->count(),
-        ];
+        $with = ['client', 'vehicle', 'service', 'mechanic', 'workOrder'];
+        $appointments = collect();   // vista día
+        $weekDays     = [];          // vista semana
+        $monthCells   = [];          // vista mes
+        $forJson      = collect();
+        $stats = ['total' => 0, 'programada' => 0, 'confirmada' => 0, 'completada' => 0];
+
+        if ($view === 'day') {
+            $appointments = Appointment::with($with)
+                ->whereDate('scheduled_at', $date)->orderBy('scheduled_at')->get();
+            $stats = [
+                'total'      => $appointments->count(),
+                'programada' => $appointments->where('status', 'programada')->count(),
+                'confirmada' => $appointments->where('status', 'confirmada')->count(),
+                'completada' => $appointments->where('status', 'completada')->count(),
+            ];
+            $forJson = $appointments;
+        } elseif ($view === 'week') {
+            $range = Appointment::with($with)
+                ->whereBetween('scheduled_at', [$weekStart, $weekEnd->copy()->endOfDay()])
+                ->orderBy('scheduled_at')->get();
+            for ($i = 0; $i < 7; $i++) {
+                $d = $weekStart->copy()->addDays($i);
+                $weekDays[] = [
+                    'date'    => $d,
+                    'isToday' => $d->isToday(),
+                    'items'   => $range->filter(fn ($a) => $a->scheduled_at->isSameDay($d))->values(),
+                ];
+            }
+            $forJson = $range;
+        } else { // month
+            $gridStart = $date->copy()->startOfMonth()->startOfWeek(Carbon::MONDAY);
+            $gridEnd   = $date->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY);
+            $counts = Appointment::whereBetween('scheduled_at', [$gridStart, $gridEnd->copy()->endOfDay()])
+                ->selectRaw('DATE(scheduled_at) as d, COUNT(*) as total')
+                ->groupBy('d')->pluck('total', 'd');
+            for ($cur = $gridStart->copy(); $cur <= $gridEnd; $cur->addDay()) {
+                $monthCells[] = [
+                    'date'    => $cur->copy(),
+                    'inMonth' => $cur->month === $date->month,
+                    'isToday' => $cur->isToday(),
+                    'count'   => (int) ($counts[$cur->toDateString()] ?? 0),
+                ];
+            }
+        }
 
         // Catálogos para el modal de alta
         $clients   = Client::where('company_id', $companyId)->orderBy('full_name')->get(['id', 'full_name', 'phone']);
@@ -69,7 +103,7 @@ class AppointmentController extends Controller
         $mechanics = Mechanic::where('company_id', $companyId)->where('active', true)->orderBy('name')->get(['id', 'name']);
 
         // Datos para poblar el modal de edición desde el front (keyed por id)
-        $appointmentsJson = $appointments->keyBy('id')->map(fn (Appointment $a) => [
+        $appointmentsJson = $forJson->keyBy('id')->map(fn (Appointment $a) => [
             'id'               => $a->id,
             'client_id'        => $a->client_id,
             'vehicle_id'       => $a->vehicle_id,
@@ -85,7 +119,8 @@ class AppointmentController extends Controller
         ]);
 
         return view('workshop.agenda.index', compact(
-            'date', 'appointments', 'week', 'stats', 'appointmentsJson',
+            'view', 'date', 'weekStart', 'weekEnd', 'appointments', 'week', 'stats',
+            'weekDays', 'monthCells', 'appointmentsJson',
             'clients', 'vehicles', 'services', 'mechanics'
         ));
     }

@@ -10,8 +10,22 @@
     $canDelete = $authUser->is_super_admin || $authUser->hasPermissionInCompany('appointments.delete', $currentCompany);
     $canWorkOrder = $authUser->is_super_admin || $authUser->hasPermissionInCompany('workshop.create', $currentCompany);
     $dias = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-    $prev = $date->copy()->subDay()->toDateString();
-    $next = $date->copy()->addDay()->toDateString();
+    $prev = match($view) {
+        'week'  => $date->copy()->subWeek(),
+        'month' => $date->copy()->subMonthNoOverflow(),
+        default => $date->copy()->subDay(),
+    }->toDateString();
+    $next = match($view) {
+        'week'  => $date->copy()->addWeek(),
+        'month' => $date->copy()->addMonthNoOverflow(),
+        default => $date->copy()->addDay(),
+    }->toDateString();
+    // Etiqueta del rango según la vista
+    $rangeLabel = match($view) {
+        'week'  => $weekStart->isoFormat('D MMM') . ' — ' . $weekEnd->isoFormat('D MMM, YYYY'),
+        'month' => \Illuminate\Support\Str::ucfirst($date->isoFormat('MMMM YYYY')),
+        default => \Illuminate\Support\Str::ucfirst($date->isoFormat('dddd D [de] MMMM, YYYY')),
+    };
 @endphp
 
 <style>
@@ -34,6 +48,24 @@
     .tl-card { flex:1 1 auto; margin-bottom:1rem; }
     .tl-card .card { border:1px solid var(--bs-border-color); border-radius:14px; }
     .agenda-stat { border-radius:14px; padding:.75rem 1rem; }
+    /* Semana */
+    .wk-col { border:1px solid var(--bs-border-color); border-radius:12px; overflow:hidden; height:100%; }
+    .wk-col .wk-head { padding:.4rem .6rem; font-size:.8rem; font-weight:700; background:var(--bs-tertiary-bg); text-decoration:none; color:inherit; display:flex; justify-content:space-between; align-items:center; }
+    .wk-col .wk-head.today { color:var(--bs-primary); }
+    .wk-col .wk-body { padding:.4rem; min-height:60px; }
+    .wk-appt { border-left:3px solid var(--bs-border-color); border-radius:8px; background:var(--bs-body-bg); padding:.3rem .45rem; margin-bottom:.4rem; }
+    .wk-appt .wk-time { font-weight:700; font-size:.78rem; }
+    .wk-appt .wk-name { font-size:.8rem; }
+    /* Mes */
+    .mo-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
+    .mo-dow { text-align:center; font-size:.72rem; color:var(--bs-secondary-color); font-weight:600; text-transform:uppercase; }
+    .mo-cell { border:1px solid var(--bs-border-color); border-radius:10px; min-height:82px; padding:.35rem; text-decoration:none; color:inherit; display:flex; flex-direction:column; transition:.12s; }
+    .mo-cell:hover { background:var(--bs-tertiary-bg); }
+    .mo-cell.out { opacity:.4; }
+    .mo-cell.today { border-color:var(--bs-primary); border-width:2px; }
+    .mo-cell .mo-num { font-size:.85rem; font-weight:600; }
+    .mo-cell.today .mo-num { color:var(--bs-primary); }
+    .mo-cell .mo-count { margin-top:auto; font-size:.72rem; background:rgba(var(--bs-primary-rgb),.14); color:var(--bs-primary); border-radius:6px; text-align:center; padding:.05rem .2rem; font-weight:700; }
 </style>
 
 <div class="container-fluid">
@@ -44,12 +76,19 @@
             <h1 class="mb-1 fw-bold fs-4"><i class="bi bi-calendar2-week me-2 text-primary"></i>Agenda</h1>
             <p class="text-muted mb-0 small">Revisa tu disponibilidad y agenda los servicios.</p>
         </div>
-        <div class="d-flex align-items-center gap-2">
-            <a href="{{ route('workshop.agenda.index', ['date' => now()->toDateString()]) }}" class="btn btn-light border btn-sm"><i class="bi bi-dot"></i> Hoy</a>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            {{-- Selector de vista --}}
+            <div class="btn-group btn-group-sm" role="group">
+                @foreach(['day' => 'Día', 'week' => 'Semana', 'month' => 'Mes'] as $vk => $vl)
+                <a href="{{ route('workshop.agenda.index', ['view' => $vk, 'date' => $date->toDateString()]) }}"
+                   class="btn {{ $view === $vk ? 'btn-primary' : 'btn-light border' }}">{{ $vl }}</a>
+                @endforeach
+            </div>
+            <a href="{{ route('workshop.agenda.index', ['view' => $view, 'date' => now()->toDateString()]) }}" class="btn btn-light border btn-sm"><i class="bi bi-dot"></i> Hoy</a>
             <div class="btn-group">
-                <a href="{{ route('workshop.agenda.index', ['date' => $prev]) }}" class="btn btn-light border btn-sm"><i class="bi bi-chevron-left"></i></a>
+                <a href="{{ route('workshop.agenda.index', ['view' => $view, 'date' => $prev]) }}" class="btn btn-light border btn-sm"><i class="bi bi-chevron-left"></i></a>
                 <input type="date" id="dateJump" class="form-control form-control-sm border" style="width:150px" value="{{ $date->toDateString() }}">
-                <a href="{{ route('workshop.agenda.index', ['date' => $next]) }}" class="btn btn-light border btn-sm"><i class="bi bi-chevron-right"></i></a>
+                <a href="{{ route('workshop.agenda.index', ['view' => $view, 'date' => $next]) }}" class="btn btn-light border btn-sm"><i class="bi bi-chevron-right"></i></a>
             </div>
             @if($canCreate)
             <button type="button" class="btn btn-primary btn-sm" id="btnNewAppt"><i class="bi bi-plus-lg me-1"></i>Nueva cita</button>
@@ -61,11 +100,12 @@
     @if(session('info'))<div class="alert alert-info border-0 shadow-sm alert-dismissible fade show"><i class="bi bi-info-circle me-2"></i>{{ session('info') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>@endif
     @if($errors->any())<div class="alert alert-danger border-0 shadow-sm alert-dismissible fade show"><i class="bi bi-exclamation-circle me-2"></i>{{ $errors->first() }}<button class="btn-close" data-bs-dismiss="alert"></button></div>@endif
 
+    @if($view === 'day')
     {{-- Tira de la semana --}}
     <div class="row g-2 mb-3">
         @foreach($week as $i => $d)
         <div class="col">
-            <a href="{{ route('workshop.agenda.index', ['date' => $d['date']->toDateString()]) }}"
+            <a href="{{ route('workshop.agenda.index', ['view' => 'day', 'date' => $d['date']->toDateString()]) }}"
                class="agenda-daychip {{ $d['isActive'] ? 'active' : '' }}">
                 @if($d['count'] > 0)<span class="cnt">{{ $d['count'] }}</span>@endif
                 <div class="dow">{{ $dias[$i] }}</div>
@@ -118,47 +158,7 @@
                                     @if($appt->notes)<div class="small text-body-secondary mt-1 fst-italic">{{ $appt->notes }}</div>@endif
                                 </div>
 
-                                @if($canEdit || $canDelete)
-                                <div class="dropdown">
-                                    <button class="btn btn-sm btn-light border" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
-                                    <ul class="dropdown-menu dropdown-menu-end shadow">
-                                        @if($canEdit)
-                                        <li><button type="button" class="dropdown-item btn-edit-appt" data-appt="{{ $appt->id }}"><i class="bi bi-pencil me-2"></i>Editar / reprogramar</button></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><h6 class="dropdown-header">Cambiar estado</h6></li>
-                                        @foreach(\App\Models\Workshop\Appointment::STATUSES as $key => $meta)
-                                            @if($key !== $appt->status)
-                                            <li>
-                                                <form action="{{ route('workshop.agenda.status', $appt->id) }}" method="POST">
-                                                    @csrf
-                                                    <input type="hidden" name="status" value="{{ $key }}">
-                                                    <button type="submit" class="dropdown-item"><i class="bi bi-circle-fill me-2 small text-{{ $meta['color'] }}"></i>{{ $meta['label'] }}</button>
-                                                </form>
-                                            </li>
-                                            @endif
-                                        @endforeach
-                                        @endif
-                                        @if($canWorkOrder && !$appt->work_order_id)
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li>
-                                            <form action="{{ route('workshop.agenda.convert', $appt->id) }}" method="POST" onsubmit="return confirm('¿Crear una Orden de Trabajo a partir de esta cita?');">
-                                                @csrf
-                                                <button type="submit" class="dropdown-item text-primary" @if(!$appt->client_id || !$appt->vehicle_id) disabled title="Requiere cliente registrado y vehículo" @endif><i class="bi bi-clipboard2-plus me-2"></i>Crear Orden de Trabajo</button>
-                                            </form>
-                                        </li>
-                                        @endif
-                                        @if($canDelete)
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li>
-                                            <form action="{{ route('workshop.agenda.destroy', $appt->id) }}" method="POST" onsubmit="return confirm('¿Eliminar esta cita?');">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Eliminar</button>
-                                            </form>
-                                        </li>
-                                        @endif
-                                    </ul>
-                                </div>
-                                @endif
+                                @include('workshop.agenda._appt-actions', ['appt' => $appt])
                             </div>
                         </div>
                     </div>
@@ -173,6 +173,57 @@
             @endforelse
         </div>
     </div>
+
+    @elseif($view === 'week')
+    {{-- Vista semana --}}
+    <div class="mb-2 fw-bold fs-6"><i class="bi bi-calendar3-week me-2 text-primary"></i>{{ $rangeLabel }}</div>
+    <div class="row row-cols-2 row-cols-lg-7 g-2">
+        @foreach($weekDays as $wd)
+        <div class="col">
+            <div class="wk-col">
+                <a href="{{ route('workshop.agenda.index', ['view' => 'day', 'date' => $wd['date']->toDateString()]) }}" class="wk-head {{ $wd['isToday'] ? 'today' : '' }}">
+                    <span>{{ $dias[$wd['date']->dayOfWeekIso - 1] }} {{ $wd['date']->format('d') }}</span>
+                    @if($wd['items']->count())<span class="badge bg-primary-subtle text-primary-emphasis">{{ $wd['items']->count() }}</span>@endif
+                </a>
+                <div class="wk-body">
+                    @forelse($wd['items'] as $appt)
+                    @php $c = $appt->status_color; @endphp
+                    <div class="wk-appt" style="border-left-color:var(--bs-{{ $c }})">
+                        <div class="d-flex justify-content-between align-items-start gap-1">
+                            <div class="min-w-0 flex-grow-1">
+                                <div class="wk-time">{{ $appt->scheduled_at->format('H:i') }}</div>
+                                <div class="wk-name text-truncate">{{ $appt->display_name }}</div>
+                                @if($appt->title)<div class="small text-muted text-truncate">{{ $appt->title }}</div>@endif
+                                @if($appt->work_order_id)<span class="badge text-bg-dark mt-1"><i class="bi bi-clipboard2-check"></i></span>@endif
+                            </div>
+                            @include('workshop.agenda._appt-actions', ['appt' => $appt])
+                        </div>
+                    </div>
+                    @empty
+                    <div class="small text-muted text-center py-2">—</div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+        @endforeach
+    </div>
+
+    @else
+    {{-- Vista mes --}}
+    <div class="mb-2 fw-bold fs-6"><i class="bi bi-calendar3 me-2 text-primary"></i>{{ $rangeLabel }}</div>
+    <div class="mo-grid mb-2">
+        @foreach($dias as $dn)<div class="mo-dow">{{ $dn }}</div>@endforeach
+    </div>
+    <div class="mo-grid">
+        @foreach($monthCells as $cell)
+        <a href="{{ route('workshop.agenda.index', ['view' => 'day', 'date' => $cell['date']->toDateString()]) }}"
+           class="mo-cell {{ $cell['inMonth'] ? '' : 'out' }} {{ $cell['isToday'] ? 'today' : '' }}">
+            <div class="mo-num">{{ $cell['date']->format('d') }}</div>
+            @if($cell['count'] > 0)<div class="mo-count">{{ $cell['count'] }} {{ $cell['count'] == 1 ? 'cita' : 'citas' }}</div>@endif
+        </a>
+        @endforeach
+    </div>
+    @endif
 </div>
 
 @if($canCreate || $canEdit)
@@ -295,9 +346,9 @@
     const storeUrl = "{{ route('workshop.agenda.store') }}";
     const updateBase = "{{ url('workshop/agenda') }}";
 
-    // Navegación por fecha
+    // Navegación por fecha (preserva la vista actual)
     document.getElementById('dateJump')?.addEventListener('change', function () {
-        if (this.value) window.location = "{{ route('workshop.agenda.index') }}?date=" + this.value;
+        if (this.value) window.location = "{{ route('workshop.agenda.index') }}?view={{ $view }}&date=" + this.value;
     });
 
     const apptModalEl = document.getElementById('apptModal');

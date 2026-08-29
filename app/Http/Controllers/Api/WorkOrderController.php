@@ -104,6 +104,8 @@ class WorkOrderController extends Controller
             'reported_issue'    => ['nullable', 'string'],
             'received_items'    => ['nullable', 'string'],
             'notes'             => ['nullable', 'string'],
+            // Si la OT nace de una cita de la agenda, se enlaza y se marca completada.
+            'appointment_id'    => ['nullable', Rule::exists('appointments', 'id')->where('company_id', $companyId)],
         ]);
 
         $userId = $request->user()->id;
@@ -129,7 +131,7 @@ class WorkOrderController extends Controller
                 $vehicleId = $vehicle->id;
             }
 
-            return WorkOrder::create([
+            $order = WorkOrder::create([
                 'company_id'     => $companyId,
                 'client_id'      => $data['client_id'],
                 'vehicle_id'     => $vehicleId,
@@ -145,6 +147,15 @@ class WorkOrderController extends Controller
                 'payment_status' => 'pendiente',
                 'created_by'     => $userId,
             ]);
+
+            // Enlaza la cita de origen (si viene de la agenda y no está enlazada).
+            if (! empty($data['appointment_id'])) {
+                \App\Models\Workshop\Appointment::where('id', $data['appointment_id'])
+                    ->whereNull('work_order_id')
+                    ->update(['work_order_id' => $order->id, 'status' => 'completada']);
+            }
+
+            return $order;
         });
 
         return response()->json(['data' => $this->detail($order)], 201);

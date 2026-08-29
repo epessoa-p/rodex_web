@@ -106,6 +106,8 @@ Route::middleware('auth:sanctum')->group(function () {
             // Agenda / Citas
             Route::get('appointments/meta', [AppointmentController::class, 'meta'])
                 ->middleware('api.permission:appointments.view');
+            Route::get('appointments/range', [AppointmentController::class, 'range'])
+                ->middleware('api.permission:appointments.view');
             Route::get('appointments', [AppointmentController::class, 'index'])
                 ->middleware('api.permission:appointments.view');
             Route::post('appointments', [AppointmentController::class, 'store'])

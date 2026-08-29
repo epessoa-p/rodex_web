@@ -44,6 +44,36 @@ class AppointmentController extends Controller
         ]);
     }
 
+    /** Citas en un rango (para semana/mes). ?from=YYYY-MM-DD&to=YYYY-MM-DD. */
+    public function range(Request $request)
+    {
+        $validated = $request->validate([
+            'from' => ['required', 'date'],
+            'to'   => ['required', 'date', 'after_or_equal:from'],
+        ]);
+
+        $from = Carbon::parse($validated['from'])->startOfDay();
+        $to   = Carbon::parse($validated['to'])->endOfDay();
+
+        // Tope de seguridad: máximo ~ una cuadrícula de mes (42 días).
+        if ($from->diffInDays($to) > 45) {
+            $to = $from->copy()->addDays(45)->endOfDay();
+        }
+
+        $appointments = Appointment::with(['client', 'vehicle', 'service', 'mechanic'])
+            ->whereBetween('scheduled_at', [$from, $to])
+            ->orderBy('scheduled_at')
+            ->get();
+
+        return response()->json([
+            'data' => [
+                'from'         => $from->toDateString(),
+                'to'           => $to->toDateString(),
+                'appointments' => $appointments->map(fn (Appointment $a) => $this->payload($a))->values(),
+            ],
+        ]);
+    }
+
     /** Catálogos para el formulario de cita: servicios y mecánicos. */
     public function meta()
     {
