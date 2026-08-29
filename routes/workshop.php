@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Workshop\AppointmentController;
 use App\Http\Controllers\Workshop\DeliveryController;
 use App\Http\Controllers\Workshop\MechanicController;
 use App\Http\Controllers\Workshop\ServiceController;
@@ -32,6 +33,16 @@ Route::middleware(['auth', 'plan:workshop'])->group(function () {
         Route::get('/{mechanic}/edit',[MechanicController::class, 'edit'])->name('edit')->middleware('check-permission:mechanics.edit');
         Route::put('/{mechanic}',     [MechanicController::class, 'update'])->name('update')->middleware('check-permission:mechanics.edit');
         Route::delete('/{mechanic}',  [MechanicController::class, 'destroy'])->name('destroy')->middleware('check-permission:mechanics.delete');
+    });
+
+    // ── Agenda / Citas ────────────────────────────────────────
+    Route::prefix('workshop/agenda')->name('workshop.agenda.')->group(function () {
+        Route::get('/',                    [AppointmentController::class, 'index'])->name('index')->middleware('check-permission:appointments.view');
+        Route::post('/',                   [AppointmentController::class, 'store'])->name('store')->middleware('check-permission:appointments.create');
+        Route::put('/{appointment}',       [AppointmentController::class, 'update'])->name('update')->middleware('check-permission:appointments.edit');
+        Route::post('/{appointment}/status',[AppointmentController::class, 'changeStatus'])->name('status')->middleware('check-permission:appointments.edit');
+        Route::post('/{appointment}/convert',[AppointmentController::class, 'convertToWorkOrder'])->name('convert')->middleware('check-permission:workshop.create');
+        Route::delete('/{appointment}',    [AppointmentController::class, 'destroy'])->name('destroy')->middleware('check-permission:appointments.delete');
     });
 
     // ── Recepción (alta de OT) ────────────────────────────────

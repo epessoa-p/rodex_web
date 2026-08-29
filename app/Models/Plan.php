@@ -68,6 +68,7 @@ class Plan extends Model
         'workshop'           => 'workshop',
         'services'           => 'workshop',
         'mechanics'          => 'workshop',
+        'appointments'       => 'workshop',
         // Alquiler
         'rentals'            => 'rentals',
         // Venta de motos

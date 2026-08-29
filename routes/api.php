@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CashRegisterController;
 use App\Http\Controllers\Api\CashSessionController;
@@ -101,6 +102,22 @@ Route::middleware('auth:sanctum')->group(function () {
                 ->middleware('api.permission:workshop.edit');
             Route::post('work-orders/{order}/deliver', [WorkOrderController::class, 'deliver'])
                 ->middleware('api.permission:workshop.deliver');
+
+            // Agenda / Citas
+            Route::get('appointments/meta', [AppointmentController::class, 'meta'])
+                ->middleware('api.permission:appointments.view');
+            Route::get('appointments', [AppointmentController::class, 'index'])
+                ->middleware('api.permission:appointments.view');
+            Route::post('appointments', [AppointmentController::class, 'store'])
+                ->middleware('api.permission:appointments.create');
+            Route::put('appointments/{appointment}', [AppointmentController::class, 'update'])
+                ->middleware('api.permission:appointments.edit');
+            Route::post('appointments/{appointment}/status', [AppointmentController::class, 'changeStatus'])
+                ->middleware('api.permission:appointments.edit');
+            Route::post('appointments/{appointment}/convert', [AppointmentController::class, 'convertToWorkOrder'])
+                ->middleware('api.permission:workshop.create');
+            Route::delete('appointments/{appointment}', [AppointmentController::class, 'destroy'])
+                ->middleware('api.permission:appointments.delete');
         });
 
         // ── Cajas: gestión y asignación a personal (plan: cash) ────

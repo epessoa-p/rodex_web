@@ -374,6 +374,13 @@
                 </a>
             </li>
             @endif
+            @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('appointments.view', $currentCompany))
+            <li class="nav-item">
+                <a class="nav-link app-link {{ request()->routeIs('workshop.agenda.*') ? 'active' : '' }}" href="{{ route('workshop.agenda.index') }}">
+                    <i class="bi bi-calendar2-week"></i> Agenda
+                </a>
+            </li>
+            @endif
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('workshop.create', $currentCompany))
             <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('workshop.reception') ? 'active' : '' }}" href="{{ route('workshop.reception') }}">
@@ -900,6 +907,9 @@
             <ul class="nav flex-column gap-1 mb-3">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('workshop-dashboard.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('workshop.dashboard') ? 'active' : '' }}" href="{{ route('workshop.dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
+                @endif
+                @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('appointments.view', $currentCompany))
+                <li><a class="nav-link app-link {{ request()->routeIs('workshop.agenda.*') ? 'active' : '' }}" href="{{ route('workshop.agenda.index') }}"><i class="bi bi-calendar2-week me-2"></i>Agenda</a></li>
                 @endif
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('workshop.create', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('workshop.reception') ? 'active' : '' }}" href="{{ route('workshop.reception') }}"><i class="bi bi-box-arrow-in-down me-2"></i>Recepción</a></li>
