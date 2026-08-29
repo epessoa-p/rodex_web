@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\SaleController;
 use App\Http\Controllers\Api\SupplierController;
+use App\Http\Controllers\Api\TreasuryController;
 use App\Http\Controllers\Api\WorkOrderController;
 use App\Http\Controllers\Api\WorkshopMetaController;
 use Illuminate\Support\Facades\Route;
@@ -141,6 +142,16 @@ Route::middleware('auth:sanctum')->group(function () {
                 ->middleware('api.permission:purchase-orders.view,goods-receipts.view');
             Route::post('purchase-orders/{purchaseOrder}/receive', [PurchaseOrderController::class, 'receive'])
                 ->middleware('api.permission:goods-receipts.create');
+
+            // Tesorería (Finanzas): cuentas + ingresos/gastos
+            Route::get('treasury/accounts', [TreasuryController::class, 'index'])
+                ->middleware('api.permission:treasury.view');
+            Route::post('treasury/accounts', [TreasuryController::class, 'storeAccount'])
+                ->middleware('api.permission:treasury.manage');
+            Route::get('treasury/accounts/{account}', [TreasuryController::class, 'show'])
+                ->middleware('api.permission:treasury.view');
+            Route::post('treasury/accounts/{account}/movements', [TreasuryController::class, 'storeMovement'])
+                ->middleware('api.permission:treasury.manage');
         });
     });
 });
