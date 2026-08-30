@@ -8,9 +8,11 @@ use App\Models\Vehicle;
 use App\Models\Workshop\Service;
 use App\Models\Workshop\WorkOrder;
 use App\Models\Workshop\WorkOrderPart;
+use App\Models\Workshop\WorkOrderPhoto;
 use App\Models\Workshop\WorkOrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 /**
@@ -357,9 +359,14 @@ class WorkOrderController extends Controller
 
     private function detail(WorkOrder $o): array
     {
-        $o->load(['client', 'vehicle', 'mechanic', 'services.mechanic', 'parts.product']);
+        $o->load(['client', 'vehicle', 'mechanic', 'services.mechanic', 'parts.product', 'photos']);
 
         return $this->summary($o) + [
+            'photos'            => $o->photos->map(fn ($p) => [
+                'id'        => $p->id,
+                'url'       => $p->url,
+                'file_name' => $p->file_name,
+            ])->values(),
             'reported_issue'    => $o->reported_issue,
             'diagnosis'         => $o->diagnosis,
             'mileage'           => $o->mileage,
@@ -386,5 +393,59 @@ class WorkOrderController extends Controller
                 'subtotal'   => (float) $p->subtotal,
             ])->values(),
         ];
+    }
+
+    // ── Fotos de la OT ────────────────────────────────────────────
+
+    /** Lista las fotos de la orden. */
+    public function photos(WorkOrder $order)
+    {
+        return response()->json(['data' => $this->photoList($order)]);
+    }
+
+    /** Sube una o varias fotos a la orden (multipart: photos[]). */
+    public function addPhotos(Request $request, WorkOrder $order)
+    {
+        $request->validate([
+            'photos'   => ['required', 'array', 'max:12'],
+            'photos.*' => ['image', 'max:5120'],
+        ]);
+
+        $companyId = $order->company_id;
+        $next = (int) $order->photos()->max('sort_order');
+
+        foreach ($request->file('photos') as $file) {
+            $path = $file->store("company/{$companyId}/work-orders/{$order->id}", 'public');
+            WorkOrderPhoto::create([
+                'company_id'    => $companyId,
+                'work_order_id' => $order->id,
+                'file_path'     => $path,
+                'file_name'     => $file->getClientOriginalName(),
+                'sort_order'    => ++$next,
+            ]);
+        }
+
+        return response()->json(['data' => $this->photoList($order->refresh())], 201);
+    }
+
+    /** Elimina una foto (archivo + registro). */
+    public function deletePhoto(WorkOrder $order, WorkOrderPhoto $photo)
+    {
+        abort_if($photo->work_order_id !== $order->id, 404);
+
+        Storage::disk('public')->delete($photo->file_path);
+        $photo->delete();
+
+        return response()->json(['data' => ['deleted' => true]]);
+    }
+
+    private function photoList(WorkOrder $order): array
+    {
+        return $order->photos()->orderBy('sort_order')->get()
+            ->map(fn (WorkOrderPhoto $p) => [
+                'id'        => $p->id,
+                'url'       => $p->url,
+                'file_name' => $p->file_name,
+            ])->values()->all();
     }
 }

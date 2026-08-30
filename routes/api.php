@@ -103,6 +103,14 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('work-orders/{order}/deliver', [WorkOrderController::class, 'deliver'])
                 ->middleware('api.permission:workshop.deliver');
 
+            // Fotos de la OT
+            Route::get('work-orders/{order}/photos', [WorkOrderController::class, 'photos'])
+                ->middleware('api.permission:workshop.view');
+            Route::post('work-orders/{order}/photos', [WorkOrderController::class, 'addPhotos'])
+                ->middleware('api.permission:workshop.edit');
+            Route::delete('work-orders/{order}/photos/{photo}', [WorkOrderController::class, 'deletePhoto'])
+                ->middleware('api.permission:workshop.edit');
+
             // Agenda / Citas
             Route::get('appointments/meta', [AppointmentController::class, 'meta'])
                 ->middleware('api.permission:appointments.view');
