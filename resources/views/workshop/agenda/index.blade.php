@@ -10,16 +10,18 @@
     $canDelete = $authUser->is_super_admin || $authUser->hasPermissionInCompany('appointments.delete', $currentCompany);
     $canWorkOrder = $authUser->is_super_admin || $authUser->hasPermissionInCompany('workshop.create', $currentCompany);
     $dias = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-    $prev = match($view) {
+    $prevDate = match($view) {
         'week'  => $date->copy()->subWeek(),
         'month' => $date->copy()->subMonthNoOverflow(),
         default => $date->copy()->subDay(),
-    }->toDateString();
-    $next = match($view) {
+    };
+    $nextDate = match($view) {
         'week'  => $date->copy()->addWeek(),
         'month' => $date->copy()->addMonthNoOverflow(),
         default => $date->copy()->addDay(),
-    }->toDateString();
+    };
+    $prev = $prevDate->toDateString();
+    $next = $nextDate->toDateString();
     // Etiqueta del rango según la vista
     $rangeLabel = match($view) {
         'week'  => $weekStart->isoFormat('D MMM') . ' — ' . $weekEnd->isoFormat('D MMM, YYYY'),
