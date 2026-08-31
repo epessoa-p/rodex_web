@@ -91,6 +91,13 @@
 
         <div class="sidebar-section-title mt-4">Administración</div>
         <ul class="nav flex-column gap-1">
+            @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('company-profile.view', $currentCompany))
+            <li class="nav-item">
+                <a class="nav-link app-link {{ request()->routeIs('company-profile.*') ? 'active' : '' }}" href="{{ route('company-profile.edit') }}">
+                    <i class="bi bi-building"></i> Mi empresa
+                </a>
+            </li>
+            @endif
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('users.view', $currentCompany))
             <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}">
@@ -789,6 +796,9 @@
 
             <div class="sidebar-section-title">Administración</div>
             <ul class="nav flex-column gap-1 mb-3">
+                @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('company-profile.view', $currentCompany))
+                <li><a class="nav-link app-link {{ request()->routeIs('company-profile.*') ? 'active' : '' }}" href="{{ route('company-profile.edit') }}"><i class="bi bi-building me-2"></i>Mi empresa</a></li>
+                @endif
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('users.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}"><i class="bi bi-person-gear me-2"></i>Usuarios</a></li>
                 @endif

@@ -34,6 +34,10 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // ── Mi empresa (la empresa activa edita sus datos) ────────────
+    Route::get('/mi-empresa', [\App\Http\Controllers\CompanyProfileController::class, 'edit'])->name('company-profile.edit')->middleware('check-permission:company-profile.view');
+    Route::put('/mi-empresa', [\App\Http\Controllers\CompanyProfileController::class, 'update'])->name('company-profile.update')->middleware('check-permission:company-profile.edit');
+
     // ── Empresas (solo super_admin) ───────────────────────────────
     Route::middleware('check-role:super_admin')->prefix('admin/companies')->name('companies.')->group(function () {
         Route::get('/',               [CompanyController::class, 'index'])->name('index');

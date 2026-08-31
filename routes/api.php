@@ -35,6 +35,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('me', [AuthController::class, 'me']);
 
+        // ── Mi empresa (administrativo, sin plan) ──────────────────
+        Route::get('company-profile', [\App\Http\Controllers\Api\CompanyProfileController::class, 'show'])
+            ->middleware('api.permission:company-profile.view');
+        Route::post('company-profile', [\App\Http\Controllers\Api\CompanyProfileController::class, 'update'])
+            ->middleware('api.permission:company-profile.edit');
+
         // ── Módulo Ventas / POS (plan: sales) ──────────────────────
         Route::middleware('api.plan:sales')->group(function () {
 

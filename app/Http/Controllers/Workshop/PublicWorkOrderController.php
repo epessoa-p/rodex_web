@@ -22,6 +22,16 @@ class PublicWorkOrderController extends Controller
         );
         abort_if(! $order || $order->status === 'anulada', 404);
 
+        // Caducidad: el enlace deja de servir N días después de entregada.
+        if ($order->status === 'entregada' && $order->delivered_at) {
+            $days = (int) ($order->company?->tracking_link_days ?? 1);
+            if ($days > 0 && $order->delivered_at->copy()->addDays($days)->isPast()) {
+                return response()->view('workshop.public-track-expired', [
+                    'company' => $order->company,
+                ], 410);
+            }
+        }
+
         // Fija el tenant dueño para que el global scope aísle correctamente.
         return $tenancy->runAs($order->company_id, function () use ($order) {
             $order->load(['vehicle', 'mechanic', 'services', 'parts.product']);

@@ -16,11 +16,12 @@ class Company extends Model
 
     protected $fillable = [
         'name', 'ruc', 'currency', 'address', 'phone', 'email', 'logo', 'description', 'active',
-        'theme_primary', 'theme_accent',
+        'theme_primary', 'theme_accent', 'tracking_link_days',
     ];
 
     protected $casts = [
         'active' => 'boolean',
+        'tracking_link_days' => 'integer',
         'deleted_at' => 'datetime',
     ];
 
