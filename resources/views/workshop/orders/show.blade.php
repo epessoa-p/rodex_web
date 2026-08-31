@@ -172,25 +172,33 @@
                     @if($order->photos->isEmpty())
                         <div class="text-muted small mb-0">Sin fotos.</div>
                     @else
-                        <div class="d-flex flex-wrap gap-2">
+                        <div class="d-flex flex-wrap gap-3">
                             @foreach($order->photos as $photo)
-                            <div class="position-relative" style="width:104px;height:104px;">
-                                <img src="{{ $photo->url }}" alt="{{ $photo->file_name }}"
-                                     class="rounded border w-100 h-100 wo-photo-thumb"
-                                     style="object-fit:cover;cursor:zoom-in;"
-                                     data-bs-toggle="modal" data-bs-target="#photoModal"
-                                     data-src="{{ $photo->url }}">
-                                @if($canEdit && $editable)
-                                <form action="{{ route('workshop.orders.photos.remove', [$order, $photo]) }}" method="POST"
-                                      class="position-absolute top-0 end-0 m-1"
-                                      onsubmit="return confirm('¿Eliminar esta foto?');">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-danger rounded-circle p-0 d-flex align-items-center justify-content-center"
-                                            style="width:24px;height:24px;" title="Eliminar">
-                                        <i class="bi bi-x" style="font-size:1rem;"></i>
-                                    </button>
-                                </form>
-                                @endif
+                            <div style="width:104px;">
+                                <div class="position-relative" style="width:104px;height:104px;">
+                                    <img src="{{ $photo->url }}" alt="{{ $photo->file_name }}"
+                                         class="rounded border w-100 h-100 wo-photo-thumb"
+                                         style="object-fit:cover;cursor:zoom-in;"
+                                         data-bs-toggle="modal" data-bs-target="#photoModal"
+                                         data-src="{{ $photo->url }}"
+                                         data-caption="{{ $photo->caption }}"
+                                         data-update="{{ route('workshop.orders.photos.update', [$order, $photo]) }}">
+                                    @if($canEdit && $editable)
+                                    <form action="{{ route('workshop.orders.photos.remove', [$order, $photo]) }}" method="POST"
+                                          class="position-absolute top-0 end-0 m-1"
+                                          onsubmit="return confirm('¿Eliminar esta foto?');">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-danger rounded-circle p-0 d-flex align-items-center justify-content-center"
+                                                style="width:24px;height:24px;" title="Eliminar">
+                                            <i class="bi bi-x" style="font-size:1rem;"></i>
+                                        </button>
+                                    </form>
+                                    @endif
+                                </div>
+                                <div class="small text-truncate mt-1 {{ $photo->caption ? 'text-body' : 'text-muted fst-italic' }}"
+                                     title="{{ $photo->caption }}">
+                                    {{ $photo->caption ?: 'Sin comentario' }}
+                                </div>
                             </div>
                             @endforeach
                         </div>
@@ -528,7 +536,19 @@
             <div class="text-end mb-2">
                 <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
             </div>
-            <img id="photoModalImg" src="" alt="Foto de la OT" class="img-fluid rounded shadow" style="max-height:80vh;object-fit:contain;">
+            <img id="photoModalImg" src="" alt="Foto de la OT" class="img-fluid rounded shadow" style="max-height:70vh;object-fit:contain;">
+            @if($canEdit && $editable)
+            <form id="captionForm" method="POST" class="bg-white rounded p-2 mt-2 d-flex gap-2 align-items-end">
+                @csrf @method('PUT')
+                <div class="flex-grow-1">
+                    <label class="form-label small fw-semibold mb-1">Comentario de la foto</label>
+                    <textarea name="caption" id="captionInput" class="form-control form-control-sm" rows="2" maxlength="500" placeholder="Ej: Cambiar esta pieza gastada por una nueva"></textarea>
+                </div>
+                <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-check-lg"></i></button>
+            </form>
+            @else
+            <div id="captionView" class="bg-white rounded p-2 mt-2 small text-muted d-none"></div>
+            @endif
         </div>
     </div>
 </div>
@@ -557,8 +577,21 @@
     const photoModal = document.getElementById('photoModal');
     if (photoModal) {
         photoModal.addEventListener('show.bs.modal', function (ev) {
-            const src = ev.relatedTarget?.getAttribute('data-src');
+            const t = ev.relatedTarget;
+            const src = t?.getAttribute('data-src');
             if (src) document.getElementById('photoModalImg').src = src;
+            const caption = t?.getAttribute('data-caption') || '';
+            const update = t?.getAttribute('data-update') || '';
+            const form = document.getElementById('captionForm');
+            if (form) {
+                form.action = update;
+                document.getElementById('captionInput').value = caption;
+            }
+            const view = document.getElementById('captionView');
+            if (view) {
+                view.textContent = caption;
+                view.classList.toggle('d-none', !caption);
+            }
         });
     }
 

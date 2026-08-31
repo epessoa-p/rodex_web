@@ -383,6 +383,7 @@ class WorkOrderController extends Controller
                 'id'        => $p->id,
                 'url'       => $p->url,
                 'file_name' => $p->file_name,
+                'caption'   => $p->caption,
             ])->values(),
             'reported_issue'    => $o->reported_issue,
             'diagnosis'         => $o->diagnosis,
@@ -453,6 +454,20 @@ class WorkOrderController extends Controller
         return response()->json(['data' => $this->photoList($order->refresh())], 201);
     }
 
+    /** Actualiza el comentario de una foto. */
+    public function updatePhoto(Request $request, WorkOrder $order, WorkOrderPhoto $photo)
+    {
+        abort_if($photo->work_order_id !== $order->id, 404);
+
+        $data = $request->validate([
+            'caption' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $photo->update(['caption' => $data['caption'] ?? null]);
+
+        return response()->json(['data' => $this->photoList($order)]);
+    }
+
     /** Elimina una foto (archivo + registro). */
     public function deletePhoto(WorkOrder $order, WorkOrderPhoto $photo)
     {
@@ -471,6 +486,7 @@ class WorkOrderController extends Controller
                 'id'        => $p->id,
                 'url'       => $p->url,
                 'file_name' => $p->file_name,
+                'caption'   => $p->caption,
             ])->values()->all();
     }
 }

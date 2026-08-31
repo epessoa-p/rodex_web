@@ -135,6 +135,8 @@ Route::middleware('auth:sanctum')->group(function () {
                 ->middleware('api.permission:workshop.view');
             Route::post('work-orders/{order}/photos', [WorkOrderController::class, 'addPhotos'])
                 ->middleware('api.permission:workshop.edit');
+            Route::put('work-orders/{order}/photos/{photo}', [WorkOrderController::class, 'updatePhoto'])
+                ->middleware('api.permission:workshop.edit');
             Route::delete('work-orders/{order}/photos/{photo}', [WorkOrderController::class, 'deletePhoto'])
                 ->middleware('api.permission:workshop.edit');
 

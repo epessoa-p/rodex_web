@@ -15,7 +15,7 @@ class WorkOrderPhoto extends Model
     use HasFactory;
 
     protected $fillable = [
-        'company_id', 'work_order_id', 'file_path', 'file_name', 'sort_order',
+        'company_id', 'work_order_id', 'file_path', 'file_name', 'caption', 'sort_order',
     ];
 
     protected $casts = [

@@ -45,9 +45,44 @@ class DashboardController extends Controller
     private function buildSeries(\Closure $freshQuery, string $dateCol): array
     {
         return [
-            'weekly'  => $this->weekly($freshQuery, $dateCol),
-            'monthly' => $this->monthly($freshQuery, $dateCol),
+            'weekly'       => $this->weekly($freshQuery, $dateCol),
+            'monthly'      => $this->monthly($freshQuery, $dateCol),
+            'week_compare' => $this->weekCompare($freshQuery, $dateCol),
         ];
+    }
+
+    /** Comparativa día por día: semana anterior vs. semana actual (lun-dom). */
+    private function weekCompare(\Closure $freshQuery, string $dateCol): array
+    {
+        $thisMonday = Carbon::today()->startOfWeek(Carbon::MONDAY);
+        $prevMonday = $thisMonday->copy()->subWeek();
+
+        // Totales por día en el rango [semana anterior .. fin de esta semana].
+        $rows = $freshQuery()
+            ->whereBetween($dateCol, [
+                $prevMonday->toDateString() . ' 00:00:00',
+                $thisMonday->copy()->addDays(6)->toDateString() . ' 23:59:59',
+            ])
+            ->selectRaw("DATE($dateCol) as d, SUM(total) as amount, COUNT(*) as cnt")
+            ->groupBy('d')
+            ->get()
+            ->keyBy('d');
+
+        $days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+        $out = [];
+        for ($i = 0; $i < 7; $i++) {
+            $cur = $rows[$thisMonday->copy()->addDays($i)->toDateString()] ?? null;
+            $prev = $rows[$prevMonday->copy()->addDays($i)->toDateString()] ?? null;
+            $out[] = [
+                'label'        => $days[$i],
+                'current_amount' => (float) ($cur->amount ?? 0),
+                'current_count'  => (int) ($cur->cnt ?? 0),
+                'prev_amount'    => (float) ($prev->amount ?? 0),
+                'prev_count'     => (int) ($prev->cnt ?? 0),
+            ];
+        }
+
+        return $out;
     }
 
     private function weekly(\Closure $freshQuery, string $dateCol): array

@@ -226,6 +226,18 @@ class WorkOrderController extends Controller
         return back()->with('success', 'Fotos agregadas.');
     }
 
+    /** Actualiza el comentario de una foto de la OT. */
+    public function updatePhoto(Request $request, WorkOrder $order, WorkOrderPhoto $photo)
+    {
+        $this->authorizeOrder($order);
+        abort_if($photo->work_order_id !== $order->id, 404);
+
+        $data = $request->validate(['caption' => ['nullable', 'string', 'max:500']]);
+        $photo->update(['caption' => $data['caption'] ?? null]);
+
+        return back()->with('success', 'Comentario guardado.');
+    }
+
     /** Elimina una foto de la OT (archivo + registro). */
     public function deletePhoto(WorkOrder $order, WorkOrderPhoto $photo)
     {
