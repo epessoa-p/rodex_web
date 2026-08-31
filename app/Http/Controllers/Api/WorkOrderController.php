@@ -368,6 +368,7 @@ class WorkOrderController extends Controller
             'total'                => (float) $o->total,
             'balance'              => (float) $o->balance,
             'client'               => $o->client?->full_name,
+            'client_phone'         => $o->client?->phone,
             'vehicle'              => $o->vehicle?->display_name,
             'mechanic'             => $o->mechanic?->name,
             'reception_date'       => $o->reception_date?->toIso8601String(),
