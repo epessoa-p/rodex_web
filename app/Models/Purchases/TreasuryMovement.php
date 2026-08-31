@@ -22,6 +22,7 @@ class TreasuryMovement extends Model
         'adjustment_in'     => ['label' => 'Ajuste positivo',   'type' => 'in'],
         'adjustment_out'    => ['label' => 'Ajuste negativo',   'type' => 'out'],
         'expense'           => ['label' => 'Gasto',             'type' => 'out'],
+        'payroll'           => ['label' => 'Pago a personal',   'type' => 'out'],
     ];
 
     protected $fillable = [

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Workshop\AppointmentController;
 use App\Http\Controllers\Workshop\DeliveryController;
 use App\Http\Controllers\Workshop\MechanicController;
+use App\Http\Controllers\Workshop\MechanicPaymentController;
 use App\Http\Controllers\Workshop\PublicWorkOrderController;
 use App\Http\Controllers\Workshop\ServiceController;
 use App\Http\Controllers\Workshop\WorkOrderController;
@@ -47,6 +48,12 @@ Route::middleware(['auth', 'plan:workshop'])->group(function () {
         Route::post('/{appointment}/status',[AppointmentController::class, 'changeStatus'])->name('status')->middleware('check-permission:appointments.edit');
         Route::post('/{appointment}/convert',[AppointmentController::class, 'convertToWorkOrder'])->name('convert')->middleware('check-permission:workshop.create');
         Route::delete('/{appointment}',    [AppointmentController::class, 'destroy'])->name('destroy')->middleware('check-permission:appointments.delete');
+    });
+
+    // ── Pago a mecánicos ──────────────────────────────────────
+    Route::prefix('workshop/mechanic-payments')->name('workshop.mechanic-payments.')->group(function () {
+        Route::get('/',  [MechanicPaymentController::class, 'index'])->name('index')->middleware('check-permission:mechanic-payments.view');
+        Route::post('/', [MechanicPaymentController::class, 'store'])->name('store')->middleware('check-permission:mechanic-payments.pay');
     });
 
     // ── Recepción (alta de OT) ────────────────────────────────

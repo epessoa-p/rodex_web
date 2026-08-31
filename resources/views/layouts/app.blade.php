@@ -395,6 +395,13 @@
                 </a>
             </li>
             @endif
+            @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('mechanic-payments.view', $currentCompany))
+            <li class="nav-item">
+                <a class="nav-link app-link {{ request()->routeIs('workshop.mechanic-payments.*') ? 'active' : '' }}" href="{{ route('workshop.mechanic-payments.index') }}">
+                    <i class="bi bi-cash-coin"></i> Pago a mecánicos
+                </a>
+            </li>
+            @endif
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('services.view', $currentCompany))
             <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('services.*') ? 'active' : '' }}" href="{{ route('services.index') }}">
@@ -916,6 +923,9 @@
                 @endif
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('workshop.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('workshop.orders.*') ? 'active' : '' }}" href="{{ route('workshop.orders.index') }}"><i class="bi bi-tools me-2"></i>Órdenes de Trabajo</a></li>
+                @endif
+                @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('mechanic-payments.view', $currentCompany))
+                <li><a class="nav-link app-link {{ request()->routeIs('workshop.mechanic-payments.*') ? 'active' : '' }}" href="{{ route('workshop.mechanic-payments.index') }}"><i class="bi bi-cash-coin me-2"></i>Pago a mecánicos</a></li>
                 @endif
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('services.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('services.*') ? 'active' : '' }}" href="{{ route('services.index') }}"><i class="bi bi-wrench-adjustable me-2"></i>Servicios</a></li>

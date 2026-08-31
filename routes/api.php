@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CashRegisterController;
 use App\Http\Controllers\Api\CashSessionController;
 use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\MechanicPaymentController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\SaleController;
@@ -114,6 +115,12 @@ Route::middleware('auth:sanctum')->group(function () {
                 ->middleware('api.permission:workshop.edit');
             Route::delete('work-orders/{order}/photos/{photo}', [WorkOrderController::class, 'deletePhoto'])
                 ->middleware('api.permission:workshop.edit');
+
+            // Pago a mecánicos
+            Route::get('mechanic-payments', [MechanicPaymentController::class, 'summary'])
+                ->middleware('api.permission:mechanic-payments.view');
+            Route::post('mechanic-payments', [MechanicPaymentController::class, 'store'])
+                ->middleware('api.permission:mechanic-payments.pay');
 
             // Agenda / Citas
             Route::get('appointments/meta', [AppointmentController::class, 'meta'])
