@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CashRegisterController;
 use App\Http\Controllers\Api\CashSessionController;
 use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\MechanicController;
 use App\Http\Controllers\Api\MechanicPaymentController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseOrderController;
@@ -77,6 +78,13 @@ Route::middleware('auth:sanctum')->group(function () {
             // Catálogos de apoyo
             Route::get('mechanics', [WorkshopMetaController::class, 'mechanics'])
                 ->middleware('api.permission:workshop.view,mechanics.view');
+            // Gestión de mecánicos (listado completo + alta/edición)
+            Route::get('mechanics/all', [MechanicController::class, 'index'])
+                ->middleware('api.permission:mechanics.view');
+            Route::post('mechanics', [MechanicController::class, 'store'])
+                ->middleware('api.permission:mechanics.create');
+            Route::put('mechanics/{mechanic}', [MechanicController::class, 'update'])
+                ->middleware('api.permission:mechanics.edit');
             Route::get('vehicles', [WorkshopMetaController::class, 'vehicles'])
                 ->middleware('api.permission:workshop.view,vehicles.view');
 
