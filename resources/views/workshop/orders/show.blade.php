@@ -162,6 +162,55 @@
                 </div>
             </div>
 
+            {{-- Fotos --}}
+            <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #0ea5e9 !important;">
+                <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 fw-semibold"><i class="bi bi-images me-2" style="color:#0ea5e9;"></i>Fotos</h6>
+                    <span class="badge bg-light text-muted border">{{ $order->photos->count() }}</span>
+                </div>
+                <div class="card-body p-4">
+                    @if($order->photos->isEmpty())
+                        <div class="text-muted small mb-0">Sin fotos.</div>
+                    @else
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach($order->photos as $photo)
+                            <div class="position-relative" style="width:104px;height:104px;">
+                                <img src="{{ $photo->url }}" alt="{{ $photo->file_name }}"
+                                     class="rounded border w-100 h-100 wo-photo-thumb"
+                                     style="object-fit:cover;cursor:zoom-in;"
+                                     data-bs-toggle="modal" data-bs-target="#photoModal"
+                                     data-src="{{ $photo->url }}">
+                                @if($canEdit && $editable)
+                                <form action="{{ route('workshop.orders.photos.remove', [$order, $photo]) }}" method="POST"
+                                      class="position-absolute top-0 end-0 m-1"
+                                      onsubmit="return confirm('¿Eliminar esta foto?');">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-danger rounded-circle p-0 d-flex align-items-center justify-content-center"
+                                            style="width:24px;height:24px;" title="Eliminar">
+                                        <i class="bi bi-x" style="font-size:1rem;"></i>
+                                    </button>
+                                </form>
+                                @endif
+                            </div>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    @if($canEdit && $editable)
+                    <form action="{{ route('workshop.orders.photos.add', $order) }}" method="POST"
+                          enctype="multipart/form-data" class="mt-3 d-flex gap-2 align-items-center flex-wrap">
+                        @csrf
+                        <input type="file" name="photos[]" accept="image/*" multiple required
+                               class="form-control form-control-sm" style="max-width:320px;">
+                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-upload me-1"></i>Subir fotos
+                        </button>
+                    </form>
+                    @error('photos.*')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                    @endif
+                </div>
+            </div>
+
             {{-- Diagnóstico --}}
             <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #8b5cf6 !important;">
                 <div class="card-header bg-white border-bottom py-3 px-4">
@@ -472,6 +521,18 @@
 </div>
 @endif
 
+{{-- Lightbox de fotos --}}
+<div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content bg-transparent border-0">
+            <div class="text-end mb-2">
+                <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <img id="photoModalImg" src="" alt="Foto de la OT" class="img-fluid rounded shadow" style="max-height:80vh;object-fit:contain;">
+        </div>
+    </div>
+</div>
+
 @push('styles')
 <style>
 @media print {
@@ -491,6 +552,15 @@
 (function () {
     'use strict';
     const CSRF = '{{ csrf_token() }}';
+
+    // ── Lightbox de fotos ────────────────────────────────────────────
+    const photoModal = document.getElementById('photoModal');
+    if (photoModal) {
+        photoModal.addEventListener('show.bs.modal', function (ev) {
+            const src = ev.relatedTarget?.getAttribute('data-src');
+            if (src) document.getElementById('photoModalImg').src = src;
+        });
+    }
 
     // ── Toast ────────────────────────────────────────────────────────
     function toast(msg, ok) {

@@ -190,13 +190,52 @@ class WorkOrderController extends Controller
         $this->authorizeOrder($order);
         $order->load([
             'client', 'vehicle', 'mechanic', 'branch', 'createdBy',
-            'services.mechanic', 'parts.product', 'installments', 'payments.user',
+            'services.mechanic', 'parts.product', 'installments', 'payments.user', 'photos',
         ]);
 
         return view('workshop.orders.show', array_merge(
             $this->formData($order->company_id),
             ['order' => $order]
         ));
+    }
+
+    /** Sube una o varias fotos a la OT (desde la vista de la orden). */
+    public function addPhotos(Request $request, WorkOrder $order)
+    {
+        $this->authorizeOrder($order);
+
+        $request->validate([
+            'photos'   => ['required', 'array', 'max:12'],
+            'photos.*' => ['image', 'max:5120'],
+        ]);
+
+        $cid = $order->company_id;
+        $next = (int) $order->photos()->max('sort_order');
+
+        foreach ($request->file('photos') as $file) {
+            $path = $file->store("company/{$cid}/work-orders/{$order->id}", 'public');
+            WorkOrderPhoto::create([
+                'company_id'    => $cid,
+                'work_order_id' => $order->id,
+                'file_path'     => $path,
+                'file_name'     => $file->getClientOriginalName(),
+                'sort_order'    => ++$next,
+            ]);
+        }
+
+        return back()->with('success', 'Fotos agregadas.');
+    }
+
+    /** Elimina una foto de la OT (archivo + registro). */
+    public function deletePhoto(WorkOrder $order, WorkOrderPhoto $photo)
+    {
+        $this->authorizeOrder($order);
+        abort_if($photo->work_order_id !== $order->id, 404);
+
+        \Illuminate\Support\Facades\Storage::disk('public')->delete($photo->file_path);
+        $photo->delete();
+
+        return back()->with('success', 'Foto eliminada.');
     }
 
     public function edit(WorkOrder $order)
