@@ -119,6 +119,7 @@ class AuthController extends Controller
             'logo_url'      => $company->logo_url,
             'theme_primary' => $company->theme_primary,
             'theme_accent'  => $company->theme_accent,
+            'dashboard_order' => $company->dashboard_order ?: 'ventas,taller,compras',
         ];
     }
 }

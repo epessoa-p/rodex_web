@@ -28,6 +28,7 @@ class CompanyProfileController extends Controller
             'phone'              => ['nullable', 'string', 'max:30'],
             'address'            => ['nullable', 'string', 'max:500'],
             'tracking_link_days' => ['required', 'integer', 'min:0', 'max:365'],
+            'dashboard_order'    => ['nullable', 'string', 'max:60'],
             'logo'               => ['nullable', 'image', 'max:4096'],
         ]);
 
@@ -35,6 +36,7 @@ class CompanyProfileController extends Controller
             'phone'              => $data['phone'] ?? null,
             'address'            => $data['address'] ?? null,
             'tracking_link_days' => $data['tracking_link_days'],
+            'dashboard_order'    => \App\Support\DashboardOrder::sanitize($data['dashboard_order'] ?? null),
         ];
 
         if ($request->hasFile('logo')) {

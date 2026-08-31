@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CashRegisterController;
 use App\Http\Controllers\Api\CashSessionController;
 use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\MechanicController;
 use App\Http\Controllers\Api\MechanicPaymentController;
 use App\Http\Controllers\Api\ProductController;
@@ -44,6 +45,9 @@ Route::middleware('auth:sanctum')->group(function () {
         // ── Módulo Ventas / POS (plan: sales) ──────────────────────
         Route::middleware('api.plan:sales')->group(function () {
 
+            Route::get('dashboard/sales', [DashboardController::class, 'sales'])
+                ->middleware('api.permission:sales-dashboard.view');
+
             Route::get('products', [ProductController::class, 'index'])
                 ->middleware('api.permission:products.view,pos.access,sales.view');
             Route::get('products/{product}', [ProductController::class, 'show'])
@@ -81,6 +85,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // ── Módulo Taller (plan: workshop) ─────────────────────────
         Route::middleware('api.plan:workshop')->group(function () {
+            Route::get('dashboard/workshop', [DashboardController::class, 'workshop'])
+                ->middleware('api.permission:workshop-dashboard.view');
             // Catálogos de apoyo
             Route::get('mechanics', [WorkshopMetaController::class, 'mechanics'])
                 ->middleware('api.permission:workshop.view,mechanics.view');
@@ -183,6 +189,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // ── Módulo Compras (plan: purchases) ───────────────────────
         Route::middleware('api.plan:purchases')->group(function () {
+            Route::get('dashboard/purchases', [DashboardController::class, 'purchases'])
+                ->middleware('api.permission:purchases-dashboard.view');
             Route::get('suppliers', [SupplierController::class, 'index'])
                 ->middleware('api.permission:suppliers.view,purchase-orders.view');
             Route::post('suppliers', [SupplierController::class, 'store'])

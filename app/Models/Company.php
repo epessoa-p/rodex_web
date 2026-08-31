@@ -16,7 +16,7 @@ class Company extends Model
 
     protected $fillable = [
         'name', 'ruc', 'currency', 'address', 'phone', 'email', 'logo', 'description', 'active',
-        'theme_primary', 'theme_accent', 'tracking_link_days',
+        'theme_primary', 'theme_accent', 'tracking_link_days', 'dashboard_order',
     ];
 
     protected $casts = [

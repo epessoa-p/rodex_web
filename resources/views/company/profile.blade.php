@@ -53,6 +53,29 @@
                                 <input type="number" name="tracking_link_days" class="form-control" min="0" max="365" value="{{ old('tracking_link_days', $company->tracking_link_days ?? 1) }}" {{ $canEdit ? '' : 'disabled' }}>
                                 <div class="form-text">Días que el enlace sigue activo <strong>después de entregar</strong> la OT. <strong>0 = sin caducidad</strong>.</div>
                             </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold">Orden de los tabs del dashboard (móvil)</label>
+                                @php
+                                    $labels = ['ventas' => 'Ventas', 'taller' => 'Taller', 'compras' => 'Compras'];
+                                    $order = \App\Support\DashboardOrder::sanitize($company->dashboard_order);
+                                    $ordered = explode(',', $order);
+                                @endphp
+                                <input type="hidden" name="dashboard_order" id="dashboardOrder" value="{{ $order }}">
+                                <ul class="list-group" id="orderList" style="max-width:360px;">
+                                    @foreach($ordered as $mod)
+                                    <li class="list-group-item d-flex justify-content-between align-items-center" data-mod="{{ $mod }}">
+                                        <span>{{ $labels[$mod] ?? $mod }}</span>
+                                        @if($canEdit)
+                                        <span class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-light border btn-up"><i class="bi bi-arrow-up"></i></button>
+                                            <button type="button" class="btn btn-light border btn-down"><i class="bi bi-arrow-down"></i></button>
+                                        </span>
+                                        @endif
+                                    </li>
+                                    @endforeach
+                                </ul>
+                                <div class="form-text">El primero es el tab que se muestra primero.</div>
+                            </div>
                         </div>
                     </div>
                     @if($canEdit)
@@ -72,6 +95,24 @@
     document.getElementById('logoInput')?.addEventListener('change', function () {
         const f = this.files?.[0];
         if (f) document.getElementById('logoPreview').src = URL.createObjectURL(f);
+    });
+
+    // Orden de tabs del dashboard
+    const list = document.getElementById('orderList');
+    function syncOrder() {
+        const order = Array.from(list.querySelectorAll('li')).map(li => li.dataset.mod).join(',');
+        document.getElementById('dashboardOrder').value = order;
+    }
+    list?.addEventListener('click', function (ev) {
+        const btn = ev.target.closest('.btn-up, .btn-down');
+        if (!btn) return;
+        const li = btn.closest('li');
+        if (btn.classList.contains('btn-up') && li.previousElementSibling) {
+            li.parentNode.insertBefore(li, li.previousElementSibling);
+        } else if (btn.classList.contains('btn-down') && li.nextElementSibling) {
+            li.parentNode.insertBefore(li.nextElementSibling, li);
+        }
+        syncOrder();
     });
 </script>
 @endpush
