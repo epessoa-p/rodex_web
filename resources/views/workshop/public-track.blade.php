@@ -63,6 +63,15 @@
         .li:last-child { border-bottom:0; }
         .total { display:flex; justify-content:space-between; font-weight:800; font-size:1.1rem; margin-top:6px; }
         .foot { text-align:center; color:var(--muted); font-size:.78rem; padding:8px 0 24px; }
+        .photos { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+        .photos figure { margin:0; }
+        .photos img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; cursor:zoom-in; display:block; }
+        .photos figcaption { font-size:.72rem; color:var(--ink); margin-top:3px; line-height:1.2; }
+        .lb { position:fixed; inset:0; background:rgba(0,0,0,.92); display:none; align-items:center; justify-content:center; flex-direction:column; z-index:60; padding:16px; }
+        .lb.open { display:flex; }
+        .lb img { max-width:100%; max-height:78vh; object-fit:contain; border-radius:8px; }
+        .lb .cap { color:#fff; margin-top:12px; font-size:.92rem; text-align:center; max-width:620px; }
+        .lb .x { position:absolute; top:12px; right:18px; color:#fff; font-size:1.8rem; line-height:1; cursor:pointer; }
         .note { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; border-radius:12px; padding:10px 12px; font-size:.85rem; }
     </style>
 </head>
@@ -126,6 +135,21 @@
             @endif
         </div>
 
+        {{-- Fotos --}}
+        @if($order->photos->isNotEmpty())
+        <div class="card">
+            <p class="sec-title">Fotos</p>
+            <div class="photos">
+                @foreach($order->photos as $ph)
+                <figure>
+                    <img src="{{ $ph->url }}" alt="Foto" data-cap="{{ $ph->caption }}" onclick="openLb(this)">
+                    @if($ph->caption)<figcaption>{{ $ph->caption }}</figcaption>@endif
+                </figure>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
         {{-- Detalle de trabajos --}}
         @if($order->services->isNotEmpty() || $order->parts->isNotEmpty())
         <div class="card">
@@ -147,5 +171,21 @@
             <i class="bi bi-shield-check"></i> Esta página se actualiza sola. Guarda el enlace para consultar el avance.
         </div>
     </div>
+
+    {{-- Lightbox --}}
+    <div class="lb" id="lb" onclick="if(event.target.id==='lb')closeLb()">
+        <span class="x" onclick="closeLb()">&times;</span>
+        <img id="lbImg" src="" alt="">
+        <div class="cap" id="lbCap"></div>
+    </div>
+    <script>
+        function openLb(el){
+            document.getElementById('lbImg').src = el.src;
+            document.getElementById('lbCap').textContent = el.dataset.cap || '';
+            document.getElementById('lb').classList.add('open');
+        }
+        function closeLb(){ document.getElementById('lb').classList.remove('open'); }
+        document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeLb(); });
+    </script>
 </body>
 </html>

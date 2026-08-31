@@ -34,7 +34,7 @@ class PublicWorkOrderController extends Controller
 
         // Fija el tenant dueño para que el global scope aísle correctamente.
         return $tenancy->runAs($order->company_id, function () use ($order) {
-            $order->load(['vehicle', 'mechanic', 'services', 'parts.product']);
+            $order->load(['vehicle', 'mechanic', 'services', 'parts.product', 'photos']);
 
             return view('workshop.public-track', [
                 'company' => $order->company,
