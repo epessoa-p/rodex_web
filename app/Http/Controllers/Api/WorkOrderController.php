@@ -395,6 +395,14 @@ class WorkOrderController extends Controller
         ];
     }
 
+    /** Enlace público de seguimiento de la OT (lo genera si no existe). */
+    public function share(WorkOrder $order)
+    {
+        return response()->json([
+            'data' => ['url' => route('workshop.public.track', $order->ensurePublicToken())],
+        ]);
+    }
+
     // ── Fotos de la OT ────────────────────────────────────────────
 
     /** Lista las fotos de la orden. */

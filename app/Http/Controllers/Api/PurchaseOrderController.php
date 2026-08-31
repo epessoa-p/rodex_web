@@ -14,6 +14,8 @@ use App\Models\Purchases\PurchaseItem;
 use App\Models\Purchases\PurchaseOrder;
 use App\Models\Purchases\PurchaseOrderItem;
 use App\Models\Purchases\SupplierPayment;
+use App\Models\Purchases\TreasuryAccount;
+use App\Models\Purchases\TreasuryMovement;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -43,24 +45,45 @@ class PurchaseOrderController extends Controller
             'invoice_number'     => ['nullable', 'string', 'max:100'],
             'notes'              => ['nullable', 'string', 'max:1000'],
             'method'             => ['nullable', 'string', 'max:30'],
+            // Origen del pago: 'cash' (caja abierta) o 'treasury' (cuenta).
+            'payment_source'      => ['nullable', 'in:cash,treasury'],
+            'treasury_account_id' => ['nullable', 'required_if:payment_source,treasury', Rule::exists('treasury_accounts', 'id')->where('company_id', $cid)],
             'items'              => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', Rule::exists('products', 'id')->where('company_id', $cid)],
             'items.*.quantity'   => ['required', 'integer', 'min:1'],
             'items.*.unit_cost'  => ['required', 'numeric', 'min:0'],
         ]);
 
-        $session = $this->currentOpenSession();
-        if (! $session) {
-            return response()->json([
-                'message' => 'Necesitas tu caja abierta para registrar la compra.',
-                'code'    => 'cash_session_required',
-            ], 422);
+        $source = $data['payment_source'] ?? 'cash';
+        $subtotal = collect($data['items'])
+            ->sum(fn ($i) => (float) $i['quantity'] * (float) $i['unit_cost']);
+
+        // Pago desde caja: requiere sesión abierta.
+        $session = null;
+        if ($source === 'cash') {
+            $session = $this->currentOpenSession();
+            if (! $session) {
+                return response()->json([
+                    'message' => 'Necesitas tu caja abierta para registrar la compra.',
+                    'code'    => 'cash_session_required',
+                ], 422);
+            }
+        }
+
+        // Pago desde tesorería: valida saldo de la cuenta.
+        $account = null;
+        if ($source === 'treasury') {
+            $account = TreasuryAccount::find($data['treasury_account_id']);
+            if ($account && $subtotal > (float) $account->balance) {
+                return response()->json([
+                    'message' => 'El monto supera el saldo disponible de la cuenta.',
+                    'code'    => 'insufficient_balance',
+                ], 422);
+            }
         }
 
         try {
-            $purchase = DB::transaction(function () use ($data, $cid, $session) {
-                $subtotal = collect($data['items'])
-                    ->sum(fn ($i) => (float) $i['quantity'] * (float) $i['unit_cost']);
+            $purchase = DB::transaction(function () use ($data, $cid, $session, $source, $account, $subtotal) {
                 $method = $data['method'] ?? 'efectivo';
 
                 $purchase = Purchase::create([
@@ -103,35 +126,53 @@ class PurchaseOrderController extends Controller
                     Product::where('id', $item['product_id'])->increment('current_stock', $item['quantity']);
                 }
 
-                // Pago desde caja (concilia la compra + registra el gasto).
+                // Pago: concilia la compra y registra el gasto en el origen elegido.
                 SupplierPayment::create([
                     'company_id'          => $cid,
                     'purchase_id'         => $purchase->id,
-                    'treasury_account_id' => null,
+                    'treasury_account_id' => $source === 'treasury' ? $account->id : null,
                     'amount'              => $subtotal,
                     'payment_date'        => now()->toDateString(),
                     'method'              => $method,
-                    'reference'           => 'CAJA',
+                    'reference'           => $source === 'treasury' ? 'TESORERIA' : 'CAJA',
                     'notes'               => 'Compra directa (móvil)',
                     'user_id'             => auth()->id(),
                 ]);
                 $purchase->increment('paid_amount', $subtotal);
                 $purchase->refresh()->recalcPaymentStatus();
 
-                CashMovement::create([
-                    'company_id'               => $cid,
-                    'cash_register_id'         => $session->cash_register_id,
-                    'cash_register_session_id' => $session->id,
-                    'user_id'                  => auth()->id(),
-                    'type'                     => 'expense',
-                    'category'                 => 'expense_supplier',
-                    'amount'                   => $subtotal,
-                    'method'                   => $method,
-                    'reference_type'           => Purchase::class,
-                    'reference_id'             => $purchase->id,
-                    'description'              => 'Compra ' . $purchase->code,
-                    'movement_date'            => now(),
-                ]);
+                if ($source === 'treasury') {
+                    // Gasto desde la cuenta de tesorería.
+                    TreasuryMovement::create([
+                        'company_id'          => $cid,
+                        'treasury_account_id' => $account->id,
+                        'user_id'             => auth()->id(),
+                        'type'                => 'out',
+                        'category'            => 'supplier_payment',
+                        'amount'              => $subtotal,
+                        'reference_type'      => Purchase::class,
+                        'reference_id'        => $purchase->id,
+                        'description'         => 'Compra ' . $purchase->code,
+                        'movement_date'       => now(),
+                    ]);
+                    $account->decrement('balance', $subtotal);
+                } else {
+                    // Gasto desde la caja abierta.
+                    CashMovement::create([
+                        'company_id'               => $cid,
+                        'cash_register_id'         => $session->cash_register_id,
+                        'cash_register_session_id' => $session->id,
+                        'user_id'                  => auth()->id(),
+                        'type'                     => 'expense',
+                        'category'                 => 'expense_supplier',
+                        'amount'                   => $subtotal,
+                        'method'                   => $method,
+                        'reference_type'           => Purchase::class,
+                        'reference_id'             => $purchase->id,
+                        'description'              => 'Compra ' . $purchase->code,
+                        'movement_date'            => now(),
+                    ]);
+                }
 
                 return $purchase;
             });

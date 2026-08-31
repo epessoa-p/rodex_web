@@ -44,7 +44,7 @@ class WorkOrder extends Model
 
     protected $fillable = [
         'company_id', 'branch_id', 'client_id', 'vehicle_id', 'moto_unit_id', 'mechanic_id', 'cash_register_session_id',
-        'code', 'status',
+        'code', 'public_token', 'status',
         'mileage', 'fuel_level', 'reported_issue', 'received_items', 'reception_date',
         'diagnosis', 'diagnosis_date',
         'payment_type', 'subtotal_services', 'subtotal_parts', 'discount', 'tax', 'total',
@@ -85,6 +85,19 @@ class WorkOrder extends Model
     public function getBalanceAttribute(): float
     {
         return (float) ($this->total - $this->paid_amount);
+    }
+
+    /**
+     * Devuelve (generando si hace falta) el token público para el enlace de
+     * seguimiento de la OT. Mismo patrón que Branch/LoyaltySetting.
+     */
+    public function ensurePublicToken(): string
+    {
+        if (! $this->public_token) {
+            $this->forceFill(['public_token' => \Illuminate\Support\Str::random(32)])->save();
+        }
+
+        return $this->public_token;
     }
 
     public function getStatusLabelAttribute(): string

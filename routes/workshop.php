@@ -3,10 +3,14 @@
 use App\Http\Controllers\Workshop\AppointmentController;
 use App\Http\Controllers\Workshop\DeliveryController;
 use App\Http\Controllers\Workshop\MechanicController;
+use App\Http\Controllers\Workshop\PublicWorkOrderController;
 use App\Http\Controllers\Workshop\ServiceController;
 use App\Http\Controllers\Workshop\WorkOrderController;
 use App\Http\Controllers\Workshop\WorkshopDashboardController;
 use Illuminate\Support\Facades\Route;
+
+// ── Seguimiento público de la OT (SIN autenticación) ──────────
+Route::get('/ot/{token}', [PublicWorkOrderController::class, 'show'])->name('workshop.public.track');
 
 Route::middleware(['auth', 'plan:workshop'])->group(function () {
 

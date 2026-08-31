@@ -103,6 +103,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('work-orders/{order}/deliver', [WorkOrderController::class, 'deliver'])
                 ->middleware('api.permission:workshop.deliver');
 
+            // Enlace público de seguimiento
+            Route::get('work-orders/{order}/share', [WorkOrderController::class, 'share'])
+                ->middleware('api.permission:workshop.view');
+
             // Fotos de la OT
             Route::get('work-orders/{order}/photos', [WorkOrderController::class, 'photos'])
                 ->middleware('api.permission:workshop.view');
