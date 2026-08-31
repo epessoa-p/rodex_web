@@ -44,6 +44,7 @@ class WorkOrder extends Model
 
     protected $fillable = [
         'company_id', 'branch_id', 'client_id', 'vehicle_id', 'moto_unit_id', 'mechanic_id', 'cash_register_session_id',
+        'mechanic_payment_id', 'commission_amount',
         'code', 'public_token', 'status',
         'mileage', 'fuel_level', 'reported_issue', 'received_items', 'reception_date',
         'diagnosis', 'diagnosis_date',
@@ -61,6 +62,7 @@ class WorkOrder extends Model
         'subtotal_services' => 'decimal:2',
         'subtotal_parts'    => 'decimal:2',
         'discount'          => 'decimal:2',
+        'commission_amount' => 'decimal:2',
         'tax'               => 'decimal:2',
         'total'             => 'decimal:2',
         'paid_amount'       => 'decimal:2',
@@ -73,6 +75,7 @@ class WorkOrder extends Model
     public function vehicle(): BelongsTo    { return $this->belongsTo(Vehicle::class); }
     public function motoUnit(): BelongsTo   { return $this->belongsTo(\App\Models\Motos\MotoUnit::class, 'moto_unit_id'); }
     public function mechanic(): BelongsTo   { return $this->belongsTo(Mechanic::class); }
+    public function mechanicPayment(): BelongsTo { return $this->belongsTo(MechanicPayment::class); }
     public function session(): BelongsTo    { return $this->belongsTo(CashRegisterSession::class, 'cash_register_session_id'); }
     public function createdBy(): BelongsTo  { return $this->belongsTo(User::class, 'created_by'); }
 

@@ -30,14 +30,22 @@ class MechanicPaymentController extends Controller
         ]);
     }
 
-    /** Registra un pago a un mecánico. */
+    /** Detalle de un mecánico: OTs pendientes y pagadas. */
+    public function show(Mechanic $mechanic)
+    {
+        return response()->json(['data' => $this->service->detail($mechanic)]);
+    }
+
+    /** Liquida OTs seleccionadas (+ bono) de un mecánico. */
     public function store(Request $request)
     {
         $cid = $request->attributes->get('tenant_company')->id;
 
         $data = $request->validate([
             'mechanic_id'         => ['required', Rule::exists('mechanics', 'id')->where('company_id', $cid)],
-            'amount'              => ['required', 'numeric', 'min:0.01'],
+            'work_order_ids'      => ['nullable', 'array'],
+            'work_order_ids.*'    => ['integer', Rule::exists('work_orders', 'id')->where('company_id', $cid)],
+            'bonus'               => ['nullable', 'numeric', 'min:0'],
             'payment_source'      => ['required', 'in:cash,treasury'],
             'treasury_account_id' => ['nullable', 'required_if:payment_source,treasury', Rule::exists('treasury_accounts', 'id')->where('company_id', $cid)],
             'method'              => ['nullable', 'string', 'max:30'],
@@ -45,9 +53,16 @@ class MechanicPaymentController extends Controller
         ]);
 
         $mechanic = Mechanic::findOrFail($data['mechanic_id']);
-        $amount   = (float) $data['amount'];
+        $orderIds = $data['work_order_ids'] ?? [];
+        $bonus    = (float) ($data['bonus'] ?? 0);
+        $amount   = $this->service->quote($mechanic, $orderIds, $bonus);
 
-        // Origen caja: requiere sesión abierta.
+        if ($amount <= 0) {
+            return response()->json([
+                'message' => 'Selecciona al menos una OT o ingresa un bono.',
+            ], 422);
+        }
+
         $session = null;
         if ($data['payment_source'] === 'cash') {
             $session = $this->currentOpenSession();
@@ -59,7 +74,6 @@ class MechanicPaymentController extends Controller
             }
         }
 
-        // Origen tesorería: valida saldo.
         $account = null;
         if ($data['payment_source'] === 'treasury') {
             $account = TreasuryAccount::find($data['treasury_account_id']);
@@ -72,13 +86,10 @@ class MechanicPaymentController extends Controller
         }
 
         $this->service->pay(
-            $mechanic, $amount, $data['payment_source'], $account, $session,
+            $mechanic, $orderIds, $bonus, $data['payment_source'], $account, $session,
             $data['method'] ?? null, $data['notes'] ?? null
         );
 
-        // Devuelve el pendiente actualizado del mecánico.
-        $row = $this->service->summary($cid)->firstWhere('id', $mechanic->id);
-
-        return response()->json(['data' => ['mechanic' => $row]], 201);
+        return response()->json(['data' => $this->service->detail($mechanic->fresh())], 201);
     }
 }

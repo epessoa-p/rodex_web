@@ -52,8 +52,9 @@ Route::middleware(['auth', 'plan:workshop'])->group(function () {
 
     // ── Pago a mecánicos ──────────────────────────────────────
     Route::prefix('workshop/mechanic-payments')->name('workshop.mechanic-payments.')->group(function () {
-        Route::get('/',  [MechanicPaymentController::class, 'index'])->name('index')->middleware('check-permission:mechanic-payments.view');
-        Route::post('/', [MechanicPaymentController::class, 'store'])->name('store')->middleware('check-permission:mechanic-payments.pay');
+        Route::get('/',            [MechanicPaymentController::class, 'index'])->name('index')->middleware('check-permission:mechanic-payments.view');
+        Route::get('/{mechanic}',  [MechanicPaymentController::class, 'show'])->name('show')->middleware('check-permission:mechanic-payments.view');
+        Route::post('/',           [MechanicPaymentController::class, 'store'])->name('store')->middleware('check-permission:mechanic-payments.pay');
     });
 
     // ── Recepción (alta de OT) ────────────────────────────────

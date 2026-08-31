@@ -129,6 +129,8 @@ Route::middleware('auth:sanctum')->group(function () {
             // Pago a mecánicos
             Route::get('mechanic-payments', [MechanicPaymentController::class, 'summary'])
                 ->middleware('api.permission:mechanic-payments.view');
+            Route::get('mechanic-payments/{mechanic}', [MechanicPaymentController::class, 'show'])
+                ->middleware('api.permission:mechanic-payments.view');
             Route::post('mechanic-payments', [MechanicPaymentController::class, 'store'])
                 ->middleware('api.permission:mechanic-payments.pay');
 

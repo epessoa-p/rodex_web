@@ -25,10 +25,26 @@ class MechanicPaymentController extends Controller
         $companyId = auth()->user()->getCurrentCompany()?->id;
 
         $mechanics = $this->service->summary($companyId);
-        $accounts  = TreasuryAccount::where('active', true)->orderBy('name')->get();
-        $hasCash   = $this->currentOpenSession() !== null;
 
-        return view('workshop.mechanic-payments.index', compact('mechanics', 'accounts', 'hasCash'));
+        return view('workshop.mechanic-payments.index', compact('mechanics'));
+    }
+
+    public function show(Mechanic $mechanic)
+    {
+        $this->authorizeMechanic($mechanic);
+
+        $detail   = $this->service->detail($mechanic);
+        $accounts = TreasuryAccount::where('active', true)->orderBy('name')->get();
+        $hasCash  = $this->currentOpenSession() !== null;
+
+        return view('workshop.mechanic-payments.show', [
+            'mechanic' => $mechanic,
+            'summary'  => $detail['mechanic'],
+            'pending'  => $detail['pending'],
+            'paid'     => $detail['paid'],
+            'accounts' => $accounts,
+            'hasCash'  => $hasCash,
+        ]);
     }
 
     public function store(Request $request)
@@ -37,7 +53,9 @@ class MechanicPaymentController extends Controller
 
         $data = $request->validate([
             'mechanic_id'         => ['required', Rule::exists('mechanics', 'id')->where('company_id', $companyId)],
-            'amount'              => ['required', 'numeric', 'min:0.01'],
+            'work_order_ids'      => ['nullable', 'array'],
+            'work_order_ids.*'    => ['integer', Rule::exists('work_orders', 'id')->where('company_id', $companyId)],
+            'bonus'               => ['nullable', 'numeric', 'min:0'],
             'payment_source'      => ['required', 'in:cash,treasury'],
             'treasury_account_id' => ['nullable', 'required_if:payment_source,treasury', Rule::exists('treasury_accounts', 'id')->where('company_id', $companyId)],
             'method'              => ['nullable', 'string', 'max:30'],
@@ -45,7 +63,13 @@ class MechanicPaymentController extends Controller
         ]);
 
         $mechanic = Mechanic::findOrFail($data['mechanic_id']);
-        $amount   = (float) $data['amount'];
+        $orderIds = $data['work_order_ids'] ?? [];
+        $bonus    = (float) ($data['bonus'] ?? 0);
+        $amount   = $this->service->quote($mechanic, $orderIds, $bonus);
+
+        if ($amount <= 0) {
+            return back()->withErrors(['error' => 'Selecciona al menos una OT o ingresa un bono.']);
+        }
 
         $session = null;
         if ($data['payment_source'] === 'cash') {
@@ -64,10 +88,19 @@ class MechanicPaymentController extends Controller
         }
 
         $this->service->pay(
-            $mechanic, $amount, $data['payment_source'], $account, $session,
+            $mechanic, $orderIds, $bonus, $data['payment_source'], $account, $session,
             $data['method'] ?? null, $data['notes'] ?? null
         );
 
-        return back()->with('success', "Pago a {$mechanic->name} registrado.");
+        return redirect()->route('workshop.mechanic-payments.show', $mechanic)
+            ->with('success', "Pago a {$mechanic->name} registrado.");
+    }
+
+    private function authorizeMechanic(Mechanic $mechanic): void
+    {
+        if ($mechanic->company_id !== auth()->user()->getCurrentCompany()?->id
+            && ! auth()->user()->is_super_admin) {
+            abort(403);
+        }
     }
 }

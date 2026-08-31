@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Pago (liquidación) a un mecánico. Descuenta el pendiente de comisión y
@@ -34,6 +35,12 @@ class MechanicPayment extends Model
     public function mechanic(): BelongsTo
     {
         return $this->belongsTo(Mechanic::class);
+    }
+
+    /** OTs liquidadas por este pago. */
+    public function workOrders(): HasMany
+    {
+        return $this->hasMany(WorkOrder::class);
     }
 
     public function treasuryAccount(): BelongsTo
