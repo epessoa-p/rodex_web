@@ -83,12 +83,12 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <div class="d-flex justify-content-between mb-2"><span class="text-muted">Comisión seleccionada</span><strong id="modalSel">{{ money(0) }}</strong></div>
+                        <div class="d-flex justify-content-between mb-2"><span class="text-muted">Comisión de <span id="modalSelCount">0</span> OT(s)</span><strong id="modalSel">{{ money(0) }}</strong></div>
                         <div class="mb-3">
-                            <label class="form-label small fw-semibold">Bono / extra (opcional)</label>
-                            <input type="number" step="0.01" min="0" name="bonus" id="bonus" class="form-control" value="0">
+                            <label class="form-label small fw-semibold">Total a pagar</label>
+                            <input type="number" step="0.01" min="0.01" name="amount" id="amount" class="form-control form-control-lg" required>
+                            <div class="form-text">Se propone la comisión de las OTs seleccionadas; puedes ajustarlo. Las OTs seleccionadas quedan vinculadas a este pago.</div>
                         </div>
-                        <div class="d-flex justify-content-between mb-3 fs-5"><span class="fw-semibold">Total a pagar</span><strong class="text-success" id="modalTotal">{{ money(0) }}</strong></div>
 
                         <label class="form-label small fw-semibold">Pagar con</label>
                         <div class="btn-group w-100 mb-3" role="group">
@@ -134,29 +134,52 @@
         @endif
     </form>
 
-    {{-- Pagadas --}}
+    {{-- Pagos --}}
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-white border-bottom py-3 px-4">
-            <h6 class="mb-0 fw-semibold"><i class="bi bi-check2-circle me-2 text-success"></i>OTs pagadas ({{ count($paid) }})</h6>
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-check2-circle me-2 text-success"></i>Pagos realizados ({{ count($payments) }})</h6>
         </div>
-        <div class="table-responsive">
-            <table class="table align-middle mb-0">
-                <thead class="table-light">
-                    <tr><th class="ps-4">OT</th><th>Fecha OT</th><th>Pagada el</th><th class="text-end pe-4">Comisión</th></tr>
-                </thead>
-                <tbody>
-                    @forelse($paid as $p)
-                    <tr>
-                        <td class="ps-4 fw-semibold"><a href="{{ route('workshop.orders.show', $p['order_id']) }}" class="text-decoration-none">{{ $p['code'] }}</a></td>
-                        <td class="text-muted small">{{ $p['date'] ? \Illuminate\Support\Carbon::parse($p['date'])->format('d/m/Y') : '—' }}</td>
-                        <td class="text-muted small">{{ $p['payment_date'] ? \Illuminate\Support\Carbon::parse($p['payment_date'])->format('d/m/Y') : '—' }}</td>
-                        <td class="text-end pe-4">{{ money($p['commission']) }}</td>
-                    </tr>
-                    @empty
-                    <tr><td colspan="4" class="text-center text-muted py-4">Aún no hay OTs pagadas.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
+        <div class="card-body p-3">
+            @forelse($payments as $pay)
+            <div class="accordion mb-2" id="acc{{ $pay['id'] }}">
+                <div class="accordion-item border rounded">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed py-3" type="button" data-bs-toggle="collapse" data-bs-target="#pay{{ $pay['id'] }}">
+                            <div class="d-flex justify-content-between align-items-center w-100 me-2 flex-wrap gap-2">
+                                <span>
+                                    <strong>{{ $pay['date'] ? \Illuminate\Support\Carbon::parse($pay['date'])->format('d/m/Y') : '—' }}</strong>
+                                    <span class="badge bg-light text-muted border ms-2">{{ count($pay['orders']) }} OT(s)</span>
+                                    <span class="text-muted small ms-2">{{ ucfirst($pay['method'] ?? 'efectivo') }} · {{ $pay['source'] === 'treasury' ? 'Tesorería'.($pay['account'] ? ' · '.$pay['account'] : '') : 'Caja' }}</span>
+                                </span>
+                                <span class="fw-bold text-success">{{ money($pay['amount']) }}</span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="pay{{ $pay['id'] }}" class="accordion-collapse collapse" data-bs-parent="#acc{{ $pay['id'] }}">
+                        <div class="accordion-body pt-2">
+                            <table class="table table-sm align-middle mb-2">
+                                <thead class="table-light"><tr><th>OT</th><th>Fecha</th><th class="text-end">Comisión</th></tr></thead>
+                                <tbody>
+                                    @foreach($pay['orders'] as $o)
+                                    <tr>
+                                        <td><a href="{{ route('workshop.orders.show', $o['order_id']) }}" class="text-decoration-none">{{ $o['code'] }}</a></td>
+                                        <td class="text-muted small">{{ $o['date'] ? \Illuminate\Support\Carbon::parse($o['date'])->format('d/m/Y') : '—' }}</td>
+                                        <td class="text-end">{{ money($o['commission']) }}</td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                            @if($pay['notes'])<div class="small text-muted mb-2"><i class="bi bi-sticky me-1"></i>{{ $pay['notes'] }}</div>@endif
+                            <a href="{{ route('workshop.mechanic-payments.receipt', $pay['id']) }}" target="_blank" class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-file-earmark-text me-1"></i>Comprobante
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @empty
+            <div class="text-center text-muted py-4">Aún no hay pagos registrados.</div>
+            @endforelse
         </div>
     </div>
 </div>
@@ -170,7 +193,6 @@
     const btnPay = document.getElementById('btnPay');
     const selCount = document.getElementById('selCount');
     const selTotal = document.getElementById('selTotal');
-    const bonusEl = document.getElementById('bonus');
 
     function selectedAmount() {
         return checks().filter(c => c.checked).reduce((s, c) => s + parseFloat(c.dataset.amount || 0), 0);
@@ -182,22 +204,22 @@
         if (selTotal) selTotal.textContent = fmt(amt);
         if (btnPay) btnPay.disabled = sel.length === 0;
         const ms = document.getElementById('modalSel'); if (ms) ms.textContent = fmt(amt);
-        updateTotal();
-    }
-    function updateTotal() {
-        const amt = selectedAmount() + (parseFloat(bonusEl?.value || 0) || 0);
-        const mt = document.getElementById('modalTotal'); if (mt) mt.textContent = fmt(amt);
+        const msc = document.getElementById('modalSelCount'); if (msc) msc.textContent = sel.length;
     }
     checks().forEach(c => c.addEventListener('change', refresh));
     document.getElementById('checkAll')?.addEventListener('change', function () {
         checks().forEach(c => c.checked = this.checked); refresh();
     });
-    bonusEl?.addEventListener('input', updateTotal);
 
     const modalEl = document.getElementById('payModal');
     if (modalEl && btnPay) {
         const modal = new bootstrap.Modal(modalEl);
-        btnPay.addEventListener('click', () => { refresh(); modal.show(); });
+        btnPay.addEventListener('click', () => {
+            refresh();
+            const amountEl = document.getElementById('amount');
+            if (amountEl) amountEl.value = selectedAmount().toFixed(2); // prellenado editable
+            modal.show();
+        });
         document.querySelectorAll('input[name="payment_source"]').forEach(r => r.addEventListener('change', function () {
             const aw = document.getElementById('accountWrap');
             if (aw) aw.classList.toggle('d-none', this.value !== 'treasury');

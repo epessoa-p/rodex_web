@@ -60,39 +60,50 @@ class MechanicPaymentService
     {
         $rate = (float) ($mechanic->commission_rate ?? 0);
 
+        // OTs entregadas NO pagadas (comisión en vivo).
+        $pending = [];
         $orders = WorkOrder::where('mechanic_id', $mechanic->id)
             ->where('status', 'entregada')
+            ->whereNull('mechanic_payment_id')
             ->orderByDesc('reception_date')->orderByDesc('id')
-            ->with('mechanicPayment:id,payment_date')
             ->get();
-
-        $pending = [];
-        $paid = [];
-
         foreach ($orders as $o) {
-            $date = optional($o->delivered_at ?? $o->reception_date)->toDateString();
-            if ($o->mechanic_payment_id) {
-                $paid[] = [
-                    'order_id'     => $o->id,
-                    'code'         => $o->code,
-                    'date'         => $date,
-                    'commission'   => (float) ($o->commission_amount ?? 0),
-                    'payment_date' => optional($o->mechanicPayment?->payment_date)->toDateString(),
-                ];
-            } else {
-                $commission = round((float) $o->subtotal_services * $rate / 100, 2);
-                if ($commission <= 0) {
-                    continue; // sin comisión: no se lista para pagar
-                }
-                $pending[] = [
+            $commission = round((float) $o->subtotal_services * $rate / 100, 2);
+            if ($commission <= 0) {
+                continue; // sin comisión: no se lista para pagar
+            }
+            $pending[] = [
+                'order_id'   => $o->id,
+                'code'       => $o->code,
+                'date'       => optional($o->delivered_at ?? $o->reception_date)->toDateString(),
+                'labor'      => (float) $o->subtotal_services,
+                'commission' => $commission,
+            ];
+        }
+
+        // Pagos (agrupados) con sus OTs liquidadas.
+        $payments = MechanicPayment::where('mechanic_id', $mechanic->id)
+            ->latest('payment_date')->latest('id')
+            ->with([
+                'workOrders:id,mechanic_payment_id,code,commission_amount,reception_date,delivered_at',
+                'treasuryAccount:id,name',
+            ])
+            ->get()
+            ->map(fn (MechanicPayment $p) => [
+                'id'      => $p->id,
+                'date'    => optional($p->payment_date)->toDateString(),
+                'amount'  => (float) $p->amount,
+                'method'  => $p->method,
+                'source'  => $p->payment_source,
+                'account' => $p->treasuryAccount?->name,
+                'notes'   => $p->notes,
+                'orders'  => $p->workOrders->map(fn (WorkOrder $o) => [
                     'order_id'   => $o->id,
                     'code'       => $o->code,
-                    'date'       => $date,
-                    'labor'      => (float) $o->subtotal_services,
-                    'commission' => $commission,
-                ];
-            }
-        }
+                    'date'       => optional($o->delivered_at ?? $o->reception_date)->toDateString(),
+                    'commission' => (float) ($o->commission_amount ?? 0),
+                ])->values(),
+            ])->values();
 
         return [
             'mechanic' => [
@@ -102,19 +113,20 @@ class MechanicPaymentService
                 'pending_total'   => round(array_sum(array_column($pending, 'commission')), 2),
                 'paid_total'      => (float) MechanicPayment::where('mechanic_id', $mechanic->id)->sum('amount'),
             ],
-            'pending' => $pending,
-            'paid'    => $paid,
+            'pending'  => $pending,
+            'payments' => $payments,
         ];
     }
 
     /**
-     * Liquida las OTs indicadas (+ bono opcional) y registra el gasto.
+     * Liquida las OTs indicadas pagando `$amount` (editable) y registra el gasto.
+     * Las OTs quedan vinculadas al pago y su comisión se congela (valor calculado).
      * Devuelve el pago creado.
      */
     public function pay(
         Mechanic $mechanic,
         array $workOrderIds,
-        float $bonus,
+        float $amount,
         string $source,
         ?TreasuryAccount $account,
         $session,
@@ -122,8 +134,9 @@ class MechanicPaymentService
         ?string $notes
     ): MechanicPayment {
         $rate = (float) ($mechanic->commission_rate ?? 0);
+        $amount = round($amount, 2);
 
-        return DB::transaction(function () use ($mechanic, $workOrderIds, $bonus, $rate, $source, $account, $session, $method, $notes) {
+        return DB::transaction(function () use ($mechanic, $workOrderIds, $amount, $rate, $source, $account, $session, $method, $notes) {
             $method ??= 'efectivo';
 
             // OTs válidas: del mecánico, entregadas y no pagadas.
@@ -133,12 +146,6 @@ class MechanicPaymentService
                 ->whereNull('mechanic_payment_id')
                 ->lockForUpdate()
                 ->get();
-
-            $commissionSum = 0;
-            foreach ($orders as $o) {
-                $commissionSum += round((float) $o->subtotal_services * $rate / 100, 2);
-            }
-            $amount = round($commissionSum + $bonus, 2);
 
             $payment = MechanicPayment::create([
                 'company_id'               => $mechanic->company_id,
@@ -194,22 +201,5 @@ class MechanicPaymentService
 
             return $payment;
         });
-    }
-
-    /**
-     * Total a liquidar por las OTs indicadas (+ bono), para validar el origen
-     * (saldo/caja) antes de pagar.
-     */
-    public function quote(Mechanic $mechanic, array $workOrderIds, float $bonus): float
-    {
-        $rate = (float) ($mechanic->commission_rate ?? 0);
-
-        $labor = (float) WorkOrder::whereIn('id', $workOrderIds)
-            ->where('mechanic_id', $mechanic->id)
-            ->where('status', 'entregada')
-            ->whereNull('mechanic_payment_id')
-            ->sum('subtotal_services');
-
-        return round($labor * $rate / 100 + $bonus, 2);
     }
 }

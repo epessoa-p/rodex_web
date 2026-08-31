@@ -41,10 +41,23 @@ class MechanicPaymentController extends Controller
             'mechanic' => $mechanic,
             'summary'  => $detail['mechanic'],
             'pending'  => $detail['pending'],
-            'paid'     => $detail['paid'],
+            'payments' => $detail['payments'],
             'accounts' => $accounts,
             'hasCash'  => $hasCash,
         ]);
+    }
+
+    /** Comprobante imprimible de un pago. */
+    public function receipt(\App\Models\Workshop\MechanicPayment $payment)
+    {
+        $this->authorizeMechanic($payment->mechanic);
+
+        $payment->load(['mechanic', 'treasuryAccount', 'workOrders' => function ($q) {
+            $q->orderBy('code');
+        }]);
+        $company = auth()->user()->getCurrentCompany();
+
+        return view('workshop.mechanic-payments.receipt', compact('payment', 'company'));
     }
 
     public function store(Request $request)
@@ -55,7 +68,7 @@ class MechanicPaymentController extends Controller
             'mechanic_id'         => ['required', Rule::exists('mechanics', 'id')->where('company_id', $companyId)],
             'work_order_ids'      => ['nullable', 'array'],
             'work_order_ids.*'    => ['integer', Rule::exists('work_orders', 'id')->where('company_id', $companyId)],
-            'bonus'               => ['nullable', 'numeric', 'min:0'],
+            'amount'              => ['required', 'numeric', 'min:0.01'],
             'payment_source'      => ['required', 'in:cash,treasury'],
             'treasury_account_id' => ['nullable', 'required_if:payment_source,treasury', Rule::exists('treasury_accounts', 'id')->where('company_id', $companyId)],
             'method'              => ['nullable', 'string', 'max:30'],
@@ -64,12 +77,7 @@ class MechanicPaymentController extends Controller
 
         $mechanic = Mechanic::findOrFail($data['mechanic_id']);
         $orderIds = $data['work_order_ids'] ?? [];
-        $bonus    = (float) ($data['bonus'] ?? 0);
-        $amount   = $this->service->quote($mechanic, $orderIds, $bonus);
-
-        if ($amount <= 0) {
-            return back()->withErrors(['error' => 'Selecciona al menos una OT o ingresa un bono.']);
-        }
+        $amount   = (float) $data['amount'];
 
         $session = null;
         if ($data['payment_source'] === 'cash') {
@@ -88,7 +96,7 @@ class MechanicPaymentController extends Controller
         }
 
         $this->service->pay(
-            $mechanic, $orderIds, $bonus, $data['payment_source'], $account, $session,
+            $mechanic, $orderIds, $amount, $data['payment_source'], $account, $session,
             $data['method'] ?? null, $data['notes'] ?? null
         );
 

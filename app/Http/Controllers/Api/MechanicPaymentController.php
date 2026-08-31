@@ -45,7 +45,7 @@ class MechanicPaymentController extends Controller
             'mechanic_id'         => ['required', Rule::exists('mechanics', 'id')->where('company_id', $cid)],
             'work_order_ids'      => ['nullable', 'array'],
             'work_order_ids.*'    => ['integer', Rule::exists('work_orders', 'id')->where('company_id', $cid)],
-            'bonus'               => ['nullable', 'numeric', 'min:0'],
+            'amount'              => ['required', 'numeric', 'min:0.01'],
             'payment_source'      => ['required', 'in:cash,treasury'],
             'treasury_account_id' => ['nullable', 'required_if:payment_source,treasury', Rule::exists('treasury_accounts', 'id')->where('company_id', $cid)],
             'method'              => ['nullable', 'string', 'max:30'],
@@ -54,14 +54,7 @@ class MechanicPaymentController extends Controller
 
         $mechanic = Mechanic::findOrFail($data['mechanic_id']);
         $orderIds = $data['work_order_ids'] ?? [];
-        $bonus    = (float) ($data['bonus'] ?? 0);
-        $amount   = $this->service->quote($mechanic, $orderIds, $bonus);
-
-        if ($amount <= 0) {
-            return response()->json([
-                'message' => 'Selecciona al menos una OT o ingresa un bono.',
-            ], 422);
-        }
+        $amount   = (float) $data['amount'];
 
         $session = null;
         if ($data['payment_source'] === 'cash') {
@@ -86,7 +79,7 @@ class MechanicPaymentController extends Controller
         }
 
         $this->service->pay(
-            $mechanic, $orderIds, $bonus, $data['payment_source'], $account, $session,
+            $mechanic, $orderIds, $amount, $data['payment_source'], $account, $session,
             $data['method'] ?? null, $data['notes'] ?? null
         );
 
