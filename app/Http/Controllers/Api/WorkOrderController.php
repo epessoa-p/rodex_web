@@ -188,6 +188,21 @@ class WorkOrderController extends Controller
         return response()->json(['data' => $this->detail($order)]);
     }
 
+    /** Asigna (o quita) el mecánico de la OT. */
+    public function assignMechanic(Request $request, WorkOrder $order)
+    {
+        $this->guardEditable($order);
+
+        $companyId = $order->company_id;
+        $data = $request->validate([
+            'mechanic_id' => ['nullable', Rule::exists('mechanics', 'id')->where('company_id', $companyId)],
+        ]);
+
+        $order->update(['mechanic_id' => $data['mechanic_id'] ?? null]);
+
+        return response()->json(['data' => $this->detail($order->fresh())]);
+    }
+
     public function addService(Request $request, WorkOrder $order)
     {
         $this->guardEditable($order);

@@ -107,6 +107,8 @@ Route::middleware('auth:sanctum')->group(function () {
                 ->middleware('api.permission:workshop.edit');
             Route::post('work-orders/{order}/diagnosis', [WorkOrderController::class, 'diagnosis'])
                 ->middleware('api.permission:workshop.edit');
+            Route::post('work-orders/{order}/mechanic', [WorkOrderController::class, 'assignMechanic'])
+                ->middleware('api.permission:workshop.edit');
             Route::post('work-orders/{order}/status', [WorkOrderController::class, 'changeStatus'])
                 ->middleware('api.permission:workshop.edit');
             Route::post('work-orders/{order}/deliver', [WorkOrderController::class, 'deliver'])
