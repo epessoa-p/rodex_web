@@ -4,6 +4,8 @@ namespace App\Services\Reports;
 
 use App\Models\CashMovement;
 use App\Models\Purchases\TreasuryMovement;
+use App\Models\Sales\Sale;
+use App\Models\Workshop\WorkOrder;
 use Illuminate\Support\Carbon;
 
 /**
@@ -19,13 +21,14 @@ class IncomeStatementService
 
         $range = [$from->copy()->startOfDay(), $to->copy()->endOfDay()];
 
-        // Caja
+        // Caja. Se agrupa además por reference_type para poder separar, dentro
+        // de la categoría "Venta", las ventas de mostrador de los cobros de OT.
         CashMovement::whereBetween('movement_date', $range)
-            ->selectRaw('category, type, SUM(amount) as amt')
-            ->groupBy('category', 'type')
+            ->selectRaw('category, type, reference_type, SUM(amount) as amt')
+            ->groupBy('category', 'type', 'reference_type')
             ->get()
             ->each(function ($r) use (&$income, &$expense) {
-                $label = CashMovement::CATEGORIES[$r->category]['label'] ?? $r->category;
+                $label = $this->cashLabel($r->category, $r->reference_type);
                 $amt = (float) $r->amt;
                 if ($r->type === 'income') {
                     $income[$label] = ($income[$label] ?? 0) + $amt;
@@ -69,5 +72,23 @@ class IncomeStatementService
             'total_expense' => $totalExpense,
             'net'           => round($totalIncome - $totalExpense, 2),
         ];
+    }
+
+    /**
+     * Etiqueta de un movimiento de caja. La categoría "Venta" se abre en dos:
+     * ventas de mostrador (POS) y cobros de OT (taller), según el origen.
+     */
+    private function cashLabel(string $category, ?string $referenceType): string
+    {
+        if ($category === 'sale') {
+            if ($referenceType === WorkOrder::class) {
+                return 'Servicios / Taller (OT)';
+            }
+            if ($referenceType === Sale::class) {
+                return 'Ventas (mostrador)';
+            }
+        }
+
+        return CashMovement::CATEGORIES[$category]['label'] ?? $category;
     }
 }
