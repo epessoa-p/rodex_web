@@ -651,6 +651,18 @@
         @endmodule
         @endif
 
+        {{-- ── Reportes ── --}}
+        @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('income-statement.view', $currentCompany))
+        <div class="sidebar-section-title mt-4">Reportes</div>
+        <ul class="nav flex-column gap-1">
+            <li class="nav-item">
+                <a class="nav-link app-link {{ request()->routeIs('income-statement.*') ? 'active' : '' }}" href="{{ route('income-statement.index') }}">
+                    <i class="bi bi-clipboard-data"></i> Estado de resultados
+                </a>
+            </li>
+        </ul>
+        @endif
+
     </aside>
 
     <main class="app-main">
@@ -1051,6 +1063,14 @@
                 <li><a class="nav-link app-link {{ request()->routeIs('treasury.*') ? 'active' : '' }}" href="{{ route('treasury.index') }}"><i class="bi bi-bank me-2"></i>Tesorería</a></li>
             </ul>
             @endmodule
+            @endif
+
+            {{-- ── Reportes ── --}}
+            @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('income-statement.view', $currentCompany))
+            <div class="sidebar-section-title">Reportes</div>
+            <ul class="nav flex-column gap-1 mb-3">
+                <li><a class="nav-link app-link {{ request()->routeIs('income-statement.*') ? 'active' : '' }}" href="{{ route('income-statement.index') }}"><i class="bi bi-clipboard-data me-2"></i>Estado de resultados</a></li>
+            </ul>
             @endif
 
         </nav>

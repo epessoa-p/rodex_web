@@ -36,6 +36,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('me', [AuthController::class, 'me']);
 
+        // ── Estado de resultados (administrativo, sin plan) ────────
+        Route::get('income-statement', [\App\Http\Controllers\Api\IncomeStatementController::class, 'index'])
+            ->middleware('api.permission:income-statement.view');
+
         // ── Mi empresa (administrativo, sin plan) ──────────────────
         Route::get('company-profile', [\App\Http\Controllers\Api\CompanyProfileController::class, 'show'])
             ->middleware('api.permission:company-profile.view');
@@ -204,6 +208,10 @@ Route::middleware('auth:sanctum')->group(function () {
                 ->middleware('api.permission:purchase-orders.create');
             Route::post('purchases/direct', [PurchaseOrderController::class, 'directPurchase'])
                 ->middleware('api.permission:purchases.create');
+            Route::get('purchases', [PurchaseOrderController::class, 'directPurchases'])
+                ->middleware('api.permission:purchases.view');
+            Route::get('purchases/{purchase}', [PurchaseOrderController::class, 'purchaseDetail'])
+                ->middleware('api.permission:purchases.view');
             Route::get('purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show'])
                 ->middleware('api.permission:purchase-orders.view,goods-receipts.view');
             Route::post('purchase-orders/{purchaseOrder}/receive', [PurchaseOrderController::class, 'receive'])

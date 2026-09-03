@@ -190,6 +190,53 @@ class PurchaseOrderController extends Controller
         ]], 201);
     }
 
+    /** Compras directas (no ligadas a una OC). */
+    public function directPurchases()
+    {
+        $purchases = Purchase::whereNull('purchase_order_id')
+            ->with('supplier:id,name')
+            ->latest('purchase_date')->latest('id')
+            ->limit(50)
+            ->get()
+            ->map(fn (Purchase $p) => [
+                'id'             => $p->id,
+                'code'           => $p->code,
+                'supplier'       => $p->supplier?->name,
+                'date'           => optional($p->purchase_date)->toDateString(),
+                'total'          => (float) $p->total,
+                'payment_status' => $p->payment_status,
+                'payment_label'  => $p->payment_status_label,
+            ]);
+
+        return response()->json(['data' => $purchases]);
+    }
+
+    /** Detalle de una compra directa (con sus ítems). */
+    public function purchaseDetail(Purchase $purchase)
+    {
+        $purchase->load(['supplier:id,name', 'items.product:id,name']);
+
+        return response()->json(['data' => [
+            'id'             => $purchase->id,
+            'code'           => $purchase->code,
+            'supplier'       => $purchase->supplier?->name,
+            'date'           => optional($purchase->purchase_date)->toDateString(),
+            'invoice_number' => $purchase->invoice_number,
+            'notes'          => $purchase->notes,
+            'subtotal'       => (float) $purchase->subtotal,
+            'total'          => (float) $purchase->total,
+            'paid_amount'    => (float) $purchase->paid_amount,
+            'payment_status' => $purchase->payment_status,
+            'payment_label'  => $purchase->payment_status_label,
+            'items'          => $purchase->items->map(fn (PurchaseItem $it) => [
+                'name'      => $it->product?->name,
+                'quantity'  => (float) $it->quantity,
+                'unit_cost' => (float) $it->unit_cost,
+                'subtotal'  => (float) $it->subtotal,
+            ])->values(),
+        ]]);
+    }
+
     /** Órdenes de compra por recibir (enviadas o parciales). */
     public function index()
     {

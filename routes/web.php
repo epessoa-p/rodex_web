@@ -34,6 +34,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // ── Estado de resultados ──────────────────────────────────────
+    Route::get('/estado-resultados', [\App\Http\Controllers\Reports\IncomeStatementController::class, 'index'])->name('income-statement.index')->middleware('check-permission:income-statement.view');
+
     // ── Mi empresa (la empresa activa edita sus datos) ────────────
     Route::get('/mi-empresa', [\App\Http\Controllers\CompanyProfileController::class, 'edit'])->name('company-profile.edit')->middleware('check-permission:company-profile.view');
     Route::put('/mi-empresa', [\App\Http\Controllers\CompanyProfileController::class, 'update'])->name('company-profile.update')->middleware('check-permission:company-profile.edit');
