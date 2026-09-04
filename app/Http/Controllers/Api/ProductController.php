@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Inventory\ProductBrand;
 use App\Models\Inventory\ProductCategory;
+use App\Models\Inventory\ProductPhoto;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Warehouse;
@@ -49,6 +50,7 @@ class ProductController extends Controller
             'brand_id'      => ['nullable', Rule::exists('product_brands', 'id')->where('company_id', $cid)],
             'initial_stock' => ['nullable', 'numeric', 'min:0'],
             'warehouse_id'  => ['nullable', Rule::exists('warehouses', 'id')->where('company_id', $cid)],
+            'photo'         => ['nullable', 'image', 'max:5120'],
         ]);
 
         $initial = (float) ($data['initial_stock'] ?? 0);
@@ -89,6 +91,21 @@ class ProductController extends Controller
 
             return $product->fresh();
         });
+
+        // Foto opcional: se guarda en el disco público y se marca como principal.
+        if ($request->hasFile('photo')) {
+            $file = $request->file('photo');
+            $path = $file->store("company/{$cid}/products/{$product->id}", 'public');
+            ProductPhoto::create([
+                'product_id' => $product->id,
+                'company_id' => $cid,
+                'file_path'  => $path,
+                'file_name'  => $file->getClientOriginalName(),
+                'is_main'    => true,
+                'sort_order' => 0,
+            ]);
+            $product->load('photos');
+        }
 
         return response()->json(['data' => $this->payload($product)], 201);
     }
@@ -174,7 +191,7 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        $product->load(['category:id,name', 'brand:id,name', 'origin:id,name', 'motoModels']);
+        $product->load(['category:id,name', 'brand:id,name', 'origin:id,name', 'motoModels', 'photos']);
 
         $stockByWarehouse = Warehouse::where('company_id', $product->company_id)
             ->orderBy('name')->get(['id', 'name'])
@@ -191,6 +208,7 @@ class ProductController extends Controller
                 'origin'            => $product->origin?->name,
                 'compatible_models' => $product->motoModels->pluck('display_name')->values(),
                 'stock_by_warehouse' => $stockByWarehouse,
+                'photos'            => $product->photos->map(fn ($ph) => $ph->url)->values(),
             ],
         ]);
     }
@@ -204,6 +222,7 @@ class ProductController extends Controller
         $q = trim((string) $request->query('q', ''));
 
         $products = Product::query()
+            ->with('photos')
             ->where('active', true)
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($sub) use ($q) {
@@ -232,6 +251,20 @@ class ProductController extends Controller
             'unit'          => $p->unit,
             'price'         => (float) $p->price,
             'current_stock' => (float) $p->current_stock,
+            'image_url'     => $this->mainPhotoUrl($p),
         ];
+    }
+
+    /**
+     * URL de la foto principal del producto (o la primera). Usa la relación ya
+     * cargada si está disponible para evitar consultas N+1 en el listado.
+     */
+    private function mainPhotoUrl(Product $p): ?string
+    {
+        $photo = $p->relationLoaded('photos')
+            ? ($p->photos->firstWhere('is_main', true) ?? $p->photos->first())
+            : $p->mainPhoto();
+
+        return $photo?->url;
     }
 }
