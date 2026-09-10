@@ -104,6 +104,7 @@ class Plan extends Model
     protected $fillable = [
         'name', 'slug', 'description', 'price', 'billing_period', 'trial_days',
         'max_users', 'max_branches', 'max_products', 'features', 'active',
+        'sort_order',
     ];
 
     protected $casts = [
@@ -114,7 +115,17 @@ class Plan extends Model
         'max_products' => 'integer',
         'features'     => 'array',
         'active'       => 'boolean',
+        'sort_order'   => 'integer',
     ];
+
+    /**
+     * Orden de presentación definido por el operador. `sort_order` manda; el
+     * precio solo desempata (y cubre planes recién creados, que entran con 0).
+     */
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('sort_order')->orderBy('price')->orderBy('id');
+    }
 
     public function subscriptions(): HasMany
     {

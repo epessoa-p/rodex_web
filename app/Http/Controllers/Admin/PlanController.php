@@ -22,9 +22,47 @@ class PlanController extends Controller
 
     public function index()
     {
-        $plans = Plan::withCount('subscriptions')->orderBy('price')->get();
+        $plans = Plan::withCount('subscriptions')->ordered()->get();
 
         return view('admin.plans.index', compact('plans'));
+    }
+
+    /**
+     * Sube o baja un plan una posición en el listado ($direction: up|down).
+     * Intercambia el `sort_order` con el vecino inmediato en el orden actual;
+     * si los valores están repetidos o en 0 (planes nuevos), primero normaliza
+     * la secuencia a 1..N para que el intercambio siempre tenga efecto.
+     */
+    public function move(Plan $plan, string $direction)
+    {
+        abort_unless(in_array($direction, ['up', 'down'], true), 404);
+
+        $plans = Plan::ordered()->get();
+
+        // Normaliza a 1..N si hay ceros o duplicados (no altera el orden visible).
+        if ($plans->pluck('sort_order')->duplicates()->isNotEmpty()
+            || $plans->contains(fn (Plan $p) => $p->sort_order < 1)) {
+            $plans->each(function (Plan $p, int $i) {
+                $p->sort_order = $i + 1;
+                $p->saveQuietly();
+            });
+        }
+
+        $index = $plans->search(fn (Plan $p) => $p->id === $plan->id);
+        $target = $direction === 'up' ? $index - 1 : $index + 1;
+
+        if ($target < 0 || $target >= $plans->count()) {
+            return back(); // ya está en el extremo
+        }
+
+        $current  = $plans[$index];
+        $neighbor = $plans[$target];
+
+        [$current->sort_order, $neighbor->sort_order] = [$neighbor->sort_order, $current->sort_order];
+        $current->save();
+        $neighbor->save();
+
+        return back()->with('success', "Orden actualizado: «{$current->name}».");
     }
 
     public function create()
@@ -35,6 +73,9 @@ class PlanController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateData($request);
+
+        // Los planes nuevos entran al final del listado.
+        $data['sort_order'] = (int) Plan::max('sort_order') + 1;
 
         Plan::create($data);
 

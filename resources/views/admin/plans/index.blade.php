@@ -25,6 +25,7 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
+                            <th class="text-center" style="width:96px;">Orden</th>
                             <th>Plan</th>
                             <th>Precio</th>
                             <th class="text-center">Usuarios</th>
@@ -39,6 +40,20 @@
                     <tbody>
                         @forelse($plans as $plan)
                             <tr>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm" role="group" aria-label="Reordenar plan">
+                                        <form action="{{ route('plans.move', [$plan, 'up']) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <button type="submit" class="btn btn-light border rounded-end-0"
+                                                    title="Subir" {{ $loop->first ? 'disabled' : '' }}><i class="bi bi-arrow-up"></i></button>
+                                        </form>
+                                        <form action="{{ route('plans.move', [$plan, 'down']) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <button type="submit" class="btn btn-light border rounded-start-0"
+                                                    title="Bajar" {{ $loop->last ? 'disabled' : '' }}><i class="bi bi-arrow-down"></i></button>
+                                        </form>
+                                    </div>
+                                </td>
                                 <td>
                                     <div class="fw-semibold">{{ $plan->name }}</div>
                                     <div class="text-muted small">{{ $plan->description }}</div>
@@ -63,7 +78,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="9" class="text-center py-5 text-muted">No hay planes configurados.</td></tr>
+                            <tr><td colspan="10" class="text-center py-5 text-muted">No hay planes configurados.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

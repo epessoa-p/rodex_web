@@ -65,6 +65,10 @@ Route::middleware('auth')->group(function () {
     // ── Planes: configuración de la plataforma (solo super_admin) ──
     Route::middleware('check-role:super_admin')->group(function () {
         Route::resource('admin/plans', PlanController::class)->names('plans')->except('show');
+        // Subir/bajar un plan una posición en el listado.
+        Route::post('admin/plans/{plan}/move/{direction}', [PlanController::class, 'move'])
+            ->whereIn('direction', ['up', 'down'])
+            ->name('plans.move');
     });
 
     // ── Roles (solo super_admin) ──────────────────────────────────

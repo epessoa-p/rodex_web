@@ -27,9 +27,10 @@ use Illuminate\Support\Facades\Route;
 // Público
 Route::post('login', [AuthController::class, 'login']);
 
-// Autenticado (token), sin empresa aún: cerrar sesión.
+// Autenticado (token), sin empresa aún: cerrar sesión y cuenta propia.
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
+    Route::post('change-password', [AuthController::class, 'changePassword']);
 
     // Todo lo que opera sobre una empresa: token + tenant (header) + suscripción.
     Route::middleware(['api.tenant', 'api.subscription'])->group(function () {

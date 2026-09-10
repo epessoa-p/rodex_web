@@ -62,6 +62,35 @@ class AuthController extends Controller
     }
 
     /**
+     * Cambio de contraseña del propio usuario. Es una acción de CUENTA (no de
+     * empresa): no depende del tenant ni del plan. Al cambiarla se revocan los
+     * demás tokens del usuario, conservando el de esta sesión.
+     */
+    public function changePassword(Request $request)
+    {
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password'         => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = $request->user();
+
+        if (! Hash::check($data['current_password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['La contraseña actual no es correcta.'],
+            ]);
+        }
+
+        $user->forceFill(['password' => Hash::make($data['password'])])->save();
+
+        // Cierra las demás sesiones: si alguien más tenía el token, deja de servir.
+        $currentId = $request->user()->currentAccessToken()?->id;
+        $user->tokens()->when($currentId, fn ($q) => $q->where('id', '!=', $currentId))->delete();
+
+        return response()->json(['message' => 'Contraseña actualizada.']);
+    }
+
+    /**
      * Contexto de la sesión para la empresa activa (resuelta por el header
      * X-Company-Id vía el middleware api.tenant): usuario, empresa, permisos,
      * features del plan y estado de suscripción. La app lo usa para adaptar el menú.

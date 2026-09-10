@@ -36,7 +36,7 @@ class SubscriptionController extends Controller
     public function edit(Company $company)
     {
         $company->load('subscription.plan');
-        $plans = Plan::where('active', true)->orderBy('price')->get();
+        $plans = Plan::where('active', true)->ordered()->get();
 
         return view('admin.subscriptions.edit', compact('company', 'plans'));
     }
