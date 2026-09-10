@@ -485,6 +485,18 @@
                 </a>
             </li>
             @endif
+            {{-- Inventario de motos: dato maestro compartido con la venta de motos.
+                 Solo se muestra aquí si el plan NO tiene 'motos' (si lo tiene, ya
+                 aparece en la sección Motos) para no duplicarlo. --}}
+            @unlessmodule('motos')
+            @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('moto-units.view', $currentCompany))
+            <li class="nav-item">
+                <a class="nav-link app-link {{ request()->routeIs('moto-units.*') ? 'active' : '' }}" href="{{ route('moto-units.index') }}">
+                    <i class="bi bi-box-seam"></i> Inventario de Motos
+                </a>
+            </li>
+            @endif
+            @endmodule
             <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('rentals.calendar') ? 'active' : '' }}" href="{{ route('rentals.calendar') }}">
                     <i class="bi bi-calendar3"></i> Calendario
@@ -986,6 +998,12 @@
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('rentals-dashboard.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('rentals.dashboard') ? 'active' : '' }}" href="{{ route('rentals.dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
                 @endif
+                {{-- Inventario compartido: solo aquí si el plan NO tiene 'motos' (evita duplicarlo). --}}
+                @unlessmodule('motos')
+                @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('moto-units.view', $currentCompany))
+                <li><a class="nav-link app-link {{ request()->routeIs('moto-units.*') ? 'active' : '' }}" href="{{ route('moto-units.index') }}"><i class="bi bi-box-seam me-2"></i>Inventario de Motos</a></li>
+                @endif
+                @endmodule
                 <li><a class="nav-link app-link {{ request()->routeIs('rentals.calendar') ? 'active' : '' }}" href="{{ route('rentals.calendar') }}"><i class="bi bi-calendar3 me-2"></i>Calendario</a></li>
                 <li><a class="nav-link app-link {{ request()->routeIs('rentals.reservations') || request()->routeIs('rentals.create') ? 'active' : '' }}" href="{{ route('rentals.reservations') }}"><i class="bi bi-bookmark-plus me-2"></i>Reservas</a></li>
                 <li><a class="nav-link app-link {{ request()->routeIs('rentals.contracts') ? 'active' : '' }}" href="{{ route('rentals.contracts') }}"><i class="bi bi-file-earmark-text me-2"></i>Contratos</a></li>

@@ -29,7 +29,12 @@ class AppServiceProvider extends ServiceProvider
         // @module('workshop') ... @endmodule
         // Oculta del menú los módulos que el plan de la empresa no incluye.
         // El bloqueo real lo hace el middleware 'plan:' en las rutas.
-        Blade::if('module', function (string $feature) {
+        //
+        // Admite varias features con semántica OR — @module('motos', 'rentals') —
+        // para datos maestros compartidos (p. ej. el inventario de motos, que
+        // usan tanto la venta como el alquiler). Blade::if genera además
+        // @unlessmodule / @elsemodule.
+        Blade::if('module', function (string ...$features) {
             $user = auth()->user();
 
             if (!$user) {
@@ -40,7 +45,15 @@ class AppServiceProvider extends ServiceProvider
                 return true;
             }
 
-            return (bool) $user->getCurrentCompany()?->planAllows($feature);
+            $company = $user->getCurrentCompany();
+
+            foreach ($features as $feature) {
+                if ($company?->planAllows($feature)) {
+                    return true;
+                }
+            }
+
+            return false;
         });
     }
 }

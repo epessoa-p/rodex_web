@@ -9,10 +9,15 @@
         <h1 class="display-4 text-warning"><i class="bi bi-lock"></i></h1>
         <h2 class="mb-3">Módulo no incluido</h2>
 
+        @php
+            // Puede requerirse cualquiera de varios módulos (OR): "Venta de motos o Alquiler".
+            $labels = collect($modules)->map(fn ($m) => \App\Models\Plan::MODULES[$m] ?? $m);
+        @endphp
+
         <p class="text-muted mb-2">
-            El módulo
-            <strong>{{ \App\Models\Plan::MODULES[$module] ?? $module }}</strong>
-            no está incluido en tu plan
+            {{ $labels->count() > 1 ? 'Ninguno de los módulos' : 'El módulo' }}
+            <strong>{{ $labels->join(', ', ' o ') }}</strong>
+            {{ $labels->count() > 1 ? 'está incluido' : 'no está incluido' }} en tu plan
             @if($company?->subscription?->plan)
                 <strong>{{ $company->subscription->plan->name }}</strong>
             @endif

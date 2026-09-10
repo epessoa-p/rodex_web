@@ -30,9 +30,18 @@ class CashRegisterController extends Controller
     {
         $cid = $request->attributes->get('tenant_company')?->id;
 
+        // `register_id` = caja que ya ocupa la sucursal (null = libre). El móvil
+        // lo usa para ofrecer solo sucursales sin caja al crear (una por sucursal).
+        $taken = CashRegister::whereNotNull('branch_id')
+            ->pluck('id', 'branch_id');
+
         $branches = Branch::where('company_id', $cid)->where('active', true)
             ->orderBy('name')->get(['id', 'name'])
-            ->map(fn (Branch $b) => ['id' => $b->id, 'name' => $b->name])->values();
+            ->map(fn (Branch $b) => [
+                'id'          => $b->id,
+                'name'        => $b->name,
+                'register_id' => $taken[$b->id] ?? null,
+            ])->values();
 
         $personal = Personal::where('company_id', $cid)->where('active', true)
             ->orderBy('full_name')->get(['id', 'full_name'])
@@ -46,6 +55,13 @@ class CashRegisterController extends Controller
         $cid = $request->attributes->get('tenant_company')?->id;
 
         $data = $this->validated($request, $cid);
+
+        if ($taken = $this->registerInBranch($data['branch_id'])) {
+            return response()->json([
+                'message' => "Esa sucursal ya tiene la caja «{$taken->name}». Solo se permite una caja por sucursal.",
+                'code'    => 'branch_already_has_register',
+            ], 422);
+        }
 
         $register = CashRegister::create([
             ...$data,
@@ -63,12 +79,35 @@ class CashRegisterController extends Controller
 
         $data = $this->validated($request, $cid);
 
+        // Al MOVER la caja a otra sucursal, esa sucursal debe estar libre. Si se
+        // queda en la suya, se permite: hay empresas con varias cajas por sucursal
+        // creadas antes de esta regla y deben poder seguir editándose.
+        if ((int) $data['branch_id'] !== (int) $cashRegister->branch_id
+            && ($taken = $this->registerInBranch($data['branch_id'], $cashRegister->id))) {
+            return response()->json([
+                'message' => "Esa sucursal ya tiene la caja «{$taken->name}». Solo se permite una caja por sucursal.",
+                'code'    => 'branch_already_has_register',
+            ], 422);
+        }
+
         $cashRegister->update([
             ...$data,
             'active' => $request->boolean('active', true),
         ]);
 
         return response()->json(['data' => $this->item($cashRegister->load('branch', 'assignedPersonal'))]);
+    }
+
+    /**
+     * Caja existente en una sucursal (excluyendo opcionalmente una), o null.
+     * Regla: una caja por sucursal. El global scope aísla por empresa y
+     * SoftDeletes excluye las eliminadas, así que una caja borrada libera la sucursal.
+     */
+    private function registerInBranch(int $branchId, ?int $exceptId = null): ?CashRegister
+    {
+        return CashRegister::where('branch_id', $branchId)
+            ->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))
+            ->first();
     }
 
     private function validated(Request $request, ?int $cid): array

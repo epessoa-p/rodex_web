@@ -47,6 +47,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('company-profile', [\App\Http\Controllers\Api\CompanyProfileController::class, 'update'])
             ->middleware('api.permission:company-profile.edit');
 
+        // ── Sucursales (administrativo, sin plan). Solo listar y editar
+        //    nombre/dirección/teléfono; el alta y baja quedan en la web.
+        Route::get('branches', [\App\Http\Controllers\Api\BranchController::class, 'index'])
+            ->middleware('api.permission:branches.view');
+        Route::put('branches/{branch}', [\App\Http\Controllers\Api\BranchController::class, 'update'])
+            ->middleware('api.permission:branches.edit');
+
         // ── Módulo Ventas / POS (plan: sales) ──────────────────────
         Route::middleware('api.plan:sales')->group(function () {
 

@@ -94,14 +94,6 @@
                         </div>
                     </a>
                 </div>
-                <div class="col-6 col-md-4 col-lg-2">
-                    <a href="{{ route('users.index') }}" class="text-decoration-none">
-                        <div class="quick-link text-center p-3 rounded">
-                            <i class="bi bi-shield-person fs-2 mb-2 d-block" style="color:#607d8b;"></i>
-                            <small class="text-dark fw-semibold">Usuarios</small>
-                        </div>
-                    </a>
-                </div>
             </div>
         </div>
     </div>

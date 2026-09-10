@@ -156,11 +156,12 @@
                     <div class="row g-3" id="permissions-container">
                         @foreach($permissions as $module => $modulePerms)
                             @php
-                                // Feature de plan que habilita este módulo (null = administrativo/compartido, siempre disponible).
-                                $feature = \App\Models\Plan::featureForPermissionModule($module);
-                                $modLocked = $planFeatures !== null && $feature && !in_array($feature, $planFeatures, true);
+                                // Features que habilitan este módulo (OR: basta una).
+                                // [] = administrativo/compartido, siempre disponible.
+                                $features  = \App\Models\Plan::featuresForPermissionModule($module);
+                                $modLocked = $planFeatures !== null && $features && !array_intersect($features, $planFeatures);
                             @endphp
-                            <div class="col-md-4 perm-module" data-feature="{{ $feature }}">
+                            <div class="col-md-4 perm-module" data-feature="{{ implode(',', $features) }}">
                                 <div class="border rounded-3 p-3 h-100 module-box {{ $modLocked ? 'module-locked' : '' }}">
                                     {{-- Encabezado del módulo con checkbox "marcar todo el módulo" --}}
                                     <div class="form-check mb-2 pb-2 border-bottom d-flex align-items-center gap-2">
@@ -286,13 +287,15 @@ $(function () {
         // features: array de claves de plan; null => no gatear (habilitar todo).
         $('.perm-module').each(function () {
             const $mod      = $(this);
-            const feature   = ($mod.data('feature') || '').toString();
+            // Lista de features que habilitan el módulo (OR: basta con una).
+            const feats     = ($mod.data('feature') || '').toString().split(',').filter(Boolean);
             const $box      = $mod.find('.module-box');
             const $badge    = $mod.find('.module-lock-badge');
             const $inputs   = $mod.find('.perm-check');
             const $modCheck = $mod.find('.mod-check');
-            // Sin feature => módulo administrativo/compartido, siempre disponible.
-            const locked = feature && features !== null && features.indexOf(feature) === -1;
+            // Sin features => módulo administrativo/compartido, siempre disponible.
+            const locked = feats.length > 0 && features !== null
+                && !feats.some(f => features.indexOf(f) !== -1);
 
             if (locked) {
                 $inputs.prop('checked', false).prop('disabled', true);

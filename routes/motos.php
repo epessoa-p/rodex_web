@@ -60,7 +60,15 @@ Route::middleware(['auth', 'plan:motos'])->group(function () {
         Route::put('/{warranty}',   [WarrantyController::class, 'update'])->name('update')->middleware('check-permission:warranties.manage');
     });
 
-    // ── Inventario de Motos (unidades) ────────────────────────
+});
+
+// ── Inventario de motos (unidades) ────────────────────────────────
+// Dato maestro COMPARTIDO: la venta de motos y el alquiler operan sobre las
+// MISMAS unidades (RentalContract.moto_unit_id, MotoUnit::STATUSES incluye
+// tanto 'vendida'/'entregada' como 'alquilada'/'reservada'). Por eso se habilita
+// con CUALQUIERA de los dos módulos, igual que marcas/modelos usan plan:inventory.
+Route::middleware(['auth', 'plan:motos,rentals'])->group(function () {
+
     Route::prefix('motos/units')->name('moto-units.')->group(function () {
         Route::get('/',           [MotoUnitController::class, 'index'])->name('index')->middleware('check-permission:moto-units.view');
         Route::get('/create',     [MotoUnitController::class, 'create'])->name('create')->middleware('check-permission:moto-units.create');

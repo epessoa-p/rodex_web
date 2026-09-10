@@ -73,7 +73,10 @@ class Plan extends Model
         'rentals'            => 'rentals',
         // Venta de motos
         'moto_sales'         => 'motos',
-        'moto_units'         => 'motos',
+        // El inventario de unidades es dato maestro COMPARTIDO: lo usan tanto la
+        // venta de motos como el alquiler (RentalContract.moto_unit_id), así que
+        // basta con que el plan incluya CUALQUIERA de los dos.
+        'moto_units'         => ['motos', 'rentals'],
         'moto_deliveries'    => 'motos',
         'motos'              => 'motos',
         'warranties'         => 'motos',
@@ -88,12 +91,15 @@ class Plan extends Model
     ];
 
     /**
-     * Feature del plan que habilita un módulo de permisos, o null si el módulo
-     * es administrativo/compartido (siempre disponible).
+     * Features del plan que habilitan un módulo de permisos (semántica OR: basta
+     * con que el plan incluya alguna). Devuelve [] si el módulo es
+     * administrativo/compartido, es decir, siempre disponible.
      */
-    public static function featureForPermissionModule(string $module): ?string
+    public static function featuresForPermissionModule(string $module): array
     {
-        return self::PERMISSION_MODULE_FEATURES[$module] ?? null;
+        $feature = self::PERMISSION_MODULE_FEATURES[$module] ?? null;
+
+        return $feature === null ? [] : (array) $feature;
     }
 
     public const BILLING_PERIODS = [
