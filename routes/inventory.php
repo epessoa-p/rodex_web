@@ -89,6 +89,8 @@ Route::middleware(['auth', 'plan:inventory'])->group(function () {
         Route::post('/',                 [ProductController::class, 'store'])->name('store')->middleware('check-permission:products.create');
         Route::get('/import',            [ProductController::class, 'import'])->name('import')->middleware('check-permission:products.create');
         Route::post('/import',           [ProductController::class, 'processImport'])->name('import.process')->middleware('check-permission:products.create');
+        // Debe ir ANTES de /{product} para que no lo capture como parámetro.
+        Route::get('/labels',            [ProductController::class, 'labels'])->name('labels')->middleware('check-permission:products.view');
         Route::delete('/photos/{photo}', [ProductController::class, 'destroyPhoto'])->name('photos.destroy')->middleware('check-permission:products.edit');
         Route::get('/{product}',         [ProductController::class, 'show'])->name('show')->middleware('check-permission:products.view');
         Route::get('/{product}/kardex',  [ProductController::class, 'kardex'])->name('kardex')->middleware('check-permission:products.view');

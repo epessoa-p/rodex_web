@@ -12,15 +12,19 @@
             <h1 class="mb-1 fw-bold fs-4"><i class="bi bi-box-seam me-2 text-danger"></i>Productos</h1>
             <p class="text-muted mb-0 small">Catálogo completo de repuestos y accesorios.</p>
         </div>
-        @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('products.create', auth()->user()->getCurrentCompany()))
         <div class="d-flex gap-2">
-            <a href="{{ route('products.import') }}" class="btn btn-light border">
-                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Importar Excel
+            {{-- Etiquetas: basta con poder ver productos (ya se requiere para esta pantalla). --}}
+            <a href="{{ route('products.labels') }}" class="btn btn-light border">
+                <i class="bi bi-upc-scan me-1"></i> Etiquetas
             </a>
-            <x-plan-limit-button :status="$limitStatus" :href="route('products.create')"
-                label="Nuevo producto" resource="productos" />
+            @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('products.create', auth()->user()->getCurrentCompany()))
+                <a href="{{ route('products.import') }}" class="btn btn-light border">
+                    <i class="bi bi-file-earmark-spreadsheet me-1"></i> Importar Excel
+                </a>
+                <x-plan-limit-button :status="$limitStatus" :href="route('products.create')"
+                    label="Nuevo producto" resource="productos" />
+            @endif
         </div>
-        @endif
     </div>
 
     @if($errors->any())

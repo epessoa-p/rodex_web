@@ -42,6 +42,27 @@ class ProductController extends Controller
         ]);
     }
 
+    /**
+     * Etiquetas imprimibles de productos (QR o código de barras) para pegar en
+     * el estante y escanear desde el móvil. Los códigos se generan en el
+     * navegador, así que no requiere ninguna librería extra en el servidor.
+     */
+    public function labels()
+    {
+        $user = auth()->user();
+        $cid  = $user->getCurrentCompany()?->id;
+
+        $query = Product::query()->where('active', true)->orderBy('name');
+
+        if (!$user->is_super_admin) {
+            $query->where('company_id', $cid);
+        }
+
+        return view('inventory.products.labels', [
+            'products' => $query->get(['id', 'name', 'sku', 'code', 'barcode', 'price']),
+        ]);
+    }
+
     public function create()
     {
         if ($this->planLimitReached(auth()->user()->getCurrentCompany()?->id, 'products')) {
