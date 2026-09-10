@@ -25,8 +25,8 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th class="text-center" style="width:96px;">Orden</th>
-                            <th>Plan</th>
+                            <th class="px-1" style="width:32px;"><i class="bi bi-arrow-down-up text-muted" title="Orden de presentación"></i></th>
+                            <th style="min-width:220px;">Plan</th>
                             <th>Precio</th>
                             <th class="text-center">Usuarios</th>
                             <th class="text-center">Sucursales</th>
@@ -40,25 +40,30 @@
                     <tbody>
                         @forelse($plans as $plan)
                             <tr>
-                                <td class="text-center">
-                                    <div class="btn-group btn-group-sm" role="group" aria-label="Reordenar plan">
-                                        <form action="{{ route('plans.move', [$plan, 'up']) }}" method="POST" class="d-inline">
-                                            @csrf
-                                            <button type="submit" class="btn btn-light border rounded-end-0"
-                                                    title="Subir" {{ $loop->first ? 'disabled' : '' }}><i class="bi bi-arrow-up"></i></button>
-                                        </form>
-                                        <form action="{{ route('plans.move', [$plan, 'down']) }}" method="POST" class="d-inline">
-                                            @csrf
-                                            <button type="submit" class="btn btn-light border rounded-start-0"
-                                                    title="Bajar" {{ $loop->last ? 'disabled' : '' }}><i class="bi bi-arrow-down"></i></button>
-                                        </form>
-                                    </div>
+                                <td class="text-center px-1 lh-1">
+                                    <form action="{{ route('plans.move', [$plan, 'up']) }}" method="POST" class="m-0">
+                                        @csrf
+                                        <button type="submit" class="btn btn-link btn-sm p-0 text-secondary"
+                                                title="Subir" {{ $loop->first ? 'disabled' : '' }}><i class="bi bi-chevron-up"></i></button>
+                                    </form>
+                                    <form action="{{ route('plans.move', [$plan, 'down']) }}" method="POST" class="m-0">
+                                        @csrf
+                                        <button type="submit" class="btn btn-link btn-sm p-0 text-secondary"
+                                                title="Bajar" {{ $loop->last ? 'disabled' : '' }}><i class="bi bi-chevron-down"></i></button>
+                                    </form>
                                 </td>
                                 <td>
                                     <div class="fw-semibold">{{ $plan->name }}</div>
-                                    <div class="text-muted small">{{ $plan->description }}</div>
+                                    @if($plan->description)
+                                        {{-- Máx. 2 líneas; el texto completo queda en el tooltip. --}}
+                                        <div class="text-muted small" title="{{ $plan->description }}"
+                                             style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">{{ $plan->description }}</div>
+                                    @endif
                                 </td>
-                                <td>{{ config('inventory.currency') }} {{ number_format($plan->price, 2) }}<span class="text-muted small"> / {{ $plan->billing_period_label }}</span></td>
+                                <td class="text-nowrap">
+                                    {{ config('inventory.currency') }} {{ number_format($plan->price, 2) }}
+                                    <div class="text-muted small">{{ $plan->billing_period_label }}</div>
+                                </td>
                                 <td class="text-center">{{ $plan->max_users ?? '∞' }}</td>
                                 <td class="text-center">{{ $plan->max_branches ?? '∞' }}</td>
                                 <td class="text-center">{{ $plan->max_products ?? '∞' }}</td>
@@ -67,7 +72,7 @@
                                 <td class="text-center">
                                     <span class="badge {{ $plan->active ? 'bg-success' : 'bg-secondary' }}">{{ $plan->active ? 'Activo' : 'Inactivo' }}</span>
                                 </td>
-                                <td class="text-end">
+                                <td class="text-end text-nowrap">
                                     <a href="{{ route('plans.edit', $plan) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
                                     <form action="{{ route('plans.destroy', $plan) }}" method="POST" class="d-inline"
                                           onsubmit="return confirm('¿Eliminar el plan «{{ $plan->name }}»?')">
