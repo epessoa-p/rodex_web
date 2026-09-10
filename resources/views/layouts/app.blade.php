@@ -4,6 +4,15 @@
 @php
     $currentCompany = auth()->user()->getCurrentCompany();
     $activeCompanies = auth()->user()->activeCompanies()->get();
+
+    // ── Sección Reportes (la usan el sidebar y el menú offcanvas) ──
+    // Estadísticas depende además del PLAN (su ruta va con plan:statistics), así
+    // que se valida aquí para no ofrecer un enlace que terminaría en un 403.
+    $canIncomeStatement = auth()->user()->is_super_admin
+        || auth()->user()->hasPermissionInCompany('income-statement.view', $currentCompany);
+    $canStatistics = auth()->user()->is_super_admin
+        || (auth()->user()->hasPermissionInCompany('statistics.view', $currentCompany)
+            && (bool) $currentCompany?->planAllows('statistics'));
 @endphp
 
 <div class="app-shell d-flex">
@@ -40,13 +49,7 @@
                     <i class="bi bi-speedometer2"></i> Dashboard
                 </a>
             </li>
-            @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('statistics.view', $currentCompany))
-            <li class="nav-item">
-                <a class="nav-link app-link {{ request()->routeIs('statistics.*') ? 'active' : '' }}" href="{{ route('statistics.index') }}">
-                    <i class="bi bi-bar-chart-line"></i> Estadísticas
-                </a>
-            </li>
-            @endif
+            {{-- "Estadísticas" vive ahora en la sección Reportes. --}}
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('document-templates.view', $currentCompany))
             <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('document-templates.*') ? 'active' : '' }}" href="{{ route('document-templates.index') }}">
@@ -664,14 +667,23 @@
         @endif
 
         {{-- ── Reportes ── --}}
-        @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('income-statement.view', $currentCompany))
+        @if($canIncomeStatement || $canStatistics)
         <div class="sidebar-section-title mt-4">Reportes</div>
         <ul class="nav flex-column gap-1">
+            @if($canIncomeStatement)
             <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('income-statement.*') ? 'active' : '' }}" href="{{ route('income-statement.index') }}">
                     <i class="bi bi-clipboard-data"></i> Estado de resultados
                 </a>
             </li>
+            @endif
+            @if($canStatistics)
+            <li class="nav-item">
+                <a class="nav-link app-link {{ request()->routeIs('statistics.*') ? 'active' : '' }}" href="{{ route('statistics.index') }}">
+                    <i class="bi bi-bar-chart-line"></i> Estadísticas
+                </a>
+            </li>
+            @endif
         </ul>
         @endif
 
@@ -797,9 +809,7 @@
             <div class="sidebar-section-title">General</div>
             <ul class="nav flex-column gap-1 mb-3">
                 <li><a class="nav-link app-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
-                @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('statistics.view', $currentCompany))
-                <li><a class="nav-link app-link {{ request()->routeIs('statistics.*') ? 'active' : '' }}" href="{{ route('statistics.index') }}"><i class="bi bi-bar-chart-line me-2"></i>Estadísticas</a></li>
-                @endif
+                {{-- "Estadísticas" vive ahora en la sección Reportes. --}}
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('document-templates.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('document-templates.*') ? 'active' : '' }}" href="{{ route('document-templates.index') }}"><i class="bi bi-file-earmark-ruled me-2"></i>Plantillas</a></li>
                 @endif
@@ -1084,10 +1094,15 @@
             @endif
 
             {{-- ── Reportes ── --}}
-            @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('income-statement.view', $currentCompany))
+            @if($canIncomeStatement || $canStatistics)
             <div class="sidebar-section-title">Reportes</div>
             <ul class="nav flex-column gap-1 mb-3">
+                @if($canIncomeStatement)
                 <li><a class="nav-link app-link {{ request()->routeIs('income-statement.*') ? 'active' : '' }}" href="{{ route('income-statement.index') }}"><i class="bi bi-clipboard-data me-2"></i>Estado de resultados</a></li>
+                @endif
+                @if($canStatistics)
+                <li><a class="nav-link app-link {{ request()->routeIs('statistics.*') ? 'active' : '' }}" href="{{ route('statistics.index') }}"><i class="bi bi-bar-chart-line me-2"></i>Estadísticas</a></li>
+                @endif
             </ul>
             @endif
 
