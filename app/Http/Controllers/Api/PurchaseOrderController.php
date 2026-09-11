@@ -190,20 +190,25 @@ class PurchaseOrderController extends Controller
         ]], 201);
     }
 
-    /** Compras directas (no ligadas a una OC). */
+    /**
+     * Compras: directas Y las generadas al recibir una OC (estas últimas nacen
+     * como cuenta por pagar). `order_code` indica de qué OC viene (null = directa).
+     */
     public function directPurchases()
     {
-        $purchases = Purchase::whereNull('purchase_order_id')
-            ->with('supplier:id,name')
+        $purchases = Purchase::with(['supplier:id,name', 'purchaseOrder:id,code'])
             ->latest('purchase_date')->latest('id')
             ->limit(50)
             ->get()
             ->map(fn (Purchase $p) => [
                 'id'             => $p->id,
                 'code'           => $p->code,
+                'order_code'     => $p->purchaseOrder?->code,
                 'supplier'       => $p->supplier?->name,
                 'date'           => optional($p->purchase_date)->toDateString(),
                 'total'          => (float) $p->total,
+                'paid_amount'    => (float) $p->paid_amount,
+                'balance'        => round((float) $p->total - (float) $p->paid_amount, 2),
                 'payment_status' => $p->payment_status,
                 'payment_label'  => $p->payment_status_label,
             ]);
@@ -211,14 +216,18 @@ class PurchaseOrderController extends Controller
         return response()->json(['data' => $purchases]);
     }
 
-    /** Detalle de una compra directa (con sus ítems). */
+    /** Detalle de una compra (ítems, saldo e historial de pagos). */
     public function purchaseDetail(Purchase $purchase)
     {
-        $purchase->load(['supplier:id,name', 'items.product:id,name']);
+        $purchase->load([
+            'supplier:id,name', 'purchaseOrder:id,code', 'items.product:id,name',
+            'payments' => fn ($q) => $q->with('treasuryAccount:id,name')->latest('payment_date')->latest('id'),
+        ]);
 
         return response()->json(['data' => [
             'id'             => $purchase->id,
             'code'           => $purchase->code,
+            'order_code'     => $purchase->purchaseOrder?->code,
             'supplier'       => $purchase->supplier?->name,
             'date'           => optional($purchase->purchase_date)->toDateString(),
             'invoice_number' => $purchase->invoice_number,
@@ -226,6 +235,7 @@ class PurchaseOrderController extends Controller
             'subtotal'       => (float) $purchase->subtotal,
             'total'          => (float) $purchase->total,
             'paid_amount'    => (float) $purchase->paid_amount,
+            'balance'        => round((float) $purchase->total - (float) $purchase->paid_amount, 2),
             'payment_status' => $purchase->payment_status,
             'payment_label'  => $purchase->payment_status_label,
             'items'          => $purchase->items->map(fn (PurchaseItem $it) => [
@@ -234,7 +244,109 @@ class PurchaseOrderController extends Controller
                 'unit_cost' => (float) $it->unit_cost,
                 'subtotal'  => (float) $it->subtotal,
             ])->values(),
+            'payments'       => $purchase->payments->map(fn (SupplierPayment $pay) => [
+                'id'      => $pay->id,
+                'date'    => optional($pay->payment_date)->toDateString(),
+                'amount'  => (float) $pay->amount,
+                'source'  => $pay->treasury_account_id ? ($pay->treasuryAccount?->name ?? 'Tesorería') : 'Caja',
+                'method'  => $pay->method,
+            ])->values(),
         ]]);
+    }
+
+    /**
+     * Registra un pago (parcial o total) de una compra desde el móvil, saliendo
+     * de la caja abierta del usuario o de una cuenta de tesorería. Misma lógica
+     * que Purchases\AccountsPayableController::registerPayment (web).
+     */
+    public function payPurchase(Request $request, Purchase $purchase)
+    {
+        $cid = $request->attributes->get('tenant_company')?->id;
+
+        if ($purchase->payment_status === 'paid') {
+            return response()->json(['message' => 'Esta compra ya está pagada por completo.'], 422);
+        }
+
+        $data = $request->validate([
+            'amount'              => ['required', 'numeric', 'min:0.01'],
+            'payment_source'      => ['required', 'in:cash,treasury'],
+            'treasury_account_id' => ['nullable', 'required_if:payment_source,treasury', Rule::exists('treasury_accounts', 'id')->where('company_id', $cid)],
+            'method'              => ['nullable', 'string', 'max:50'],
+            'reference'           => ['nullable', 'string', 'max:100'],
+            'notes'               => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $amount  = round((float) $data['amount'], 2);
+        $balance = round((float) $purchase->total - (float) $purchase->paid_amount, 2);
+
+        if ($amount > $balance + 0.001) {
+            return response()->json([
+                'message' => 'El monto (' . number_format($amount, 2) . ') supera el saldo pendiente (' . number_format($balance, 2) . ').',
+                'code'    => 'amount_exceeds_balance',
+            ], 422);
+        }
+
+        $desc = 'Pago compra ' . $purchase->code . ' — ' . ($purchase->supplier?->name ?? 'Proveedor');
+
+        if ($data['payment_source'] === 'cash') {
+            $session = $this->currentOpenSession();
+            if (! $session) {
+                return response()->json(['message' => 'No tienes una caja abierta para pagar desde caja.', 'code' => 'no_open_session'], 422);
+            }
+            if ($amount > (float) $session->expectedBalance() + 0.001) {
+                return response()->json([
+                    'message' => 'La caja no tiene saldo suficiente (disponible: ' . number_format($session->expectedBalance(), 2) . ').',
+                    'code'    => 'insufficient_balance',
+                ], 422);
+            }
+
+            DB::transaction(function () use ($purchase, $session, $data, $amount, $desc, $cid) {
+                $method = $data['method'] ?? 'efectivo';
+                SupplierPayment::create([
+                    'company_id' => $cid, 'purchase_id' => $purchase->id, 'treasury_account_id' => null,
+                    'amount' => $amount, 'payment_date' => now()->toDateString(), 'method' => $method,
+                    'reference' => $data['reference'] ?? 'CAJA', 'notes' => $data['notes'] ?? 'Pago desde caja (móvil)',
+                    'user_id' => auth()->id(),
+                ]);
+                CashMovement::create([
+                    'company_id' => $cid, 'cash_register_id' => $session->cash_register_id,
+                    'cash_register_session_id' => $session->id, 'user_id' => auth()->id(),
+                    'type' => 'expense', 'category' => 'expense_supplier', 'amount' => $amount, 'method' => $method,
+                    'reference_type' => Purchase::class, 'reference_id' => $purchase->id,
+                    'description' => $desc, 'movement_date' => now(),
+                ]);
+                $purchase->increment('paid_amount', $amount);
+                $purchase->refresh()->recalcPaymentStatus();
+            });
+        } else {
+            $account = TreasuryAccount::find($data['treasury_account_id']);
+            if (! $account || $amount > (float) $account->balance + 0.001) {
+                return response()->json([
+                    'message' => 'La cuenta no tiene saldo suficiente (disponible: ' . number_format((float) ($account?->balance ?? 0), 2) . ').',
+                    'code'    => 'insufficient_balance',
+                ], 422);
+            }
+
+            DB::transaction(function () use ($purchase, $account, $data, $amount, $desc, $cid) {
+                SupplierPayment::create([
+                    'company_id' => $cid, 'purchase_id' => $purchase->id, 'treasury_account_id' => $account->id,
+                    'amount' => $amount, 'payment_date' => now()->toDateString(), 'method' => $data['method'] ?? null,
+                    'reference' => $data['reference'] ?? null, 'notes' => $data['notes'] ?? null,
+                    'user_id' => auth()->id(),
+                ]);
+                TreasuryMovement::create([
+                    'company_id' => $cid, 'treasury_account_id' => $account->id, 'user_id' => auth()->id(),
+                    'type' => 'out', 'category' => 'supplier_payment', 'amount' => $amount,
+                    'reference_type' => Purchase::class, 'reference_id' => $purchase->id,
+                    'description' => $desc, 'movement_date' => now(),
+                ]);
+                $account->decrement('balance', $amount);
+                $purchase->increment('paid_amount', $amount);
+                $purchase->refresh()->recalcPaymentStatus();
+            });
+        }
+
+        return $this->purchaseDetail($purchase->fresh());
     }
 
     /**

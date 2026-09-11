@@ -225,6 +225,9 @@ Route::middleware('auth:sanctum')->group(function () {
                 ->middleware('api.permission:purchases.view');
             Route::get('purchases/{purchase}', [PurchaseOrderController::class, 'purchaseDetail'])
                 ->middleware('api.permission:purchases.view');
+            // Pago (parcial o total) de una compra: caja abierta o cuenta de tesorería.
+            Route::post('purchases/{purchase}/pay', [PurchaseOrderController::class, 'payPurchase'])
+                ->middleware('api.permission:accounts-payable.pay');
             Route::get('purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show'])
                 ->middleware('api.permission:purchase-orders.view,goods-receipts.view');
             Route::post('purchase-orders/{purchaseOrder}/receive', [PurchaseOrderController::class, 'receive'])
