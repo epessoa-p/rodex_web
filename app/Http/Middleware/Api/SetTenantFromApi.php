@@ -80,6 +80,9 @@ class SetTenantFromApi
         $this->tenancy->set($company->id);
         $request->attributes->set('tenant_company', $company);
 
+        // Monitoreo de uso: "alguien entró a esta empresa" desde el móvil (throttled a 1/h).
+        \App\Support\CompanyPresence::touch($user->id, $company->id);
+
         return $next($request);
     }
 }

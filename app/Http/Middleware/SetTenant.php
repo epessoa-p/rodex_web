@@ -32,6 +32,9 @@ class SetTenant
                 : session('current_company_id');
 
             $this->tenancy->set($companyId);
+
+            // Monitoreo de uso: "alguien entró a esta empresa" (throttled a 1/h).
+            \App\Support\CompanyPresence::touch($user->id, $companyId);
         }
 
         return $next($request);

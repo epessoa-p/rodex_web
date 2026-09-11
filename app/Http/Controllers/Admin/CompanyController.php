@@ -5,21 +5,26 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCompanyRequest;
 use App\Models\Company;
+use App\Services\Admin\CompanyUsageService;
 use App\Support\MotoBrandDefaults;
 use App\Support\ProductOriginDefaults;
 use Illuminate\Support\Facades\Storage;
 
 class CompanyController extends Controller
 {
-    public function __construct()
+    public function __construct(private CompanyUsageService $usage)
     {
         $this->middleware('check-role:super_admin');
     }
 
     public function index()
     {
-        $companies = Company::paginate(15);
-        return view('admin.companies.index', compact('companies'));
+        $companies = Company::with('subscription.plan')->paginate(15);
+
+        // Última actividad de las empresas de esta página (consultas agregadas).
+        $lastActivity = $this->usage->lastActivityFor($companies->pluck('id')->all());
+
+        return view('admin.companies.index', compact('companies', 'lastActivity'));
     }
 
     public function create()
@@ -47,8 +52,18 @@ class CompanyController extends Controller
 
     public function show(Company $company)
     {
-        $users = $company->users()->paginate(10);
-        return view('admin.companies.show', compact('company', 'users'));
+        $company->load('subscription.plan');
+
+        // `last_seen_at` llega con el script 20260911_company_user_last_seen.sql;
+        // hasta entonces la columna no existe y no se pide al pivot.
+        $hasSeen = \Illuminate\Support\Facades\Schema::hasColumn('company_user', 'last_seen_at');
+        $users   = $company->users()
+            ->when($hasSeen, fn ($q) => $q->withPivot('last_seen_at'))
+            ->paginate(10);
+
+        $usage = $this->usage->dashboardFor($company);
+
+        return view('admin.companies.show', compact('company', 'users', 'usage'));
     }
 
     public function edit(Company $company)
