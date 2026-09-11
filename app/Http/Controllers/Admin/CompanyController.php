@@ -6,14 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCompanyRequest;
 use App\Models\Company;
 use App\Services\Admin\CompanyUsageService;
+use App\Services\Reports\IncomeStatementService;
 use App\Support\MotoBrandDefaults;
 use App\Support\ProductOriginDefaults;
+use App\Support\Tenancy;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
 class CompanyController extends Controller
 {
-    public function __construct(private CompanyUsageService $usage)
-    {
+    public function __construct(
+        private CompanyUsageService $usage,
+        private IncomeStatementService $incomeStatement,
+    ) {
         $this->middleware('check-role:super_admin');
     }
 
@@ -64,9 +69,53 @@ class CompanyController extends Controller
         }
         $users = $relation->paginate(10);
 
-        $usage = $this->usage->dashboardFor($company);
+        $usage   = $this->usage->dashboardFor($company);
+        $balance = $this->balanceFor($company);
 
-        return view('admin.companies.show', compact('company', 'users', 'usage'));
+        return view('admin.companies.show', compact('company', 'users', 'usage', 'balance'));
+    }
+
+    /**
+     * Balance (ingresos, egresos, resultado) de la empresa por período: semana
+     * actual y anterior, mes actual y anterior. Reutiliza el Estado de
+     * resultados (movimientos reales de caja + tesorería).
+     *
+     * IMPORTANTE: los modelos de movimientos llevan el scope de empresa, y el
+     * super_admin no tiene empresa activa (sin scope se mezclarían TODAS las
+     * empresas). Por eso se ejecuta con Tenancy::runAs() forzando esta empresa.
+     */
+    private function balanceFor(Company $company): array
+    {
+        $today = Carbon::today();
+        $monday = $today->copy()->startOfWeek(Carbon::MONDAY);
+
+        $periods = [
+            'this_week'  => ['label' => 'Esta semana',     'from' => $monday,                                'to' => $today],
+            'last_week'  => ['label' => 'Semana anterior', 'from' => $monday->copy()->subWeek(),             'to' => $monday->copy()->subDay()],
+            'this_month' => ['label' => 'Este mes',        'from' => $today->copy()->startOfMonth(),         'to' => $today],
+            'last_month' => ['label' => 'Mes anterior',    'from' => $today->copy()->subMonthNoOverflow()->startOfMonth(), 'to' => $today->copy()->startOfMonth()->subDay()],
+        ];
+
+        try {
+            return app(Tenancy::class)->runAs($company->id, function () use ($periods) {
+                $out = [];
+                foreach ($periods as $key => $p) {
+                    $r = $this->incomeStatement->build($p['from'], $p['to']);
+                    $out[$key] = [
+                        'label'   => $p['label'],
+                        'from'    => $p['from'],
+                        'to'      => $p['to'],
+                        'income'  => $r['total_income'],
+                        'expense' => $r['total_expense'],
+                        'net'     => $r['net'],
+                    ];
+                }
+                return $out;
+            });
+        } catch (\Throwable $e) {
+            // El panel del operador no debe caerse por un módulo sin instalar.
+            return [];
+        }
     }
 
     public function edit(Company $company)

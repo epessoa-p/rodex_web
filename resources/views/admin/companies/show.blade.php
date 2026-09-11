@@ -69,6 +69,56 @@
     </div>
 </div>
 
+{{-- ── Balance y ganancia por período ── --}}
+@if(!empty($balance))
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h6 class="mb-0 fw-semibold"><i class="bi bi-cash-stack me-2"></i>Balance y ganancia</h6>
+        <span class="text-muted small">Movimientos reales de caja + tesorería (base efectivo)</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Período</th>
+                    <th class="text-end text-success">Ingresos</th>
+                    <th class="text-end text-danger">Egresos</th>
+                    <th class="text-end pe-4">Ganancia</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($balance as $key => $b)
+                    @php
+                        $positive = $b['net'] >= 0;
+                        // Variación vs. el período anterior equivalente (semana↔semana, mes↔mes).
+                        $prevKey = ['this_week' => 'last_week', 'this_month' => 'last_month'][$key] ?? null;
+                        $prev    = $prevKey ? ($balance[$prevKey]['net'] ?? null) : null;
+                        $delta   = ($prev !== null && abs($prev) > 0) ? (($b['net'] - $prev) / abs($prev)) * 100 : null;
+                    @endphp
+                    <tr class="{{ str_starts_with($key, 'this_') ? 'fw-semibold' : 'text-muted' }}">
+                        <td class="ps-4">
+                            {{ $b['label'] }}
+                            <div class="small fw-normal text-muted">{{ $b['from']->format('d/m') }} – {{ $b['to']->format('d/m/Y') }}</div>
+                        </td>
+                        <td class="text-end">{{ money($b['income']) }}</td>
+                        <td class="text-end">{{ money($b['expense']) }}</td>
+                        <td class="text-end pe-4 text-nowrap">
+                            <span class="{{ $positive ? 'text-success' : 'text-danger' }} fw-bold">{{ money($b['net']) }}</span>
+                            @if($delta !== null)
+                                <span class="badge ms-1 {{ $delta >= 0 ? 'bg-success-subtle text-success-emphasis border border-success-subtle' : 'bg-danger-subtle text-danger-emphasis border border-danger-subtle' }}"
+                                      title="vs. {{ $balance[$prevKey]['label'] }}">
+                                    {{ $delta >= 0 ? '+' : '' }}{{ number_format($delta, 0) }}%
+                                </span>
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+@endif
+
 <div class="row g-3">
     {{-- ── Uso por módulo ── --}}
     <div class="col-lg-7">
