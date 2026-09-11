@@ -37,6 +37,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('me', [AuthController::class, 'me']);
 
+        // ── Dashboard operativo (cruza módulos: cada sección se gatea adentro
+        //    por plan + permiso; la ruta exige tener ALGÚN dashboard) ──────
+        Route::get('dashboard/overview', [DashboardController::class, 'overview'])
+            ->middleware('api.permission:sales-dashboard.view,workshop-dashboard.view,purchases-dashboard.view');
+
         // ── Estado de resultados (administrativo, sin plan) ────────
         Route::get('income-statement', [\App\Http\Controllers\Api\IncomeStatementController::class, 'index'])
             ->middleware('api.permission:income-statement.view');
