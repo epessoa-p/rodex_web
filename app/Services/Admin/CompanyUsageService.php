@@ -54,23 +54,37 @@ class CompanyUsageService
         };
 
         foreach (self::SOURCES as $src) {
-            $merge(DB::table($src['table'])
+            $merge($this->safe(fn () => DB::table($src['table'])
                 ->selectRaw('company_id, MAX(created_at) as last')
                 ->whereIn('company_id', $companyIds)
                 ->whereNull('deleted_at')
                 ->groupBy('company_id')
-                ->get());
+                ->get()) ?? []);
         }
 
         // Sesiones de caja: sin company_id propio, se une por la caja.
-        $merge(DB::table('cash_register_sessions as s')
+        $merge($this->safe(fn () => DB::table('cash_register_sessions as s')
             ->join('cash_registers as r', 'r.id', '=', 's.cash_register_id')
             ->selectRaw('r.company_id, MAX(s.opened_at) as last')
             ->whereIn('r.company_id', $companyIds)
             ->groupBy('r.company_id')
-            ->get());
+            ->get()) ?? []);
 
         return $last;
+    }
+
+    /**
+     * Ejecuta una consulta de monitoreo y devuelve null si falla (p. ej. la
+     * tabla de un módulo aún no existe en esa instalación porque no se corrió
+     * su script SQL). El panel del operador nunca debe caerse por eso.
+     */
+    private function safe(callable $query): mixed
+    {
+        try {
+            return $query();
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     /** Dashboard de uso de una empresa (vista show). */
@@ -83,21 +97,21 @@ class CompanyUsageService
         $lastActivity = null;
 
         foreach (self::SOURCES as $key => $src) {
-            $row = DB::table($src['table'])
+            $row = $this->safe(fn () => DB::table($src['table'])
                 ->selectRaw('MAX(created_at) as last, COUNT(*) as total, SUM(created_at >= ?) as recent', [$since])
                 ->where('company_id', $cid)
                 ->whereNull('deleted_at')
-                ->first();
+                ->first());
 
             $modules[$key] = $this->moduleRow($src, $row);
             $lastActivity  = $this->later($lastActivity, $modules[$key]['last_at']);
         }
 
-        $row = DB::table('cash_register_sessions as s')
+        $row = $this->safe(fn () => DB::table('cash_register_sessions as s')
             ->join('cash_registers as r', 'r.id', '=', 's.cash_register_id')
             ->selectRaw('MAX(s.opened_at) as last, COUNT(*) as total, SUM(s.opened_at >= ?) as recent', [$since])
             ->where('r.company_id', $cid)
-            ->first();
+            ->first());
         $modules['cash_sessions'] = $this->moduleRow(
             ['label' => 'Sesiones de caja', 'icon' => 'bi-safe'], $row
         );
@@ -105,14 +119,10 @@ class CompanyUsageService
 
         // Presencia: última vez que alguien entró a ESTA empresa, y cuántos en 30 días.
         // Tolerante a que aún no se haya corrido el script SQL de `last_seen_at`.
-        try {
-            $seen = DB::table('company_user')
-                ->selectRaw('MAX(last_seen_at) as last, SUM(last_seen_at >= ?) as recent, COUNT(*) as total', [$since])
-                ->where('company_id', $cid)
-                ->first();
-        } catch (\Throwable $e) {
-            $seen = null;
-        }
+        $seen = $this->safe(fn () => DB::table('company_user')
+            ->selectRaw('MAX(last_seen_at) as last, SUM(last_seen_at >= ?) as recent, COUNT(*) as total', [$since])
+            ->where('company_id', $cid)
+            ->first());
 
         $lastSeen = $seen?->last ? Carbon::parse($seen->last) : null;
 

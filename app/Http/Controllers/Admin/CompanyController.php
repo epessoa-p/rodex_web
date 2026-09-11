@@ -56,10 +56,13 @@ class CompanyController extends Controller
 
         // `last_seen_at` llega con el script 20260911_company_user_last_seen.sql;
         // hasta entonces la columna no existe y no se pide al pivot.
-        $hasSeen = \Illuminate\Support\Facades\Schema::hasColumn('company_user', 'last_seen_at');
-        $users   = $company->users()
-            ->when($hasSeen, fn ($q) => $q->withPivot('last_seen_at'))
-            ->paginate(10);
+        // withPivot() es de la relación (BelongsToMany), no del query builder:
+        // debe llamarse ANTES de encadenar métodos de consulta como when()/paginate().
+        $relation = $company->users();
+        if (\Illuminate\Support\Facades\Schema::hasColumn('company_user', 'last_seen_at')) {
+            $relation->withPivot('last_seen_at');
+        }
+        $users = $relation->paginate(10);
 
         $usage = $this->usage->dashboardFor($company);
 

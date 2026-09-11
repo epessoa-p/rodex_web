@@ -237,20 +237,30 @@ class PurchaseOrderController extends Controller
         ]]);
     }
 
-    /** Órdenes de compra por recibir (enviadas o parciales). */
-    public function index()
+    /**
+     * Órdenes de compra. Por defecto solo las POR RECIBIR (enviadas o parciales),
+     * que es lo que espera la APK ya instalada. Con `?scope=all` devuelve todas
+     * salvo los borradores (copias de trabajo de la web), para que las recibidas
+     * y anuladas sigan consultables desde el móvil.
+     */
+    public function index(Request $request)
     {
+        $all = $request->query('scope') === 'all';
+
         $orders = PurchaseOrder::with('supplier:id,name')
-            ->whereIn('status', ['sent', 'partial'])
+            ->when($all,
+                fn ($q) => $q->where('status', '!=', 'draft'),
+                fn ($q) => $q->whereIn('status', ['sent', 'partial']))
             ->latest('order_date')->latest('id')
             ->get()
             ->map(fn (PurchaseOrder $po) => [
-                'id'       => $po->id,
-                'code'     => $po->code,
-                'supplier' => $po->supplier?->name,
-                'status'   => $po->status,
-                'date'     => optional($po->order_date)->toDateString(),
-                'total'    => (float) $po->total,
+                'id'           => $po->id,
+                'code'         => $po->code,
+                'supplier'     => $po->supplier?->name,
+                'status'       => $po->status,
+                'status_label' => PurchaseOrder::STATUSES[$po->status]['label'] ?? $po->status,
+                'date'         => optional($po->order_date)->toDateString(),
+                'total'        => (float) $po->total,
             ]);
 
         return response()->json(['data' => $orders]);
