@@ -37,6 +37,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('me', [AuthController::class, 'me']);
 
+        // ── Gastos y pago a personal (Pagos → Gastos / Personal) (plan: cash) ──
+        Route::middleware('api.plan:cash')->group(function () {
+            Route::get('expenses/overview', [\App\Http\Controllers\Api\ExpenseController::class, 'overview'])
+                ->middleware('api.permission:cash.operate,expense-services.view');
+            Route::post('expenses', [\App\Http\Controllers\Api\ExpenseController::class, 'store'])
+                ->middleware('api.permission:cash.operate');
+            Route::post('expense-services', [\App\Http\Controllers\Api\ExpenseController::class, 'storeService'])
+                ->middleware('api.permission:expense-services.manage');
+        });
+
         // ── Dashboard operativo (cruza módulos: cada sección se gatea adentro
         //    por plan + permiso; la ruta exige tener ALGÚN dashboard) ──────
         Route::get('dashboard/overview', [DashboardController::class, 'overview'])
@@ -222,7 +232,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('purchases/direct', [PurchaseOrderController::class, 'directPurchase'])
                 ->middleware('api.permission:purchases.create');
             Route::get('purchases', [PurchaseOrderController::class, 'directPurchases'])
-                ->middleware('api.permission:purchases.view');
+                ->middleware('api.permission:purchases.view,accounts-payable.view');
             Route::get('purchases/{purchase}', [PurchaseOrderController::class, 'purchaseDetail'])
                 ->middleware('api.permission:purchases.view');
             // Pago (parcial o total) de una compra: caja abierta o cuenta de tesorería.

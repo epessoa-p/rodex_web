@@ -194,11 +194,17 @@ class PurchaseOrderController extends Controller
      * Compras: directas Y las generadas al recibir una OC (estas últimas nacen
      * como cuenta por pagar). `order_code` indica de qué OC viene (null = directa).
      */
-    public function directPurchases()
+    public function directPurchases(Request $request)
     {
+        // ?unpaid=1 → cuentas por pagar: solo con saldo, SIN límite (una deuda
+        // vieja no puede quedar fuera) y la más antigua primero.
+        $unpaid = $request->boolean('unpaid');
+
         $purchases = Purchase::with(['supplier:id,name', 'purchaseOrder:id,code'])
-            ->latest('purchase_date')->latest('id')
-            ->limit(50)
+            ->when($unpaid,
+                fn ($q) => $q->whereIn('payment_status', ['pending', 'partial'])
+                    ->oldest('purchase_date')->oldest('id'),
+                fn ($q) => $q->latest('purchase_date')->latest('id')->limit(50))
             ->get()
             ->map(fn (Purchase $p) => [
                 'id'             => $p->id,
@@ -206,6 +212,7 @@ class PurchaseOrderController extends Controller
                 'order_code'     => $p->purchaseOrder?->code,
                 'supplier'       => $p->supplier?->name,
                 'date'           => optional($p->purchase_date)->toDateString(),
+                'days_old'       => $p->purchase_date ? (int) $p->purchase_date->diffInDays(today()) : null,
                 'total'          => (float) $p->total,
                 'paid_amount'    => (float) $p->paid_amount,
                 'balance'        => round((float) $p->total - (float) $p->paid_amount, 2),
