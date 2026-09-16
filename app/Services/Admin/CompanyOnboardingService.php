@@ -64,13 +64,14 @@ class CompanyOnboardingService
                 $summary['warehouse'] = $branch->warehouse?->name . ' (' . $branch->warehouse?->code . ')';
             }
 
-            // ── Cargo administrador (rol nuevo con TODOS los permisos; los
+            // ── Cargo administrador (rol nuevo con todos los permisos de EMPRESA —
+            //    sin Usuarios ni Plantillas, que son de plataforma; los
             //    módulos siguen gateados por el plan) ──
             $cargo = null;
             if (! empty($data['cargo_name'])) {
                 $name = trim($data['cargo_name']);
                 $role = Role::create(['name' => $name, 'slug' => $this->uniqueRoleSlug($name)]);
-                $role->permissions()->sync(Permission::pluck('id')->all());
+                $role->permissions()->sync(Permission::forCompanies()->pluck('id')->all());
                 $cargo = Cargo::create([
                     'company_id' => $company->id,
                     'role_id'    => $role->id,

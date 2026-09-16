@@ -50,7 +50,7 @@
                 </a>
             </li>
             {{-- "Estadísticas" vive ahora en la sección Reportes. --}}
-            @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('document-templates.view', $currentCompany))
+            @if(auth()->user()->is_super_admin){{-- Plantillas: solo plataforma --}}
             <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('document-templates.*') ? 'active' : '' }}" href="{{ route('document-templates.index') }}">
                     <i class="bi bi-file-earmark-ruled"></i> Plantillas
@@ -101,7 +101,7 @@
                 </a>
             </li>
             @endif
-            @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('users.view', $currentCompany))
+            @if(auth()->user()->is_super_admin){{-- Usuarios: solo plataforma; las empresas los crean desde Personal --}}
             <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}">
                     <i class="bi bi-person-gear"></i> Usuarios
@@ -814,7 +814,7 @@
             <ul class="nav flex-column gap-1 mb-3">
                 <li><a class="nav-link app-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
                 {{-- "Estadísticas" vive ahora en la sección Reportes. --}}
-                @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('document-templates.view', $currentCompany))
+                @if(auth()->user()->is_super_admin){{-- Plantillas: solo plataforma --}}
                 <li><a class="nav-link app-link {{ request()->routeIs('document-templates.*') ? 'active' : '' }}" href="{{ route('document-templates.index') }}"><i class="bi bi-file-earmark-ruled me-2"></i>Plantillas</a></li>
                 @endif
             </ul>
@@ -837,7 +837,7 @@
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('company-profile.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('company-profile.*') ? 'active' : '' }}" href="{{ route('company-profile.edit') }}"><i class="bi bi-building me-2"></i>Mi empresa</a></li>
                 @endif
-                @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('users.view', $currentCompany))
+                @if(auth()->user()->is_super_admin){{-- Usuarios: solo plataforma; las empresas los crean desde Personal --}}
                 <li><a class="nav-link app-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}"><i class="bi bi-person-gear me-2"></i>Usuarios</a></li>
                 @endif
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('branches.view', $currentCompany))

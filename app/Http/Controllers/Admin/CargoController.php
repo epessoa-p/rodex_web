@@ -36,7 +36,7 @@ class CargoController extends Controller
 
         return view('admin.cargos.create', [
             'roles' => Role::orderBy('name')->get(),
-            'permissions' => Permission::all()->groupBy('module'),
+            'permissions' => Permission::forCompanies()->get()->groupBy('module'),
             'companies' => $authUser->is_super_admin
                 ? Company::orderBy('name')->get()
                 : collect([$authUser->getCurrentCompany()])->filter(),
@@ -149,7 +149,7 @@ class CargoController extends Controller
         return view('admin.cargos.edit', [
             'cargo' => $cargo,
             'roles' => Role::orderBy('name')->get(),
-            'permissions' => Permission::all()->groupBy('module'),
+            'permissions' => Permission::forCompanies()->get()->groupBy('module'),
             'companies' => $authUser->is_super_admin
                 ? Company::orderBy('name')->get()
                 : collect([$authUser->getCurrentCompany()])->filter(),

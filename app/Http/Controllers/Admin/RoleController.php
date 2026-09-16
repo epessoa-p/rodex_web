@@ -21,7 +21,7 @@ class RoleController extends Controller
 
     public function create()
     {
-        $permissions = Permission::all()->groupBy('module');
+        $permissions = Permission::forCompanies()->get()->groupBy('module');
         return view('admin.roles.create', compact('permissions'));
     }
 
@@ -51,7 +51,7 @@ class RoleController extends Controller
 
     public function edit(Role $role)
     {
-        $permissions = Permission::all()->groupBy('module');
+        $permissions = Permission::forCompanies()->get()->groupBy('module');
         $role->load('permissions');
         return view('admin.roles.edit', compact('role', 'permissions'));
     }

@@ -93,10 +93,12 @@ Route::middleware('auth')->group(function () {
 
     // ── Usuarios ──────────────────────────────────────────────────
     // IMPORTANTE: /create debe registrarse ANTES de /{user} (wildcard)
-    Route::prefix('admin/users')->name('users.')->group(function () {
+    // Disponibilidad de nombre de usuario: la usa el formulario de Personal (cualquier empresa).
+    Route::get('admin/users/check-username', [UserController::class, 'checkUsername'])->name('users.check-username');
+    // Solo PLATAFORMA (super_admin): las empresas crean sus usuarios desde Personal.
+    Route::middleware('check-role:super_admin')->prefix('admin/users')->name('users.')->group(function () {
         Route::get('/',               [UserController::class, 'index'])->name('index')->middleware('check-permission:users.view');
         Route::get('/create',         [UserController::class, 'create'])->name('create')->middleware('check-permission:users.create');
-        Route::get('/check-username', [UserController::class, 'checkUsername'])->name('check-username');
         Route::post('/',              [UserController::class, 'store'])->name('store')->middleware('check-permission:users.create');
         Route::get('/{user}',         [UserController::class, 'show'])->name('show')->middleware('check-permission:users.view');
         Route::get('/{user}/edit',                           [UserController::class, 'edit'])->name('edit')->middleware('check-permission:users.edit');
@@ -143,7 +145,8 @@ Route::middleware('auth')->group(function () {
     });
 
     // ── Plantillas de documento ───────────────────────────────────
-    Route::prefix('document-templates')->name('document-templates.')->group(function () {
+    // Solo PLATAFORMA (super_admin).
+    Route::middleware('check-role:super_admin')->prefix('document-templates')->name('document-templates.')->group(function () {
         Route::get('/',       [DocumentTemplateController::class, 'index'])->name('index')->middleware('check-permission:document-templates.view');
         Route::get('/create', [DocumentTemplateController::class, 'create'])->name('create')->middleware('check-permission:document-templates.create');
         Route::post('/',      [DocumentTemplateController::class, 'store'])->name('store')->middleware('check-permission:document-templates.create');
