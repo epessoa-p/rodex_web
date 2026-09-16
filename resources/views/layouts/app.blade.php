@@ -141,13 +141,7 @@
                 </a>
             </li>
             @endif
-            @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('expense-services.view', $currentCompany))
-            <li class="nav-item">
-                <a class="nav-link app-link {{ request()->routeIs('expense-services.*') ? 'active' : '' }}" href="{{ route('expense-services.index') }}">
-                    <i class="bi bi-receipt-cutoff"></i> Servicios de gasto
-                </a>
-            </li>
-            @endif
+            {{-- "Servicios de gasto" vive en Finanzas. --}}
         </ul>
 
         @module('inventory')
@@ -645,9 +639,11 @@
             $canPaymentsHub = \App\Support\PaymentsTabs::any(auth()->user());
             $canTreasury    = (auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('treasury.view', $currentCompany))
                 && $currentCompany?->planAllows('purchases');
+            $canExpenseServices = (auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('expense-services.view', $currentCompany))
+                && $currentCompany?->planAllows('cash');
             $paymentsActive = request()->routeIs('payments.*') || request()->routeIs('workshop.mechanic-payments.*') || request()->routeIs('accounts-payable.*');
         @endphp
-        @if($canPaymentsHub || $canTreasury)
+        @if($canPaymentsHub || $canTreasury || $canExpenseServices)
         <div class="sidebar-section-title mt-4">Finanzas</div>
         <ul class="nav flex-column gap-1">
             @if($canPaymentsHub)
@@ -661,6 +657,13 @@
             <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('treasury.*') ? 'active' : '' }}" href="{{ route('treasury.index') }}">
                     <i class="bi bi-bank"></i> Tesorería
+                </a>
+            </li>
+            @endif
+            @if($canExpenseServices)
+            <li class="nav-item">
+                <a class="nav-link app-link {{ request()->routeIs('expense-services.*') ? 'active' : '' }}" href="{{ route('expense-services.index') }}">
+                    <i class="bi bi-receipt-cutoff"></i> Servicios de gasto
                 </a>
             </li>
             @endif
@@ -849,9 +852,6 @@
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('cash-registers.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('cash-registers.*') ? 'active' : '' }}" href="{{ route('cash-registers.index') }}"><i class="bi bi-safe2 me-2"></i>Cajas</a></li>
                 <li><a class="nav-link app-link {{ request()->routeIs('cash.movements') ? 'active' : '' }}" href="{{ route('cash.movements') }}"><i class="bi bi-arrow-left-right me-2"></i>Movimientos</a></li>
-                @endif
-                @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('expense-services.view', $currentCompany))
-                <li><a class="nav-link app-link {{ request()->routeIs('expense-services.*') ? 'active' : '' }}" href="{{ route('expense-services.index') }}"><i class="bi bi-receipt-cutoff me-2"></i>Servicios de gasto</a></li>
                 @endif
             </ul>
 
@@ -1079,7 +1079,7 @@
             @endif
 
             {{-- ── Finanzas: Pagos (hub) + Tesorería ── --}}
-            @if($canPaymentsHub || $canTreasury)
+            @if($canPaymentsHub || $canTreasury || $canExpenseServices)
             <div class="sidebar-section-title">Finanzas</div>
             <ul class="nav flex-column gap-1 mb-3">
                 @if($canPaymentsHub)
@@ -1087,6 +1087,9 @@
                 @endif
                 @if($canTreasury)
                 <li><a class="nav-link app-link {{ request()->routeIs('treasury.*') ? 'active' : '' }}" href="{{ route('treasury.index') }}"><i class="bi bi-bank me-2"></i>Tesorería</a></li>
+                @endif
+                @if($canExpenseServices)
+                <li><a class="nav-link app-link {{ request()->routeIs('expense-services.*') ? 'active' : '' }}" href="{{ route('expense-services.index') }}"><i class="bi bi-receipt-cutoff me-2"></i>Servicios de gasto</a></li>
                 @endif
             </ul>
             @endif
