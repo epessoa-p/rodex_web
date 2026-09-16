@@ -36,7 +36,9 @@ class ClientController extends Controller
         $data = $request->validate([
             'full_name' => ['required', 'string', 'max:255'],
             'id_number' => ['nullable', 'string', 'max:50'],
-            'phone'     => ['nullable', 'string', 'max:30'],
+            // Alta rápida desde el móvil: el teléfono es obligatorio (para
+            // WhatsApp/llamada desde citas y OTs). La web sigue sin exigirlo.
+            'phone'     => ['required', 'string', 'max:30'],
             'email'     => ['nullable', 'email', 'max:255'],
             'address'   => ['nullable', 'string', 'max:255'],
         ]);

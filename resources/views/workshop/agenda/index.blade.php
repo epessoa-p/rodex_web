@@ -287,9 +287,8 @@
 
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Servicio</label>
-                            <select name="service_id" id="f_service" class="form-select">
-                                <option value="">— Sin especificar —</option>
+                            <label class="form-label small fw-semibold">Servicios <span class="text-muted fw-normal">(Ctrl + clic para varios)</span></label>
+                            <select name="service_ids[]" id="f_service" class="form-select" multiple size="4">
                                 @foreach($services as $s)<option value="{{ $s->id }}">{{ $s->name }}</option>@endforeach
                             </select>
                         </div>
@@ -372,23 +371,32 @@
             r.addEventListener('change', () => setClientMode(r.value)));
 
         // Filtra vehículos por cliente elegido
+        // Se reconstruyen las opciones (ocultarlas no funciona en todos los navegadores).
+        const ALL_VEHICLE_OPTS = Array.from(document.querySelectorAll('#f_vehicle option'))
+            .filter(o => o.value).map(o => ({ id: o.value, client: o.dataset.client, label: o.text }));
         function filterVehicles() {
             const cid = document.getElementById('f_client').value;
-            document.querySelectorAll('#f_vehicle option').forEach(o => {
-                if (!o.value) return;
-                const show = !cid || o.dataset.client === cid;
-                o.hidden = !show;
-            });
             const sel = document.getElementById('f_vehicle');
-            if (sel.selectedOptions[0]?.hidden) sel.value = '';
+            const current = sel.value;
+            const mine = cid ? ALL_VEHICLE_OPTS.filter(o => o.client === cid) : [];
+            sel.innerHTML = '';
+            sel.appendChild(new Option(cid && !mine.length ? '— Sin vehículos registrados —' : '— Sin especificar —', ''));
+            mine.forEach(o => sel.appendChild(new Option(o.label, o.id)));
+            if (current && mine.some(o => o.id === current)) sel.value = current;
         }
         document.getElementById('f_client').addEventListener('change', filterVehicles);
 
-        // Autorrellena el motivo con el servicio si está vacío
+        // Autorrellena el motivo con los servicios elegidos si está vacío
         document.getElementById('f_service').addEventListener('change', function () {
             const t = document.getElementById('f_title');
-            if (!t.value && this.selectedOptions[0]) t.value = this.selectedOptions[0].text;
+            const names = Array.from(this.selectedOptions).map(o => o.text);
+            if (!t.value && names.length) t.value = names.join(', ');
         });
+        function setServices(ids) {
+            const set = new Set((ids || []).map(String));
+            Array.from(document.getElementById('f_service').options)
+                .forEach(o => { o.selected = set.has(o.value); });
+        }
 
         function openNew() {
             form.reset();
@@ -420,7 +428,7 @@
             document.getElementById('f_vehicle').value = a.vehicle_id || '';
             document.getElementById('f_cname').value = a.customer_name || '';
             document.getElementById('f_cphone').value = a.customer_phone || '';
-            document.getElementById('f_service').value = a.service_id || '';
+            setServices(a.service_ids && a.service_ids.length ? a.service_ids : (a.service_id ? [a.service_id] : []));
             document.getElementById('f_mechanic').value = a.mechanic_id || '';
             document.getElementById('f_title').value = a.title || '';
             document.getElementById('f_date').value = a.date;

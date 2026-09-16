@@ -204,23 +204,29 @@
 
 @push('scripts')
 <script>
+// Catálogo completo; el <select> se RECONSTRUYE por cliente (ocultar <option>
+// con display:none no funciona en Chrome/Safari y se veían todos los vehículos).
+const ALL_VEHICLES = @json($vehicles->map(fn ($v) => ['id' => $v->id, 'client_id' => $v->client_id, 'label' => $v->display_name])->values());
+
 function filterVehiclesByClient() {
     const clientId = document.getElementById('client_id').value;
     const vehicleSelect = document.getElementById('vehicle_id');
-    const options = vehicleSelect.querySelectorAll('option');
+    const current = vehicleSelect.value;
 
-    options.forEach(opt => {
-        if (!opt.value) return;
-        if (!clientId || opt.dataset.client === clientId) {
-            opt.style.display = '';
-        } else {
-            opt.style.display = 'none';
-        }
-    });
+    const mine = clientId
+        ? ALL_VEHICLES.filter(v => String(v.client_id) === String(clientId))
+        : [];
 
-    const current = vehicleSelect.options[vehicleSelect.selectedIndex];
-    if (current && current.value && clientId && current.dataset.client !== clientId) {
-        vehicleSelect.value = '';
+    vehicleSelect.innerHTML = '';
+    vehicleSelect.appendChild(new Option(
+        !clientId ? '— Primero elige un cliente —'
+                  : (mine.length ? '— Seleccionar vehículo —' : '— Este cliente no tiene vehículos —'),
+        ''
+    ));
+    mine.forEach(v => vehicleSelect.appendChild(new Option(v.label, v.id)));
+
+    if (current && mine.some(v => String(v.id) === String(current))) {
+        vehicleSelect.value = current;
     }
 }
 

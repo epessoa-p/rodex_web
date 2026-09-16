@@ -12,6 +12,7 @@ use App\Models\Vehicle;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -68,9 +69,57 @@ class Appointment extends Model
         return $this->belongsTo(Vehicle::class);
     }
 
+    /** Primer servicio (legado). La lista completa está en services(). */
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
+    }
+
+    /** Servicios de la cita (varios). */
+    public function services(): BelongsToMany
+    {
+        return $this->belongsToMany(Service::class, 'appointment_services')->withTimestamps();
+    }
+
+    /**
+     * Fija los servicios de la cita y mantiene `service_id` = el primero
+     * (compatibilidad con la web y con versiones viejas de la APK).
+     */
+    public function syncServices(array $serviceIds): void
+    {
+        $ids = array_values(array_unique(array_map('intval', $serviceIds)));
+        $this->services()->sync($ids);
+        $this->forceFill(['service_id' => $ids[0] ?? null])->save();
+    }
+
+    /**
+     * Copia los servicios de la cita como líneas de la OT (precio del catálogo,
+     * cantidad 1, mecánico de la OT) y recalcula totales. Mismo shape que
+     * Api\WorkOrderController::addService.
+     */
+    public function copyServicesToWorkOrder(WorkOrder $order): void
+    {
+        $services = $this->services()->get();
+        if ($services->isEmpty() && $this->service_id) {
+            $services = Service::whereKey($this->service_id)->get();
+        }
+
+        foreach ($services as $service) {
+            $price = (float) $service->price;
+            WorkOrderService::create([
+                'work_order_id' => $order->id,
+                'service_id'    => $service->id,
+                'mechanic_id'   => $order->mechanic_id,
+                'description'   => $service->name,
+                'price'         => $price,
+                'quantity'      => 1,
+                'subtotal'      => $price,
+            ]);
+        }
+
+        if ($services->isNotEmpty()) {
+            $order->recalcTotals();
+        }
     }
 
     public function mechanic(): BelongsTo

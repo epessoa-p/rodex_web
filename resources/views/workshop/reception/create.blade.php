@@ -58,7 +58,7 @@
                                 </div>
                                 <select id="client_id" name="client_id"
                                         class="form-select @error('client_id') is-invalid @enderror"
-                                        required onchange="filterVehiclesByClient()">
+                                        required onchange="filterVehiclesByClient(true)">
                                     <option value="">— Seleccionar cliente —</option>
                                     @foreach($clients as $c)
                                     <option value="{{ $c->id }}" {{ old('client_id') == $c->id ? 'selected' : '' }}>
@@ -391,27 +391,41 @@
 
 @push('scripts')
 <script>
-function filterVehiclesByClient() {
+// Catálogo completo de vehículos (id, cliente, etiqueta). El <select> se
+// RECONSTRUYE por cliente: ocultar <option> con display:none no funciona en
+// Chrome/Safari, por eso antes se veían los vehículos de todos los clientes.
+const ALL_VEHICLES = @json($vehicles->map(fn ($v) => ['id' => $v->id, 'client_id' => $v->client_id, 'label' => $v->display_name])->values());
+
+function filterVehiclesByClient(fromUser) {
     const clientId = document.getElementById('client_id').value;
     const vehicleSelect = document.getElementById('vehicle_id');
-    const options = vehicleSelect.querySelectorAll('option');
-    let firstVisible = null;
+    const current = vehicleSelect.value;
 
-    options.forEach(opt => {
-        if (!opt.value) return; // skip placeholder
-        if (!clientId || opt.dataset.client === clientId) {
-            opt.style.display = '';
-            if (!firstVisible) firstVisible = opt;
-        } else {
-            opt.style.display = 'none';
-        }
+    const mine = clientId
+        ? ALL_VEHICLES.filter(v => String(v.client_id) === String(clientId))
+        : [];
+
+    vehicleSelect.innerHTML = '';
+    vehicleSelect.appendChild(new Option(
+        !clientId ? '— Primero elige un cliente —'
+                  : (mine.length ? '— Seleccionar vehículo —' : '— Este cliente no tiene vehículos —'),
+        ''
+    ));
+    mine.forEach(v => {
+        const opt = new Option(v.label, v.id);
+        opt.dataset.client = v.client_id;
+        vehicleSelect.appendChild(opt);
     });
 
-    // Reset selection if current vehicle doesn't match
-    const current = vehicleSelect.options[vehicleSelect.selectedIndex];
-    if (current && current.value && clientId && current.dataset.client !== clientId) {
-        vehicleSelect.value = '';
+    // Conserva la selección si sigue siendo de este cliente (p. ej. old input).
+    if (current && mine.some(v => String(v.id) === String(current))) {
+        vehicleSelect.value = current;
     }
+    if (window.jQuery && jQuery(vehicleSelect).data('select2')) {
+        jQuery(vehicleSelect).trigger('change.select2');
+    }
+    // Si el cliente elegido no tiene vehículos, pasa directo a "Nuevo".
+    if (fromUser && clientId && !mine.length) setVehicleMode('new');
 }
 
 // ── Toggle vehículo: existente / nuevo ──────────────────────────────
@@ -438,6 +452,8 @@ function setVehicleMode(mode) {
 document.addEventListener('DOMContentLoaded', function() {
     // Apply filter on load if client is pre-selected (old input)
     filterVehiclesByClient();
+    // Si el select de cliente está mejorado con select2, el onchange nativo no dispara.
+    if (window.jQuery) jQuery('#client_id').on('change', function () { filterVehiclesByClient(true); });
 
     document.querySelectorAll('#vehicleModeToggle button[data-mode]').forEach(function (btn) {
         btn.addEventListener('click', function () { setVehicleMode(this.dataset.mode); });

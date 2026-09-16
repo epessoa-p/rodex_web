@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Client;
 use App\Models\Workshop\Appointment;
 use App\Models\Workshop\Mechanic;
 use App\Models\Workshop\Service;
@@ -18,6 +19,9 @@ use Illuminate\Validation\Rule;
  */
 class AppointmentController extends Controller
 {
+    /** Relaciones que usa el payload. */
+    private const WITH = ['client', 'vehicle', 'service', 'services', 'mechanic'];
+
     /** Citas de un día (?date=YYYY-MM-DD, por defecto hoy) + resumen. */
     public function index(Request $request)
     {
@@ -25,7 +29,7 @@ class AppointmentController extends Controller
             ? Carbon::parse($request->query('date'))->startOfDay()
             : Carbon::today();
 
-        $appointments = Appointment::with(['client', 'vehicle', 'service', 'mechanic'])
+        $appointments = Appointment::with(self::WITH)
             ->whereDate('scheduled_at', $date)
             ->orderBy('scheduled_at')
             ->get();
@@ -60,7 +64,7 @@ class AppointmentController extends Controller
             $to = $from->copy()->addDays(45)->endOfDay();
         }
 
-        $appointments = Appointment::with(['client', 'vehicle', 'service', 'mechanic'])
+        $appointments = Appointment::with(self::WITH)
             ->whereBetween('scheduled_at', [$from, $to])
             ->orderBy('scheduled_at')
             ->get();
@@ -93,26 +97,35 @@ class AppointmentController extends Controller
     {
         $company = $request->attributes->get('tenant_company');
 
-        $data = $this->validateData($request, $company->id);
+        [$data, $serviceIds] = $this->validateData($request, $company->id);
 
-        $appointment = Appointment::create([
-            ...$data,
-            'company_id' => $company->id,
-            'branch_id'  => \App\Models\Personal::where('user_id', auth()->id())->value('branch_id'),
-            'status'     => 'programada',
-            'created_by' => auth()->id(),
-        ]);
+        $appointment = DB::transaction(function () use ($data, $serviceIds, $company) {
+            $appointment = Appointment::create([
+                ...$data,
+                'company_id' => $company->id,
+                'branch_id'  => \App\Models\Personal::where('user_id', auth()->id())->value('branch_id'),
+                'status'     => 'programada',
+                'created_by' => auth()->id(),
+            ]);
+            $appointment->syncServices($serviceIds);
 
-        return response()->json(['data' => $this->payload($appointment->load(['client', 'vehicle', 'service', 'mechanic']))], 201);
+            return $appointment;
+        });
+
+        return response()->json(['data' => $this->payload($appointment->load(self::WITH))], 201);
     }
 
     public function update(Request $request, Appointment $appointment)
     {
         $company = $request->attributes->get('tenant_company');
-        $data = $this->validateData($request, $company->id);
-        $appointment->update($data);
+        [$data, $serviceIds] = $this->validateData($request, $company->id);
 
-        return response()->json(['data' => $this->payload($appointment->fresh(['client', 'vehicle', 'service', 'mechanic']))]);
+        DB::transaction(function () use ($appointment, $data, $serviceIds) {
+            $appointment->update($data);
+            $appointment->syncServices($serviceIds);
+        });
+
+        return response()->json(['data' => $this->payload($appointment->fresh(self::WITH))]);
     }
 
     public function changeStatus(Request $request, Appointment $appointment)
@@ -122,7 +135,7 @@ class AppointmentController extends Controller
         ]);
         $appointment->update(['status' => $validated['status']]);
 
-        return response()->json(['data' => $this->payload($appointment->fresh(['client', 'vehicle', 'service', 'mechanic']))]);
+        return response()->json(['data' => $this->payload($appointment->fresh(self::WITH))]);
     }
 
     public function destroy(Appointment $appointment)
@@ -163,6 +176,9 @@ class AppointmentController extends Controller
                 'created_by'     => auth()->id(),
             ]);
 
+            // Los servicios agendados pasan como líneas de la OT.
+            $appointment->copyServicesToWorkOrder($order);
+
             $appointment->update(['work_order_id' => $order->id, 'status' => 'completada']);
 
             return $order;
@@ -171,6 +187,10 @@ class AppointmentController extends Controller
         return response()->json(['data' => ['work_order_id' => $order->id, 'code' => $order->code]], 201);
     }
 
+    /**
+     * Valida y normaliza. Devuelve [atributos de la cita, ids de servicios].
+     * Acepta `service_ids[]` (varios) o el legado `service_id` (uno).
+     */
     private function validateData(Request $request, int $companyId): array
     {
         $data = $request->validate([
@@ -179,6 +199,8 @@ class AppointmentController extends Controller
             'customer_phone'   => ['nullable', 'string', 'max:30'],
             'vehicle_id'       => ['nullable', Rule::exists('vehicles', 'id')->where('company_id', $companyId)],
             'service_id'       => ['nullable', Rule::exists('services', 'id')->where('company_id', $companyId)],
+            'service_ids'      => ['nullable', 'array', 'max:20'],
+            'service_ids.*'    => ['integer', Rule::exists('services', 'id')->where('company_id', $companyId)],
             'mechanic_id'      => ['nullable', Rule::exists('mechanics', 'id')->where('company_id', $companyId)],
             'title'            => ['nullable', 'string', 'max:255'],
             'scheduled_at'     => ['required', 'date'],
@@ -188,11 +210,54 @@ class AppointmentController extends Controller
             'customer_name.required_without' => 'Indica un cliente o al menos un nombre.',
         ]);
 
-        if (empty($data['title']) && ! empty($data['service_id'])) {
-            $data['title'] = Service::whereKey($data['service_id'])->value('name');
+        $serviceIds = array_key_exists('service_ids', $data)
+            ? array_values(array_unique(array_map('intval', $data['service_ids'] ?? [])))
+            : (empty($data['service_id']) ? [] : [(int) $data['service_id']]);
+        unset($data['service_ids'], $data['service_id']);
+
+        // Cliente rápido con nombre + teléfono → se registra (o se reutiliza
+        // por teléfono) para que la cita quede con cliente real.
+        if (empty($data['client_id'])
+            && ! empty($data['customer_name'])
+            && ! empty($data['customer_phone'])) {
+            $client = $this->findOrCreateClient(
+                $companyId, trim($data['customer_name']), trim($data['customer_phone'])
+            );
+            $data['client_id']      = $client->id;
+            $data['customer_name']  = null;
+            $data['customer_phone'] = null;
         }
 
-        return $data;
+        if (empty($data['title']) && $serviceIds) {
+            $data['title'] = Service::whereIn('id', $serviceIds)->orderBy('name')
+                ->pluck('name')->implode(', ');
+        }
+
+        return [$data, $serviceIds];
+    }
+
+    /** Busca el cliente de la empresa por teléfono (solo dígitos) o lo crea. */
+    private function findOrCreateClient(int $companyId, string $name, string $phone): Client
+    {
+        $digits = preg_replace('/\D+/', '', $phone);
+
+        // Candidatos por los últimos dígitos (portable, sin REGEXP_REPLACE) y
+        // comparación exacta de dígitos en PHP.
+        $existing = null;
+        if ($digits !== '') {
+            $existing = Client::where('company_id', $companyId)
+                ->where('phone', 'like', '%' . substr($digits, -6) . '%')
+                ->get()
+                ->first(fn (Client $c) => preg_replace('/\D+/', '', (string) $c->phone) === $digits);
+        }
+
+        return $existing ?? Client::create([
+            'company_id' => $companyId,
+            'full_name'  => $name,
+            'phone'      => $phone,
+            'active'     => true,
+            'created_by' => auth()->id(),
+        ]);
     }
 
     private function nextWorkOrderCode(int $companyId, ?int $branchId): string
@@ -227,6 +292,7 @@ class AppointmentController extends Controller
             'vehicle_label'    => $a->vehicle ? trim($a->vehicle->brand . ' ' . $a->vehicle->model) : null,
             'service_id'       => $a->service_id,
             'service_name'     => $a->service?->name,
+            'services'         => $a->services->map(fn (Service $s) => ['id' => $s->id, 'name' => $s->name])->values(),
             'mechanic_id'      => $a->mechanic_id,
             'mechanic_name'    => $a->mechanic?->name,
             'work_order_id'    => $a->work_order_id,

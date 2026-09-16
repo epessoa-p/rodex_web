@@ -50,7 +50,7 @@ class AppointmentController extends Controller
             ];
         }
 
-        $with = ['client', 'vehicle', 'service', 'mechanic', 'workOrder'];
+        $with = ['client', 'vehicle', 'service', 'services', 'mechanic', 'workOrder'];
         $appointments = collect();   // vista día
         $weekDays     = [];          // vista semana
         $monthCells   = [];          // vista mes
@@ -110,6 +110,7 @@ class AppointmentController extends Controller
             'customer_name'    => $a->customer_name,
             'customer_phone'   => $a->customer_phone,
             'service_id'       => $a->service_id,
+            'service_ids'      => $a->services->pluck('id')->values(),
             'mechanic_id'      => $a->mechanic_id,
             'title'            => $a->title,
             'date'             => $a->scheduled_at?->toDateString(),
@@ -129,15 +130,18 @@ class AppointmentController extends Controller
     {
         $companyId = auth()->user()->getCurrentCompany()?->id;
 
-        $data = $this->validateData($request, $companyId);
+        [$data, $serviceIds] = $this->validateData($request, $companyId);
 
-        Appointment::create([
-            ...$data,
-            'company_id' => $companyId,
-            'branch_id'  => Personal::where('user_id', auth()->id())->value('branch_id'),
-            'status'     => 'programada',
-            'created_by' => auth()->id(),
-        ]);
+        DB::transaction(function () use ($data, $serviceIds, $companyId) {
+            $appointment = Appointment::create([
+                ...$data,
+                'company_id' => $companyId,
+                'branch_id'  => Personal::where('user_id', auth()->id())->value('branch_id'),
+                'status'     => 'programada',
+                'created_by' => auth()->id(),
+            ]);
+            $appointment->syncServices($serviceIds);
+        });
 
         return redirect()
             ->route('workshop.agenda.index', ['date' => Carbon::parse($data['scheduled_at'])->toDateString()])
@@ -149,8 +153,11 @@ class AppointmentController extends Controller
         $this->authorizeAppointment($appointment);
         $companyId = auth()->user()->getCurrentCompany()?->id;
 
-        $data = $this->validateData($request, $companyId);
-        $appointment->update($data);
+        [$data, $serviceIds] = $this->validateData($request, $companyId);
+        DB::transaction(function () use ($appointment, $data, $serviceIds) {
+            $appointment->update($data);
+            $appointment->syncServices($serviceIds);
+        });
 
         return redirect()
             ->route('workshop.agenda.index', ['date' => Carbon::parse($data['scheduled_at'])->toDateString()])
@@ -213,6 +220,9 @@ class AppointmentController extends Controller
                 'created_by'     => auth()->id(),
             ]);
 
+            // Los servicios agendados pasan como líneas de la OT.
+            $appointment->copyServicesToWorkOrder($order);
+
             $appointment->update([
                 'work_order_id' => $order->id,
                 'status'        => 'completada',
@@ -234,6 +244,8 @@ class AppointmentController extends Controller
             'customer_phone'   => ['nullable', 'string', 'max:30'],
             'vehicle_id'       => ['nullable', Rule::exists('vehicles', 'id')->where('company_id', $companyId)],
             'service_id'       => ['nullable', Rule::exists('services', 'id')->where('company_id', $companyId)],
+            'service_ids'      => ['nullable', 'array', 'max:20'],
+            'service_ids.*'    => ['integer', Rule::exists('services', 'id')->where('company_id', $companyId)],
             'mechanic_id'      => ['nullable', Rule::exists('mechanics', 'id')->where('company_id', $companyId)],
             'title'            => ['nullable', 'string', 'max:255'],
             'scheduled_at'     => ['required', 'date'],
@@ -243,12 +255,19 @@ class AppointmentController extends Controller
             'customer_name.required_without' => 'Indica un cliente o al menos un nombre.',
         ]);
 
-        // Si eligió un servicio y no puso título, usa el nombre del servicio.
-        if (empty($data['title']) && ! empty($data['service_id'])) {
-            $data['title'] = Service::whereKey($data['service_id'])->value('name');
+        // Varios servicios (service_ids[]) o el legado service_id (uno).
+        $serviceIds = array_key_exists('service_ids', $data)
+            ? array_values(array_unique(array_map('intval', $data['service_ids'] ?? [])))
+            : (empty($data['service_id']) ? [] : [(int) $data['service_id']]);
+        unset($data['service_ids'], $data['service_id']);
+
+        // Si eligió servicios y no puso título, usa sus nombres.
+        if (empty($data['title']) && $serviceIds) {
+            $data['title'] = Service::whereIn('id', $serviceIds)->orderBy('name')
+                ->pluck('name')->implode(', ');
         }
 
-        return $data;
+        return [$data, $serviceIds];
     }
 
     private function authorizeAppointment(Appointment $appointment): void

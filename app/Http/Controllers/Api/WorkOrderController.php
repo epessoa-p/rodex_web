@@ -152,11 +152,16 @@ class WorkOrderController extends Controller
                 'created_by'     => $userId,
             ]);
 
-            // Enlaza la cita de origen (si viene de la agenda y no está enlazada).
+            // Enlaza la cita de origen (si viene de la agenda y no está enlazada)
+            // y copia sus servicios como líneas de la OT.
             if (! empty($data['appointment_id'])) {
-                \App\Models\Workshop\Appointment::where('id', $data['appointment_id'])
+                $appointment = \App\Models\Workshop\Appointment::where('id', $data['appointment_id'])
                     ->whereNull('work_order_id')
-                    ->update(['work_order_id' => $order->id, 'status' => 'completada']);
+                    ->first();
+                if ($appointment) {
+                    $appointment->copyServicesToWorkOrder($order);
+                    $appointment->update(['work_order_id' => $order->id, 'status' => 'completada']);
+                }
             }
 
             return $order;
