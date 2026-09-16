@@ -30,6 +30,29 @@ class StoreCompanyRequest extends FormRequest
             // Colores base (white-label): menú de navegación y cabecera. Formato #RRGGBB.
             'theme_primary' => ['nullable', 'regex:/^#([0-9a-fA-F]{6})$/'],
             'theme_accent'  => ['nullable', 'regex:/^#([0-9a-fA-F]{6})$/'],
+        ] + ($this->isMethod('post') ? $this->onboardingRules() : []);
+    }
+
+    /**
+     * Alta "lista para usar" (solo al crear): plan, primera sucursal (con su
+     * almacén), cargo administrador y primer personal con usuario y caja.
+     * Todo opcional; si se indica personal, hace falta sucursal, cargo y acceso.
+     */
+    private function onboardingRules(): array
+    {
+        return [
+            'plan_id'             => ['nullable', 'exists:plans,id'],
+            'subscription_status' => ['nullable', Rule::in(['trial', 'active'])],
+            'branch_name'         => ['nullable', 'string', 'max:255', 'required_with:personal_name'],
+            'branch_address'      => ['nullable', 'string', 'max:255'],
+            'branch_phone'        => ['nullable', 'string', 'max:20'],
+            'cargo_name'          => ['nullable', 'string', 'max:150', 'required_with:personal_name'],
+            'personal_name'       => ['nullable', 'string', 'max:255', 'required_with:user_email'],
+            'personal_phone'      => ['nullable', 'string', 'max:30'],
+            'user_email'          => ['nullable', 'email', 'max:255', 'unique:users,email', 'required_with:personal_name'],
+            'user_password'       => ['nullable', 'string', 'min:8', 'confirmed', 'required_with:personal_name'],
+            'create_register'     => ['nullable', 'boolean'],
+            'register_name'       => ['nullable', 'string', 'max:255'],
         ];
     }
 
@@ -42,6 +65,14 @@ class StoreCompanyRequest extends FormRequest
             'logo.max' => 'El logo no puede pesar más de 2 MB',
             'theme_primary.regex' => 'El color principal debe ser un valor hexadecimal (#RRGGBB).',
             'theme_accent.regex' => 'El color de acento debe ser un valor hexadecimal (#RRGGBB).',
+            'branch_name.required_with'   => 'Para crear el personal indica la sucursal.',
+            'cargo_name.required_with'    => 'Para crear el personal indica el cargo.',
+            'personal_name.required_with' => 'Indica el nombre del personal para crear su acceso.',
+            'user_email.required_with'    => 'El email es requerido para crear el acceso del personal.',
+            'user_email.unique'           => 'Ese email ya está registrado.',
+            'user_password.required_with' => 'La contraseña es requerida para crear el acceso.',
+            'user_password.min'           => 'La contraseña debe tener al menos 8 caracteres.',
+            'user_password.confirmed'     => 'Las contraseñas no coinciden.',
         ];
     }
 }

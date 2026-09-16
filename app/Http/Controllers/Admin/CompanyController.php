@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCompanyRequest;
 use App\Models\Company;
+use App\Models\Plan;
+use App\Services\Admin\CompanyOnboardingService;
 use App\Services\Admin\CompanyUsageService;
 use App\Services\Reports\IncomeStatementService;
 use App\Support\MotoBrandDefaults;
@@ -18,6 +20,7 @@ class CompanyController extends Controller
     public function __construct(
         private CompanyUsageService $usage,
         private IncomeStatementService $incomeStatement,
+        private CompanyOnboardingService $onboarding,
     ) {
         $this->middleware('check-role:super_admin');
     }
@@ -34,7 +37,9 @@ class CompanyController extends Controller
 
     public function create()
     {
-        return view('admin.companies.create');
+        return view('admin.companies.create', [
+            'plans' => Plan::where('active', true)->ordered()->get(),
+        ]);
     }
 
     public function store(StoreCompanyRequest $request)
@@ -52,7 +57,13 @@ class CompanyController extends Controller
         MotoBrandDefaults::seedFor($company->id);
         ProductOriginDefaults::seedFor($company->id);
 
-        return redirect()->route('companies.index')->with('success', 'Empresa creada exitosamente');
+        // Alta "lista para usar": plan, sucursal (+ almacén), cargo, personal
+        // con usuario y caja — lo que se haya llenado en el formulario.
+        $summary = $this->onboarding->run($company, $request->validated(), auth()->id());
+
+        return redirect()->route('companies.show', $company)
+            ->with('success', 'Empresa creada exitosamente')
+            ->with('onboarding', $summary);
     }
 
     public function show(Company $company)

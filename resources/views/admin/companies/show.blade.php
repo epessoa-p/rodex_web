@@ -5,7 +5,43 @@
 @section('page')
 @php
     $st = $usage['status'];
+    $ob = session('onboarding');
 @endphp
+
+@if(is_array($ob) && $ob)
+{{-- Resumen del alta "lista para usar": se muestra UNA vez (flash) para copiar y entregar al cliente. --}}
+<div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #16a34a !important;">
+    <div class="card-body">
+        <h6 class="fw-bold mb-2"><i class="bi bi-rocket-takeoff me-2 text-success"></i>Empresa lista para usar</h6>
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <ul class="list-unstyled mb-0 small">
+                    @if(!empty($ob['plan']))<li><i class="bi bi-credit-card me-2 text-muted"></i>Plan: <strong>{{ $ob['plan'] }}</strong></li>@endif
+                    @if(!empty($ob['branch']))<li><i class="bi bi-shop me-2 text-muted"></i>Sucursal: <strong>{{ $ob['branch'] }}</strong> · almacén {{ $ob['warehouse'] ?? '' }}</li>@endif
+                    @if(!empty($ob['cargo']))<li><i class="bi bi-person-badge me-2 text-muted"></i>Cargo: <strong>{{ $ob['cargo'] }}</strong> (todos los permisos)</li>@endif
+                    @if(!empty($ob['personal']))<li><i class="bi bi-person-vcard me-2 text-muted"></i>Personal: <strong>{{ $ob['personal'] }}</strong></li>@endif
+                    @if(!empty($ob['register']))<li><i class="bi bi-safe2 me-2 text-muted"></i>Caja: <strong>{{ $ob['register'] }}</strong></li>@endif
+                </ul>
+            </div>
+            @if(!empty($ob['email']))
+            <div class="col-lg-6">
+                <div class="rounded-3 p-3" style="background:#f0fdf4;border:1px solid #bbf7d0;">
+                    <div class="small fw-semibold mb-1"><i class="bi bi-key me-1"></i>Credenciales para el cliente</div>
+                    <pre class="mb-2 small" id="obCreds" style="white-space:pre-wrap;">Sistema: {{ config('app.url') }}
+Usuario: {{ $ob['username'] }}
+Email: {{ $ob['email'] }}
+Contraseña: {{ $ob['password'] }}</pre>
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="navigator.clipboard.writeText(document.getElementById('obCreds').innerText).then(()=>this.innerText='Copiado ✓')">
+                        <i class="bi bi-clipboard me-1"></i>Copiar
+                    </button>
+                    <span class="small text-muted ms-2">Se muestra solo esta vez.</span>
+                </div>
+            </div>
+            @endif
+        </div>
+    </div>
+</div>
+@endif
 
 <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
     <div>
