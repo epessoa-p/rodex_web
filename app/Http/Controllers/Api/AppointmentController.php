@@ -83,9 +83,10 @@ class AppointmentController extends Controller
     {
         return response()->json([
             'data' => [
+                // `price` lo usa la OT para precargar el precio al elegir del catálogo.
                 'services' => Service::where('active', true)->orderBy('name')
-                    ->get(['id', 'name'])
-                    ->map(fn (Service $s) => ['id' => $s->id, 'name' => $s->name]),
+                    ->get(['id', 'name', 'price'])
+                    ->map(fn (Service $s) => ['id' => $s->id, 'name' => $s->name, 'price' => (float) $s->price]),
                 'mechanics' => Mechanic::where('active', true)->orderBy('name')
                     ->get(['id', 'name'])
                     ->map(fn (Mechanic $m) => ['id' => $m->id, 'name' => $m->name]),
@@ -117,6 +118,14 @@ class AppointmentController extends Controller
 
     public function update(Request $request, Appointment $appointment)
     {
+        // Una cita completada (o ya convertida en OT) queda cerrada.
+        if ($appointment->status === 'completada' || $appointment->work_order_id) {
+            return response()->json([
+                'message' => 'La cita ya está completada y no se puede editar.',
+                'code'    => 'appointment_closed',
+            ], 422);
+        }
+
         $company = $request->attributes->get('tenant_company');
         [$data, $serviceIds] = $this->validateData($request, $company->id);
 

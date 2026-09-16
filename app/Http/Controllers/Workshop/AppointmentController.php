@@ -151,6 +151,10 @@ class AppointmentController extends Controller
     public function update(Request $request, Appointment $appointment)
     {
         $this->authorizeAppointment($appointment);
+        // Una cita completada (o ya convertida en OT) queda cerrada.
+        if ($appointment->status === 'completada' || $appointment->work_order_id) {
+            return back()->withErrors(['error' => 'La cita ya está completada y no se puede editar.']);
+        }
         $companyId = auth()->user()->getCurrentCompany()?->id;
 
         [$data, $serviceIds] = $this->validateData($request, $companyId);
