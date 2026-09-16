@@ -391,16 +391,10 @@
                 </a>
             </li>
             @endif
-            @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('workshop.create', $currentCompany))
-            <li class="nav-item">
-                <a class="nav-link app-link {{ request()->routeIs('workshop.reception') ? 'active' : '' }}" href="{{ route('workshop.reception') }}">
-                    <i class="bi bi-box-arrow-in-down"></i> Recepción
-                </a>
-            </li>
-            @endif
+            {{-- "Recepción" no va en el menú: se abre desde Órdenes de Trabajo (botón "Nueva recepción"). --}}
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('workshop.view', $currentCompany))
             <li class="nav-item">
-                <a class="nav-link app-link {{ request()->routeIs('workshop.orders.*') ? 'active' : '' }}" href="{{ route('workshop.orders.index') }}">
+                <a class="nav-link app-link {{ request()->routeIs('workshop.orders.*') || request()->routeIs('workshop.reception') ? 'active' : '' }}" href="{{ route('workshop.orders.index') }}">
                     <i class="bi bi-tools"></i> Órdenes de Trabajo
                 </a>
             </li>
@@ -962,11 +956,8 @@
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('appointments.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('workshop.agenda.*') ? 'active' : '' }}" href="{{ route('workshop.agenda.index') }}"><i class="bi bi-calendar2-week me-2"></i>Agenda</a></li>
                 @endif
-                @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('workshop.create', $currentCompany))
-                <li><a class="nav-link app-link {{ request()->routeIs('workshop.reception') ? 'active' : '' }}" href="{{ route('workshop.reception') }}"><i class="bi bi-box-arrow-in-down me-2"></i>Recepción</a></li>
-                @endif
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('workshop.view', $currentCompany))
-                <li><a class="nav-link app-link {{ request()->routeIs('workshop.orders.*') ? 'active' : '' }}" href="{{ route('workshop.orders.index') }}"><i class="bi bi-tools me-2"></i>Órdenes de Trabajo</a></li>
+                <li><a class="nav-link app-link {{ request()->routeIs('workshop.orders.*') || request()->routeIs('workshop.reception') ? 'active' : '' }}" href="{{ route('workshop.orders.index') }}"><i class="bi bi-tools me-2"></i>Órdenes de Trabajo</a></li>
                 @endif
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('mechanic-payments.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('workshop.mechanic-payments.*') ? 'active' : '' }}" href="{{ route('workshop.mechanic-payments.index') }}"><i class="bi bi-cash-coin me-2"></i>Pago a mecánicos</a></li>

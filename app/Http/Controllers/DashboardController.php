@@ -2,33 +2,36 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Branch;
-use App\Models\Product;
-use App\Models\Warehouse;
+use App\Services\Admin\PlatformOverviewService;
+use App\Services\Dashboard\OperationalOverviewService;
 
+/**
+ * Inicio de la web.
+ *  - Empresas: dashboard OPERATIVO del día (el mismo que el móvil): ventas hoy,
+ *    OTs, motos en taller, citas, stock, OTs por estado, próxima cita, top
+ *    servicios del mes y OTs recientes. Cada bloque según plan + permiso.
+ *  - Super admin (sin empresa activa): dashboard de la PLATAFORMA — quién usa
+ *    el sistema, suscripciones por vencer/vencidas y empresas sin actividad.
+ */
 class DashboardController extends Controller
 {
+    public function __construct(
+        private OperationalOverviewService $operational,
+        private PlatformOverviewService $platform,
+    ) {}
+
     public function index()
     {
-        $user = auth()->user();
+        $user    = auth()->user();
         $company = $user->getCurrentCompany();
 
         if ($user->is_super_admin) {
-            $totalProducts = Product::count();
-            $totalBranches = Branch::count();
-            $totalWarehouses = Warehouse::count();
-        } else {
-            $companyId = $company?->id;
-            $totalProducts = Product::where('company_id', $companyId)->count();
-            $totalBranches = Branch::where('company_id', $companyId)->count();
-            $totalWarehouses = Warehouse::where('company_id', $companyId)->count();
+            return view('dashboard.platform', ['overview' => $this->platform->build()]);
         }
 
-        return view('dashboard.index', compact(
-            'totalProducts',
-            'totalBranches',
-            'totalWarehouses',
-            'company'
-        ));
+        return view('dashboard.index', [
+            'company'  => $company,
+            'overview' => $this->operational->build($user, $company),
+        ]);
     }
 }
