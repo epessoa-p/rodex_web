@@ -34,6 +34,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // ── Finanzas → Pagos: entrada del hub (abre el primer tab visible) ──
+    Route::get('/finanzas/pagos', [\App\Http\Controllers\Finance\PaymentsController::class, 'index'])->name('payments.index');
+
     // ── Estado de resultados ──────────────────────────────────────
     Route::get('/estado-resultados', [\App\Http\Controllers\Reports\IncomeStatementController::class, 'index'])->name('income-statement.index')->middleware('check-permission:income-statement.view');
 

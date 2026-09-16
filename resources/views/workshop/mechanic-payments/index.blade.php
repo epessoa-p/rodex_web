@@ -15,6 +15,8 @@
         <a href="{{ route('workshop.dashboard') }}" class="btn btn-light border btn-sm"><i class="bi bi-arrow-left me-1"></i>Volver</a>
     </div>
 
+    @include('finance.payments._tabs')
+
     @if(session('success'))<div class="alert alert-success border-0 shadow-sm alert-dismissible fade show"><i class="bi bi-check-circle me-2"></i>{{ session('success') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>@endif
 
     <div class="card border-0 shadow-sm">

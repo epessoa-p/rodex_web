@@ -31,6 +31,16 @@ Route::middleware(['auth', 'plan:cash'])->group(function () {
     Route::post('cash/expense',     [ExpenseController::class, 'store'])
         ->name('cash.expense.store')->middleware('check-permission:cash.operate');
 
+    // ── Finanzas → Pagos (hub): Personal y Gastos; registro caja/tesorería ──
+    Route::prefix('finanzas/pagos')->name('payments.')->group(function () {
+        Route::get('/personal', [\App\Http\Controllers\Finance\PaymentsController::class, 'personal'])
+            ->name('personal')->middleware('check-permission:cash.operate,expense-services.view');
+        Route::get('/gastos',   [\App\Http\Controllers\Finance\PaymentsController::class, 'expenses'])
+            ->name('expenses')->middleware('check-permission:cash.operate,expense-services.view');
+        Route::post('/',        [\App\Http\Controllers\Finance\PaymentsController::class, 'store'])
+            ->name('store')->middleware('check-permission:cash.operate');
+    });
+
     // ── Catálogo: Servicios de gasto ──────────────────────────────
     Route::prefix('admin/expense-services')->name('expense-services.')->group(function () {
         Route::get('/',                      [ExpenseServiceController::class, 'index'])->name('index')->middleware('check-permission:expense-services.view');

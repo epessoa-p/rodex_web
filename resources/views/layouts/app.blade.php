@@ -399,13 +399,7 @@
                 </a>
             </li>
             @endif
-            @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('mechanic-payments.view', $currentCompany))
-            <li class="nav-item">
-                <a class="nav-link app-link {{ request()->routeIs('workshop.mechanic-payments.*') ? 'active' : '' }}" href="{{ route('workshop.mechanic-payments.index') }}">
-                    <i class="bi bi-cash-coin"></i> Pago a mecánicos
-                </a>
-            </li>
-            @endif
+            {{-- "Pago a mecánicos" vive en Finanzas → Pagos (tab Mecánicos). --}}
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('services.view', $currentCompany))
             <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('services.*') ? 'active' : '' }}" href="{{ route('services.index') }}">
@@ -646,18 +640,31 @@
         @endmodule
         @endif
 
-        {{-- ── Finanzas: Tesorería (gateada por plan:purchases + permiso) ── --}}
-        @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('treasury.view', $currentCompany))
-        @module('purchases')
+        {{-- ── Finanzas: Pagos (hub: Mecánicos · Proveedores · Personal · Gastos) + Tesorería ── --}}
+        @php
+            $canPaymentsHub = \App\Support\PaymentsTabs::any(auth()->user());
+            $canTreasury    = (auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('treasury.view', $currentCompany))
+                && $currentCompany?->planAllows('purchases');
+            $paymentsActive = request()->routeIs('payments.*') || request()->routeIs('workshop.mechanic-payments.*') || request()->routeIs('accounts-payable.*');
+        @endphp
+        @if($canPaymentsHub || $canTreasury)
         <div class="sidebar-section-title mt-4">Finanzas</div>
         <ul class="nav flex-column gap-1">
+            @if($canPaymentsHub)
+            <li class="nav-item">
+                <a class="nav-link app-link {{ $paymentsActive ? 'active' : '' }}" href="{{ route('payments.index') }}">
+                    <i class="bi bi-cash-coin"></i> Pagos
+                </a>
+            </li>
+            @endif
+            @if($canTreasury)
             <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('treasury.*') ? 'active' : '' }}" href="{{ route('treasury.index') }}">
                     <i class="bi bi-bank"></i> Tesorería
                 </a>
             </li>
+            @endif
         </ul>
-        @endmodule
         @endif
 
         {{-- ── Reportes ── --}}
@@ -959,9 +966,6 @@
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('workshop.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('workshop.orders.*') || request()->routeIs('workshop.reception') ? 'active' : '' }}" href="{{ route('workshop.orders.index') }}"><i class="bi bi-tools me-2"></i>Órdenes de Trabajo</a></li>
                 @endif
-                @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('mechanic-payments.view', $currentCompany))
-                <li><a class="nav-link app-link {{ request()->routeIs('workshop.mechanic-payments.*') ? 'active' : '' }}" href="{{ route('workshop.mechanic-payments.index') }}"><i class="bi bi-cash-coin me-2"></i>Pago a mecánicos</a></li>
-                @endif
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('services.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('services.*') ? 'active' : '' }}" href="{{ route('services.index') }}"><i class="bi bi-wrench-adjustable me-2"></i>Servicios</a></li>
                 @endif
@@ -1074,14 +1078,17 @@
             @endmodule
             @endif
 
-            {{-- ── Finanzas: Tesorería (gateada por plan:purchases + permiso) ── --}}
-            @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('treasury.view', $currentCompany))
-            @module('purchases')
+            {{-- ── Finanzas: Pagos (hub) + Tesorería ── --}}
+            @if($canPaymentsHub || $canTreasury)
             <div class="sidebar-section-title">Finanzas</div>
             <ul class="nav flex-column gap-1 mb-3">
+                @if($canPaymentsHub)
+                <li><a class="nav-link app-link {{ $paymentsActive ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="bi bi-cash-coin me-2"></i>Pagos</a></li>
+                @endif
+                @if($canTreasury)
                 <li><a class="nav-link app-link {{ request()->routeIs('treasury.*') ? 'active' : '' }}" href="{{ route('treasury.index') }}"><i class="bi bi-bank me-2"></i>Tesorería</a></li>
+                @endif
             </ul>
-            @endmodule
             @endif
 
             {{-- ── Reportes ── --}}
