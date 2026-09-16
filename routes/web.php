@@ -107,8 +107,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/',          [BranchController::class, 'index'])->name('index')->middleware('check-permission:branches.view');
         Route::get('/create',    [BranchController::class, 'create'])->name('create')->middleware('check-permission:branches.create');
         Route::post('/',         [BranchController::class, 'store'])->name('store')->middleware('check-permission:branches.create');
-        // Almacenes de una empresa (JSON) para poblar el select según la empresa elegida.
-        Route::get('/warehouses',[BranchController::class, 'warehousesByCompany'])->name('warehouses')->middleware('check-permission:branches.create,branches.edit');
         Route::get('/{branch}',  [BranchController::class, 'show'])->name('show')->middleware('check-permission:branches.view');
         Route::get('/{branch}/edit', [BranchController::class, 'edit'])->name('edit')->middleware('check-permission:branches.edit');
         Route::put('/{branch}',      [BranchController::class, 'update'])->name('update')->middleware('check-permission:branches.edit');

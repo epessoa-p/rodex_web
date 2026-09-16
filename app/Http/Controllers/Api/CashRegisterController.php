@@ -12,6 +12,11 @@ use Illuminate\Validation\Rule;
 /**
  * Gestión de cajas desde el móvil: crear una caja y asignarla a un personal
  * (requisito para que ese personal pueda abrir caja y vender). Alcance admin.
+ *
+ * Reglas:
+ *  - UNA caja por sucursal POR PERSONAL (un personal puede tener varias cajas,
+ *    pero en sucursales distintas).
+ *  - Una caja con registros (sesiones/movimientos) NO se edita.
  */
 class CashRegisterController extends Controller
 {
@@ -25,29 +30,34 @@ class CashRegisterController extends Controller
         return response()->json(['data' => $registers]);
     }
 
-    /** Sucursales y personal (activos) para el formulario de caja. */
+    /** Sucursales, personal (activos) y combinaciones ya ocupadas. */
     public function formData(Request $request)
     {
         $cid = $request->attributes->get('tenant_company')?->id;
 
-        // `register_id` = caja que ya ocupa la sucursal (null = libre). El móvil
-        // lo usa para ofrecer solo sucursales sin caja al crear (una por sucursal).
-        $taken = CashRegister::whereNotNull('branch_id')
-            ->pluck('id', 'branch_id');
-
         $branches = Branch::where('company_id', $cid)->where('active', true)
             ->orderBy('name')->get(['id', 'name'])
-            ->map(fn (Branch $b) => [
-                'id'          => $b->id,
-                'name'        => $b->name,
-                'register_id' => $taken[$b->id] ?? null,
-            ])->values();
+            ->map(fn (Branch $b) => ['id' => $b->id, 'name' => $b->name])->values();
 
         $personal = Personal::where('company_id', $cid)->where('active', true)
             ->orderBy('full_name')->get(['id', 'full_name'])
             ->map(fn (Personal $p) => ['id' => $p->id, 'name' => $p->full_name])->values();
 
-        return response()->json(['data' => ['branches' => $branches, 'personal' => $personal]]);
+        // Pares (sucursal, personal) que ya tienen caja: el móvil los usa para
+        // ofrecer solo sucursales libres para el personal elegido.
+        $taken = CashRegister::whereNotNull('branch_id')->whereNotNull('assigned_personal_id')
+            ->get(['id', 'branch_id', 'assigned_personal_id'])
+            ->map(fn (CashRegister $r) => [
+                'register_id' => $r->id,
+                'branch_id'   => $r->branch_id,
+                'personal_id' => $r->assigned_personal_id,
+            ])->values();
+
+        return response()->json(['data' => [
+            'branches' => $branches,
+            'personal' => $personal,
+            'taken'    => $taken,
+        ]]);
     }
 
     public function store(Request $request)
@@ -56,11 +66,8 @@ class CashRegisterController extends Controller
 
         $data = $this->validated($request, $cid);
 
-        if ($taken = $this->registerInBranch($data['branch_id'])) {
-            return response()->json([
-                'message' => "Esa sucursal ya tiene la caja «{$taken->name}». Solo se permite una caja por sucursal.",
-                'code'    => 'branch_already_has_register',
-            ], 422);
+        if ($conflict = $this->conflictResponse($data)) {
+            return $conflict;
         }
 
         $register = CashRegister::create([
@@ -77,17 +84,17 @@ class CashRegisterController extends Controller
     {
         $cid = $request->attributes->get('tenant_company')?->id;
 
+        if ($cashRegister->hasRecords()) {
+            return response()->json([
+                'message' => "La caja «{$cashRegister->name}» ya tiene sesiones o movimientos registrados y no se puede editar. Crea otra caja si necesitas cambiarla.",
+                'code'    => 'register_has_records',
+            ], 422);
+        }
+
         $data = $this->validated($request, $cid);
 
-        // Al MOVER la caja a otra sucursal, esa sucursal debe estar libre. Si se
-        // queda en la suya, se permite: hay empresas con varias cajas por sucursal
-        // creadas antes de esta regla y deben poder seguir editándose.
-        if ((int) $data['branch_id'] !== (int) $cashRegister->branch_id
-            && ($taken = $this->registerInBranch($data['branch_id'], $cashRegister->id))) {
-            return response()->json([
-                'message' => "Esa sucursal ya tiene la caja «{$taken->name}». Solo se permite una caja por sucursal.",
-                'code'    => 'branch_already_has_register',
-            ], 422);
+        if ($conflict = $this->conflictResponse($data, $cashRegister->id)) {
+            return $conflict;
         }
 
         $cashRegister->update([
@@ -98,16 +105,18 @@ class CashRegisterController extends Controller
         return response()->json(['data' => $this->item($cashRegister->load('branch', 'assignedPersonal'))]);
     }
 
-    /**
-     * Caja existente en una sucursal (excluyendo opcionalmente una), o null.
-     * Regla: una caja por sucursal. El global scope aísla por empresa y
-     * SoftDeletes excluye las eliminadas, así que una caja borrada libera la sucursal.
-     */
-    private function registerInBranch(int $branchId, ?int $exceptId = null): ?CashRegister
+    /** 422 si ese personal ya tiene caja en esa sucursal; null si está libre. */
+    private function conflictResponse(array $data, ?int $exceptId = null)
     {
-        return CashRegister::where('branch_id', $branchId)
-            ->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))
-            ->first();
+        $taken = CashRegister::conflict((int) $data['branch_id'], (int) $data['assigned_personal_id'], $exceptId);
+        if (! $taken) {
+            return null;
+        }
+
+        return response()->json([
+            'message' => "Ese personal ya tiene la caja «{$taken->name}» en esa sucursal. Solo se permite una caja por sucursal por personal.",
+            'code'    => 'personal_already_has_register_in_branch',
+        ], 422);
     }
 
     private function validated(Request $request, ?int $cid): array
@@ -133,6 +142,8 @@ class CashRegisterController extends Controller
             'assigned_personal_id' => $r->assigned_personal_id,
             'active'      => (bool) $r->active,
             'has_session' => (bool) $r->activeSession(),
+            // Con registros la caja queda congelada (no editable).
+            'has_records' => $r->hasRecords(),
         ];
     }
 }

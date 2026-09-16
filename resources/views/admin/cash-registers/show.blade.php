@@ -22,9 +22,15 @@
             </p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
+            @if($cashRegister->hasRecords())
+            <span class="btn btn-outline-secondary disabled" title="Con sesiones o movimientos registrados: ya no se edita">
+                <i class="bi bi-lock"></i> No editable
+            </span>
+            @else
             <a href="{{ route('cash-registers.edit', $cashRegister) }}" class="btn btn-outline-primary">
                 <i class="bi bi-pencil"></i> Editar
             </a>
+            @endif
             <a href="{{ route('cash-registers.index') }}" class="btn btn-light border">
                 <i class="bi bi-arrow-left"></i> Volver
             </a>

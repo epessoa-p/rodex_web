@@ -83,9 +83,15 @@
                                 <a href="{{ route('cash-registers.show', $register) }}" class="btn btn-sm btn-outline-secondary" title="Ver detalle">
                                     <i class="bi bi-eye"></i>
                                 </a>
+                                @if($register->hasRecords())
+                                <span class="btn btn-sm btn-outline-secondary disabled" title="Con sesiones o movimientos registrados: ya no se edita">
+                                    <i class="bi bi-lock"></i>
+                                </span>
+                                @else
                                 <a href="{{ route('cash-registers.edit', $register) }}" class="btn btn-sm btn-outline-primary" title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </a>
+                                @endif
                                 <form action="{{ route('cash-registers.destroy', $register) }}" method="POST" class="d-inline"
                                       onsubmit="return confirm('¿Eliminar la caja «{{ addslashes($register->name) }}»?')">
                                     @csrf @method('DELETE')

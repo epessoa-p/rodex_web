@@ -17,7 +17,12 @@
             </p>
         </div>
         <div class="d-flex gap-2">
-            @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('warehouses.edit', auth()->user()->getCurrentCompany()))
+            @if($warehouse->primaryBranch)
+            {{-- Almacén de sucursal: nombre/dirección se editan desde la sucursal --}}
+            <a href="{{ route('branches.edit', $warehouse->primaryBranch) }}" class="btn btn-outline-primary">
+                <i class="bi bi-shop me-1"></i>Editar sucursal
+            </a>
+            @elseif(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('warehouses.edit', auth()->user()->getCurrentCompany()))
             <a href="{{ route('warehouses.edit', $warehouse) }}" class="btn btn-primary">
                 <i class="bi bi-pencil me-1"></i>Editar
             </a>

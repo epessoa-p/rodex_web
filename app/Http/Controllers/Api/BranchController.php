@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
+use App\Services\Admin\BranchWarehouseService;
 use Illuminate\Http\Request;
 
 /**
@@ -35,6 +36,8 @@ class BranchController extends Controller
         ]);
 
         $branch->update($data);
+        // El almacén de la sucursal copia nombre y dirección.
+        app(BranchWarehouseService::class)->sync($branch->fresh());
 
         return response()->json(['data' => $this->item($branch)]);
     }

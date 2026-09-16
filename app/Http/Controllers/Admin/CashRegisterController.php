@@ -51,6 +51,12 @@ class CashRegisterController extends Controller
             'active'               => 'sometimes|boolean',
         ]);
 
+        if ($taken = CashRegister::conflict((int) $validated['branch_id'], (int) $validated['assigned_personal_id'])) {
+            return back()->withInput()->withErrors([
+                'assigned_personal_id' => "Ese personal ya tiene la caja «{$taken->name}» en esa sucursal. Solo se permite una caja por sucursal por personal.",
+            ]);
+        }
+
         try {
             CashRegister::create([
                 ...$validated,
@@ -83,6 +89,9 @@ class CashRegisterController extends Controller
     public function edit(CashRegister $cashRegister)
     {
         $this->authorizeRegister($cashRegister);
+        if ($locked = $this->guardEditable($cashRegister)) {
+            return $locked;
+        }
         return view('admin.cash-registers.edit', array_merge(
             $this->formData($cashRegister->company_id),
             ['cashRegister' => $cashRegister]
@@ -92,6 +101,9 @@ class CashRegisterController extends Controller
     public function update(CashRegister $cashRegister)
     {
         $this->authorizeRegister($cashRegister);
+        if ($locked = $this->guardEditable($cashRegister)) {
+            return $locked;
+        }
 
         $validated = request()->validate([
             'branch_id'            => 'required|exists:branches,id',
@@ -100,6 +112,12 @@ class CashRegisterController extends Controller
             'assigned_personal_id' => 'required|exists:personals,id',
             'active'               => 'sometimes|boolean',
         ]);
+
+        if ($taken = CashRegister::conflict((int) $validated['branch_id'], (int) $validated['assigned_personal_id'], $cashRegister->id)) {
+            return back()->withInput()->withErrors([
+                'assigned_personal_id' => "Ese personal ya tiene la caja «{$taken->name}» en esa sucursal. Solo se permite una caja por sucursal por personal.",
+            ]);
+        }
 
         try {
             $cashRegister->update([
@@ -129,6 +147,21 @@ class CashRegisterController extends Controller
             Log::error('Error al eliminar caja', ['id' => $cashRegister->id, 'message' => $e->getMessage()]);
             return back()->withErrors(['error' => 'No fue posible eliminar la caja.']);
         }
+    }
+
+    /**
+     * Una caja con sesiones o movimientos ya no se edita (su historial quedó
+     * hecho con esa sucursal/personal). Devuelve el redirect con aviso, o null.
+     */
+    protected function guardEditable(CashRegister $cashRegister)
+    {
+        if (! $cashRegister->hasRecords()) {
+            return null;
+        }
+
+        return redirect()->route('cash-registers.index')->withErrors([
+            'error' => "La caja «{$cashRegister->name}» ya tiene sesiones o movimientos registrados y no se puede editar. Si necesitas cambiarla, crea otra caja.",
+        ]);
     }
 
     protected function authorizeRegister(CashRegister $cashRegister): void

@@ -52,7 +52,15 @@
                             <td class="py-3">
                                 <code class="bg-light px-2 py-1 rounded border small">{{ $warehouse->code }}</code>
                             </td>
-                            <td class="py-3 small text-muted">{{ $warehouse->primaryBranch?->name ?: '—' }}</td>
+                            <td class="py-3 small text-muted">
+                                @if($warehouse->primaryBranch)
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2" title="Almacén de sucursal: lo gestiona el sistema desde Sucursales">
+                                        <i class="bi bi-shop me-1"></i>{{ $warehouse->primaryBranch->name }}
+                                    </span>
+                                @else
+                                    —
+                                @endif
+                            </td>
                             <td class="py-3 small text-muted">{{ $warehouse->company?->name ?: '—' }}</td>
                             <td class="py-3">
                                 @if($warehouse->active)
@@ -69,12 +77,17 @@
                                 <a href="{{ route('warehouses.show', $warehouse) }}" class="btn btn-sm btn-light border me-1" title="Ver">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('warehouses.edit', auth()->user()->getCurrentCompany()))
+                                {{-- Almacén de sucursal: se edita/borra solo desde Sucursales --}}
+                                @if($warehouse->primaryBranch)
+                                <a href="{{ route('branches.edit', $warehouse->primaryBranch) }}" class="btn btn-sm btn-light border me-1" title="Editar desde la sucursal">
+                                    <i class="bi bi-shop"></i>
+                                </a>
+                                @elseif(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('warehouses.edit', auth()->user()->getCurrentCompany()))
                                 <a href="{{ route('warehouses.edit', $warehouse) }}" class="btn btn-sm btn-light border me-1" title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 @endif
-                                @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('warehouses.delete', auth()->user()->getCurrentCompany()))
+                                @if(! $warehouse->primaryBranch && (auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('warehouses.delete', auth()->user()->getCurrentCompany())))
                                 <form action="{{ route('warehouses.destroy', $warehouse) }}" method="POST" class="d-inline"
                                       onsubmit="return confirm('¿Eliminar el almacén «{{ addslashes($warehouse->name) }}»?')">
                                     @csrf @method('DELETE')

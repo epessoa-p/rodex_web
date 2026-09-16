@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Warehouse;
+use App\Services\Admin\BranchWarehouseService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
@@ -94,7 +95,7 @@ class WarehouseController extends Controller
             $warehouse = Warehouse::create([
                 'company_id' => $companyId,
                 'name'       => $validated['name'],
-                'code'       => $validated['code'] ?: $this->generateWarehouseCode($companyId),
+                'code'       => $validated['code'] ?: BranchWarehouseService::generateCode($companyId),
                 'location'   => $validated['location'] ?? null,
                 'active'     => true,
             ]);
@@ -111,19 +112,6 @@ class WarehouseController extends Controller
             Log::error('Error en alta rápida de almacén', ['msg' => $e->getMessage()]);
             return response()->json(['ok' => false, 'message' => 'No se pudo crear el almacén.'], 500);
         }
-    }
-
-    /** Código de almacén genérico y único POR EMPRESA: ALM-001, ALM-002, … */
-    protected function generateWarehouseCode(int $companyId): string
-    {
-        $seq = Warehouse::withoutGlobalScopes()->where('company_id', $companyId)->count() + 1;
-
-        do {
-            $code = 'ALM-' . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
-            $seq++;
-        } while (Warehouse::withoutGlobalScopes()->where('company_id', $companyId)->where('code', $code)->exists());
-
-        return $code;
     }
 
     public function show(Warehouse $warehouse)
@@ -148,6 +136,9 @@ class WarehouseController extends Controller
     public function edit(Warehouse $warehouse)
     {
         $this->authorizeWarehouse($warehouse);
+        if ($locked = $this->guardBranchWarehouse($warehouse)) {
+            return $locked;
+        }
         return view('inventory.warehouses.edit', array_merge(
             $this->formData($warehouse->company_id),
             ['warehouse' => $warehouse]
@@ -157,6 +148,9 @@ class WarehouseController extends Controller
     public function update(Warehouse $warehouse)
     {
         $this->authorizeWarehouse($warehouse);
+        if ($locked = $this->guardBranchWarehouse($warehouse)) {
+            return $locked;
+        }
 
         $user      = auth()->user();
         $companyId = $user->is_super_admin
@@ -192,6 +186,9 @@ class WarehouseController extends Controller
     public function destroy(Warehouse $warehouse)
     {
         $this->authorizeWarehouse($warehouse);
+        if ($locked = $this->guardBranchWarehouse($warehouse)) {
+            return $locked;
+        }
 
         try {
             $warehouse->delete();
@@ -269,6 +266,24 @@ class WarehouseController extends Controller
             : collect([$user->getCurrentCompany()])->filter();
 
         return ['companies' => $companies];
+    }
+
+    /**
+     * El almacén de una sucursal lo gestiona el sistema: no se edita ni borra
+     * desde Almacenes (se actualiza al editar la sucursal). Devuelve el
+     * redirect con aviso, o null si el almacén es libre.
+     */
+    protected function guardBranchWarehouse(Warehouse $warehouse)
+    {
+        if (! BranchWarehouseService::belongsToBranch($warehouse)) {
+            return null;
+        }
+        $branch = $warehouse->primaryBranch;
+
+        return redirect()->route('warehouses.index')->withErrors([
+            'error' => "El almacén «{$warehouse->name}» pertenece a la sucursal "
+                . ($branch?->name ?? '') . '. Edítalo desde Sucursales: toma su nombre y dirección automáticamente.',
+        ]);
     }
 
     protected function authorizeWarehouse(Warehouse $warehouse): void

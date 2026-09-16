@@ -61,4 +61,28 @@ class CashRegister extends Model
     {
         return $this->sessions()->where('status', 'open')->latest()->first();
     }
+
+    /**
+     * ¿Ya tiene registros (sesiones o movimientos)? Entonces la caja queda
+     * "congelada": no se edita, para no reescribir la historia de esos
+     * registros (sucursal / personal / nombre con los que se hicieron).
+     */
+    public function hasRecords(): bool
+    {
+        return $this->sessions()->exists() || $this->movements()->exists();
+    }
+
+    /**
+     * Regla de unicidad: UNA caja por sucursal POR PERSONAL. Un personal puede
+     * tener varias cajas, pero en sucursales distintas. Devuelve la caja que
+     * choca (misma sucursal + mismo personal), o null. Las eliminadas (soft
+     * delete) no cuentan.
+     */
+    public static function conflict(int $branchId, int $personalId, ?int $exceptId = null): ?self
+    {
+        return static::where('branch_id', $branchId)
+            ->where('assigned_personal_id', $personalId)
+            ->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))
+            ->first();
+    }
 }

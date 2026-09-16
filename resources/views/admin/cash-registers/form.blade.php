@@ -79,7 +79,8 @@
                             </option>
                         @endforeach
                     </select>
-                    @error('assigned_personal_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    @error('assigned_personal_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    <div class="form-text">Una caja por sucursal por personal: el mismo personal puede tener cajas en distintas sucursales. Una caja con sesiones o movimientos ya no se edita.</div>
                 </div>
 
                 <div class="col-12">
