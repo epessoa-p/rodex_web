@@ -155,6 +155,8 @@ class AuthController extends Controller
             'name'          => $company->name,
             'currency'      => $company->currency ?: config('inventory.currency', 'Bs'),
             'logo_url'      => $company->logo_url,
+            'phone'         => $company->phone,
+            'address'       => $company->address,
             'theme_primary' => $company->theme_primary,
             'theme_accent'  => $company->theme_accent,
             'dashboard_order' => $company->dashboard_order ?: 'ventas,taller,compras',
