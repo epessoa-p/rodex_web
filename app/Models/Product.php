@@ -80,6 +80,11 @@ class Product extends Model
 
     public function mainPhoto(): ?ProductPhoto
     {
+        // Con ->with('photos') se resuelve en memoria (evita 2 consultas por producto).
+        if ($this->relationLoaded('photos')) {
+            return $this->photos->firstWhere('is_main', true) ?? $this->photos->first();
+        }
+
         return $this->photos()->where('is_main', true)->first() ?? $this->photos()->first();
     }
 

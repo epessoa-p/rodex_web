@@ -45,6 +45,12 @@
         .others .b { display:inline-block; background:#eef2ff; color:#3730a3; border-radius:50rem; padding:1px 8px; margin:2px 2px 0 0; }
         .empty { text-align:center; color:#888; padding:60px 0; }
         .cat-foot { text-align:center; color:#888; font-size:.82rem; padding: 8px 30px 30px; }
+        .count { color:#666; font-size:.82rem; margin-bottom:12px; }
+        .count a { color:var(--brand); }
+        .pager { display:flex; justify-content:center; margin-top:22px; }
+        .pager .pagination { margin:0; flex-wrap:wrap; }
+        .pager .page-link { color:#111; }
+        .pager .page-item.active .page-link { background:var(--brand); border-color:var(--brand); }
         .toolbar { position:sticky; top:0; background:#111; color:#fff; padding:10px 16px; display:flex; gap:8px; justify-content:center; z-index:10; }
         .toolbar a { border:0; border-radius:8px; padding:8px 16px; font-size:.9rem; text-decoration:none; }
         .btn-pdf { background:var(--brand); color:#fff; }
@@ -70,21 +76,39 @@
         </div>
 
         <div class="searchbar">
-            <div class="input-group">
-                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                <input type="text" id="catSearch" class="form-control" placeholder="Buscar producto por nombre, categoría o marca…" autocomplete="off">
-            </div>
+            {{-- Búsqueda en el servidor (recorre todo el catálogo, no solo la página). --}}
+            <form method="GET" action="{{ route('catalog.public', $branch->public_token) }}" id="catForm">
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                    <input type="search" name="q" id="catSearch" class="form-control" value="{{ $q ?? '' }}"
+                           placeholder="Buscar producto por nombre, categoría, marca o código…" autocomplete="off">
+                    <button class="btn btn-dark" type="submit"><i class="bi bi-search"></i><span class="d-none d-sm-inline ms-1">Buscar</span></button>
+                </div>
+            </form>
         </div>
 
         <div class="cat-body">
             @if($products->isEmpty())
-                <div class="empty"><i class="bi bi-box2 d-block fs-1 mb-2 opacity-25"></i>Aún no hay productos en el catálogo.</div>
+                @if(($q ?? '') !== '')
+                    <div class="empty"><i class="bi bi-search d-block fs-1 mb-2 opacity-25"></i>Sin resultados para «{{ $q }}».
+                        <div class="mt-2"><a href="{{ route('catalog.public', $branch->public_token) }}" class="btn btn-sm btn-outline-dark">Ver todo el catálogo</a></div>
+                    </div>
+                @else
+                    <div class="empty"><i class="bi bi-box2 d-block fs-1 mb-2 opacity-25"></i>Aún no hay productos en el catálogo.</div>
+                @endif
             @else
+            <div class="count">
+                @if($products->total() > $products->perPage())
+                    Mostrando {{ $products->firstItem() }}–{{ $products->lastItem() }} de {{ $products->total() }} productos
+                @else
+                    {{ $products->total() }} {{ $products->total() === 1 ? 'producto' : 'productos' }}
+                @endif
+                @if(($q ?? '') !== '') para «{{ $q }}» · <a href="{{ route('catalog.public', $branch->public_token) }}">ver todo</a>@endif
+            </div>
             <div class="grid" id="catGrid">
                 @foreach($products as $p)
                     @php $av = $availability[$p->id] ?? ['here' => false, 'others' => []]; @endphp
-                    <div class="prod"
-                         data-search="{{ \Illuminate\Support\Str::lower($p->name . ' ' . ($p->category?->name ?? '') . ' ' . ($p->brand?->name ?? '') . ' ' . ($p->sku ?? '')) }}">
+                    <div class="prod">
                         <div class="thumb">
                             @php $photo = $p->mainPhoto(); @endphp
                             @if($photo)<img src="{{ $photo->url }}" alt="{{ $p->name }}">@else<i class="bi bi-box-seam"></i>@endif
@@ -112,7 +136,9 @@
                     </div>
                 @endforeach
             </div>
-            <div class="empty d-none" id="noResults">Sin resultados para tu búsqueda.</div>
+            @if($products->hasPages())
+                <div class="pager">{{ $products->onEachSide(1)->links() }}</div>
+            @endif
             @endif
         </div>
 
@@ -125,20 +151,16 @@
     </div>
 
     <script>
+        // Enviar la búsqueda al dejar de escribir (sin esperar Enter).
         (function () {
             const input = document.getElementById('catSearch');
-            const cards = Array.from(document.querySelectorAll('#catGrid .prod'));
-            const noRes = document.getElementById('noResults');
-            if (!input) return;
+            const form  = document.getElementById('catForm');
+            if (!input || !form) return;
+            let t = null;
+            const initial = input.value;
             input.addEventListener('input', function () {
-                const q = this.value.trim().toLowerCase();
-                let visible = 0;
-                cards.forEach(c => {
-                    const on = !q || c.dataset.search.includes(q);
-                    c.style.display = on ? '' : 'none';
-                    if (on) visible++;
-                });
-                if (noRes) noRes.classList.toggle('d-none', visible > 0);
+                clearTimeout(t);
+                t = setTimeout(() => { if (input.value.trim() !== initial.trim()) form.submit(); }, 600);
             });
         })();
     </script>
