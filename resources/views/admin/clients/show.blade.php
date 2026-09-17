@@ -16,6 +16,7 @@
         'alquileres'   => ['Alquileres',    'bi-calendar2-week',     'rentals.view',   $client->rental_contracts_count],
         'cotizaciones' => ['Cotizaciones',  'bi-file-earmark-text',  'quotes.view',    $client->quotes_count],
         'garantias'    => ['Garantías',     'bi-shield-check',       'warranties.view',$client->warranties_count],
+        'citas'        => ['Citas',         'bi-calendar2-check',    'appointments.view', $client->appointments_count],
     ];
     $tabs = array_filter($tabDefs, fn ($t) => $can($t[2]));
     $firstTab = array_key_first($tabs);
@@ -190,6 +191,23 @@
                                     ['text' => optional($w->start_date)->format('d/m/Y'), 'muted' => true],
                                     ['text' => $w->months ? $w->months.' m' : '—', 'muted' => true],
                                     ['badge' => ucfirst($w->status ?? '—'), 'color' => 'secondary'],
+                                ],
+                            ])
+                        </div>
+                        @endif
+
+                        {{-- CITAS (Agenda) --}}
+                        @if(isset($tabs['citas']))
+                        <div class="tab-pane fade {{ $firstTab === 'citas' ? 'show active' : '' }}" id="pane-citas" role="tabpanel">
+                            @include('admin.clients.partials.activity-table', [
+                                'rows' => $client->appointments, 'empty' => 'Sin citas registradas.', 'icon' => 'bi-calendar2-check',
+                                'head' => ['Fecha','Hora','Servicios','Estado','OT'],
+                                'render' => fn($a) => [
+                                    ['link' => route('workshop.agenda.index', ['date' => optional($a->scheduled_at)->toDateString()]), 'text' => optional($a->scheduled_at)->format('d/m/Y'), 'mono' => true],
+                                    ['text' => optional($a->scheduled_at)->format('H:i'), 'muted' => true],
+                                    ['text' => $a->services->pluck('name')->implode(', ') ?: ($a->title ?: '—')],
+                                    ['badge' => $a->status_label, 'color' => $a->status_color],
+                                    ['text' => $a->workOrder?->code ?? '—', 'mono' => true, 'muted' => ! $a->workOrder],
                                 ],
                             ])
                         </div>

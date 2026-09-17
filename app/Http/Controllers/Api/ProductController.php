@@ -209,8 +209,45 @@ class ProductController extends Controller
                 'compatible_models' => $product->motoModels->pluck('display_name')->values(),
                 'stock_by_warehouse' => $stockByWarehouse,
                 'photos'            => $product->photos->map(fn ($ph) => $ph->url)->values(),
+                // Para el formulario de edición del móvil.
+                'category_id'       => $product->category_id,
+                'brand_id'          => $product->brand_id,
+                'cost'              => (float) $product->cost,
+                'min_stock'         => (int) $product->min_stock,
+                'description'       => $product->description,
+                'active'            => (bool) $product->active,
             ],
         ]);
+    }
+
+    /**
+     * Edición desde el móvil: datos básicos y comerciales. El stock NO se
+     * edita aquí (va por ajuste de stock, con kardex). Permiso products.edit.
+     */
+    public function update(Request $request, Product $product)
+    {
+        $cid = $product->company_id;
+
+        $data = $request->validate([
+            'name'        => ['required', 'string', 'max:255'],
+            'price'       => ['required', 'numeric', 'min:0'],
+            'cost'        => ['nullable', 'numeric', 'min:0'],
+            'unit'        => ['nullable', 'string', 'max:50'],
+            'barcode'     => ['nullable', 'string', 'max:100'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'min_stock'   => ['nullable', 'integer', 'min:0'],
+            'category_id' => ['nullable', Rule::exists('product_categories', 'id')->where('company_id', $cid)],
+            'brand_id'    => ['nullable', Rule::exists('product_brands', 'id')->where('company_id', $cid)],
+            'active'      => ['nullable', 'boolean'],
+        ]);
+
+        $product->update([
+            ...$data,
+            'name'   => trim($data['name']),
+            'active' => $request->boolean('active', true),
+        ]);
+
+        return $this->show($product->fresh());
     }
 
     /**

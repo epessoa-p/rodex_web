@@ -11,18 +11,43 @@
             <h1 class="mb-1 fw-bold fs-4"><i class="bi bi-clipboard-data me-2 text-primary"></i>Estado de resultados</h1>
             <p class="text-muted mb-0 small">Ingresos y egresos reales (caja + tesorería) del período.</p>
         </div>
-        <form method="GET" class="d-flex align-items-end gap-2 no-print">
-            <div>
-                <label class="form-label small mb-0">Desde</label>
-                <input type="date" name="from" value="{{ $report['from'] }}" class="form-control form-control-sm border">
+        {{-- Presets (como en el móvil): Este mes · Mes anterior · Todo · Rango --}}
+        @php
+            $presets = [
+                'this_month' => 'Este mes',
+                'last_month' => 'Mes anterior',
+                'all'        => 'Todo',
+                'custom'     => 'Rango',
+            ];
+        @endphp
+        <div class="d-flex align-items-end gap-2 flex-wrap no-print">
+            <div class="btn-group btn-group-sm" role="group">
+                @foreach($presets as $key => $label)
+                    @if($key === 'custom')
+                        <button type="button" class="btn {{ $preset === 'custom' ? 'btn-primary' : 'btn-outline-primary' }}"
+                                onclick="document.getElementById('isRange').classList.toggle('d-none')">
+                            <i class="bi bi-calendar-range me-1"></i>{{ $label }}
+                        </button>
+                    @else
+                        <a href="{{ route('income-statement.index', ['preset' => $key]) }}"
+                           class="btn {{ $preset === $key ? 'btn-primary' : 'btn-outline-primary' }}">{{ $label }}</a>
+                    @endif
+                @endforeach
             </div>
-            <div>
-                <label class="form-label small mb-0">Hasta</label>
-                <input type="date" name="to" value="{{ $report['to'] }}" class="form-control form-control-sm border">
-            </div>
-            <button class="btn btn-sm btn-primary"><i class="bi bi-funnel"></i></button>
-            <button type="button" class="btn btn-sm btn-light border" onclick="window.print()"><i class="bi bi-printer"></i></button>
-        </form>
+            <form method="GET" id="isRange" class="d-flex align-items-end gap-2 {{ $preset === 'custom' ? '' : 'd-none' }}">
+                <input type="hidden" name="preset" value="custom">
+                <div>
+                    <label class="form-label small mb-0">Desde</label>
+                    <input type="date" name="from" value="{{ $report['from'] }}" class="form-control form-control-sm border" data-no-uppercase>
+                </div>
+                <div>
+                    <label class="form-label small mb-0">Hasta</label>
+                    <input type="date" name="to" value="{{ $report['to'] }}" class="form-control form-control-sm border" data-no-uppercase>
+                </div>
+                <button class="btn btn-sm btn-primary" title="Aplicar rango"><i class="bi bi-funnel"></i></button>
+            </form>
+            <button type="button" class="btn btn-sm btn-light border" onclick="window.print()" title="Imprimir"><i class="bi bi-printer"></i></button>
+        </div>
     </div>
 
     <div class="row g-4">
@@ -77,7 +102,10 @@
     <div class="card border-0 shadow-sm mt-4" style="background:{{ $net >= 0 ? 'rgba(var(--bs-success-rgb),.10)' : 'rgba(var(--bs-danger-rgb),.10)' }};">
         <div class="card-body p-4 d-flex justify-content-between align-items-center">
             <div>
-                <div class="text-muted small">Resultado del período ({{ \Illuminate\Support\Carbon::parse($report['from'])->format('d/m/Y') }} — {{ \Illuminate\Support\Carbon::parse($report['to'])->format('d/m/Y') }})</div>
+                <div class="text-muted small">
+                    {{ $preset === 'all' ? 'Resultado acumulado' : 'Resultado del período' }}
+                    ({{ $preset === 'all' ? 'desde el ' : '' }}{{ \Illuminate\Support\Carbon::parse($report['from'])->format('d/m/Y') }} — {{ $preset === 'all' ? 'hoy' : \Illuminate\Support\Carbon::parse($report['to'])->format('d/m/Y') }})
+                </div>
                 <div class="fw-bold">{{ $net >= 0 ? 'Utilidad' : 'Pérdida' }}</div>
             </div>
             <div class="fs-3 fw-bold {{ $net >= 0 ? 'text-success' : 'text-danger' }}">{{ money($net) }}</div>

@@ -39,7 +39,16 @@ class AuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken($data['device'] ?? 'mobile')->plainTextToken;
+        // Higiene: fuera los tokens ya vencidos de este usuario.
+        $user->tokens()->where('expires_at', '<', now())->delete();
+
+        // Ventana de inactividad (se renueva en cada petición; ver
+        // Api\EnsureTokenFresh). La caducidad absoluta la pone sanctum.expiration.
+        $token = $user->createToken(
+            $data['device'] ?? 'mobile',
+            ['*'],
+            now()->addDays(\App\Http\Middleware\Api\EnsureTokenFresh::idleDays()),
+        )->plainTextToken;
 
         $companies = $user->is_super_admin
             ? \App\Models\Company::where('active', true)->orderBy('name')->get()

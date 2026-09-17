@@ -49,6 +49,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'plan' => \App\Http\Middleware\CheckPlanModule::class,
 
             // ── API (tokens, sin sesión) ──────────────────────────
+            'api.fresh' => \App\Http\Middleware\Api\EnsureTokenFresh::class,
             'api.tenant' => \App\Http\Middleware\Api\SetTenantFromApi::class,
             'api.subscription' => \App\Http\Middleware\Api\EnsureSubscriptionActiveApi::class,
             'api.plan' => \App\Http\Middleware\Api\CheckPlanModuleApi::class,

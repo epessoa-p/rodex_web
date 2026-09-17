@@ -50,7 +50,10 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Rodex: caducidad ABSOLUTA del token del móvil (minutos). 43200 = 30 días:
+    // aunque se use a diario, se vuelve a iniciar sesión una vez al mes. La
+    // caducidad por INACTIVIDAD (7 días) la aplica App\Http\Middleware\Api\EnsureTokenFresh.
+    'expiration' => (int) env('SANCTUM_EXPIRATION', 43200),
 
     /*
     |--------------------------------------------------------------------------

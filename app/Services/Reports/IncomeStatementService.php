@@ -14,6 +14,36 @@ use Illuminate\Support\Carbon;
  */
 class IncomeStatementService
 {
+    /** Fecha del movimiento más antiguo (caja o tesorería) de la empresa; hoy si no hay ninguno. */
+    public function firstMovementDate(): Carbon
+    {
+        $dates = array_filter([
+            CashMovement::min('movement_date'),
+            TreasuryMovement::min('movement_date'),
+        ]);
+
+        return $dates ? Carbon::parse(min($dates))->startOfDay() : Carbon::today();
+    }
+
+    /**
+     * Rango [from, to] de un preset: this_month | last_month | all. Devuelve
+     * null si el preset no existe (se usa el rango manual).
+     */
+    public function presetRange(?string $preset): ?array
+    {
+        $today = Carbon::today();
+
+        return match ($preset) {
+            'this_month' => [$today->copy()->startOfMonth(), $today],
+            'last_month' => [
+                $today->copy()->subMonthNoOverflow()->startOfMonth(),
+                $today->copy()->startOfMonth()->subDay(),
+            ],
+            'all' => [$this->firstMovementDate(), $today],
+            default => null,
+        };
+    }
+
     public function build(Carbon $from, Carbon $to): array
     {
         $income  = [];   // label => amount

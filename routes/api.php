@@ -28,7 +28,8 @@ use Illuminate\Support\Facades\Route;
 Route::post('login', [AuthController::class, 'login']);
 
 // Autenticado (token), sin empresa aún: cerrar sesión y cuenta propia.
-Route::middleware('auth:sanctum')->group(function () {
+// api.fresh: usuario activo + ventana de inactividad del token (EnsureTokenFresh).
+Route::middleware(['auth:sanctum', 'api.fresh'])->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
     Route::post('change-password', [AuthController::class, 'changePassword']);
 
@@ -87,6 +88,11 @@ Route::middleware('auth:sanctum')->group(function () {
                 ->middleware('api.permission:clients.view,pos.access,sales.view');
             Route::post('clients', [ClientController::class, 'store'])
                 ->middleware('api.permission:clients.create');
+            // Ficha del cliente (datos + actividad por tabs) y edición.
+            Route::get('clients/{client}', [ClientController::class, 'show'])
+                ->middleware('api.permission:clients.view,pos.access,sales.view');
+            Route::put('clients/{client}', [ClientController::class, 'update'])
+                ->middleware('api.permission:clients.edit');
 
             // Caja
             Route::get('cash/current-session', [CashSessionController::class, 'current'])
@@ -217,9 +223,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('products/{product}/stock-adjust', [ProductController::class, 'adjustStock'])
                 ->middleware('api.permission:products.edit');
             Route::get('product-form-data', [ProductController::class, 'formData'])
-                ->middleware('api.permission:products.create');
+                ->middleware('api.permission:products.create,products.edit');
             Route::post('products', [ProductController::class, 'store'])
                 ->middleware('api.permission:products.create');
+            Route::put('products/{product}', [ProductController::class, 'update'])
+                ->middleware('api.permission:products.edit');
         });
 
         // ── Módulo Compras (plan: purchases) ───────────────────────

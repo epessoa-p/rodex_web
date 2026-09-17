@@ -152,8 +152,9 @@ class ClientController extends Controller
             'rentalContracts.motoUnit.model.brand',
             'quotes',
             'warranties.motoUnit.model.brand',
+            'appointments.services', 'appointments.workOrder',
         ]);
-        $client->loadCount(['sales', 'workOrders', 'vehicles', 'rentalContracts', 'quotes', 'warranties']);
+        $client->loadCount(['sales', 'workOrders', 'vehicles', 'rentalContracts', 'quotes', 'warranties', 'appointments']);
 
         return view('admin.clients.show', compact('client'));
     }

@@ -83,6 +83,12 @@ class Client extends Model
         return $this->hasMany(\App\Models\Motos\Warranty::class)->latest('start_date');
     }
 
+    /** Citas de la agenda (solo las de cliente registrado). */
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(\App\Models\Workshop\Appointment::class)->latest('scheduled_at');
+    }
+
     // ── Fidelización ──────────────────────────────────────────
     public function pointMovements(): HasMany
     {
