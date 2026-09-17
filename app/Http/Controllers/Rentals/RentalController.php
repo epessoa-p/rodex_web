@@ -360,14 +360,22 @@ class RentalController extends Controller
                 // Inspección de entrada (checklist + fotos)
                 $this->handleInspection($rental, 'entrada', $request, $validated);
 
-                // Liquidación del depósito: devolver depósito − penalizaciones
+                // Liquidación del depósito: devolver depósito − penalizaciones pendientes.
+                // La parte aplicada se registra como cobro de penalización (método
+                // 'deposito', sin movimiento de caja: ese dinero ya entró en la entrega)
+                // para que el saldo del contrato no siga mostrando esas penalizaciones.
                 $refund = (bool) ($validated['refund_deposit'] ?? true);
                 if ($refund && (float) $rental->deposit > 0) {
-                    $penalties = (float) $rental->penalties_total;
-                    $refundAmount = max(0, (float) $rental->deposit - $penalties);
+                    $penalties = $rental->fresh()->penalties_balance;
+                    $applied   = min((float) $rental->deposit, $penalties);
+                    $refundAmount = max(0, (float) $rental->deposit - $applied);
                     $depositStatus = 'devuelto';
-                    if ($penalties > 0) {
+                    if ($applied > 0) {
                         $depositStatus = $refundAmount > 0 ? 'parcial' : 'aplicado';
+                        $this->applyPenaltyPayment($rental, $applied, null, [
+                            'method' => 'deposito',
+                            'notes'  => 'Depósito de garantía aplicado a penalizaciones',
+                        ]);
                     }
                     if ($refundAmount > 0 && $session) {
                         $this->chargeToCaja($rental, 'devolucion_deposito', $refundAmount, $session, [
@@ -415,6 +423,7 @@ class RentalController extends Controller
     {
         $this->authorizeContract($rental);
         $validated = $request->validate([
+            'concept'            => 'nullable|in:alquiler,penalizacion',
             'amount'             => 'required|numeric|min:0.01',
             'method'             => 'nullable|string|max:30',
             'reference'          => 'nullable|string|max:100',
@@ -425,16 +434,33 @@ class RentalController extends Controller
 
         $session = $this->currentOpenSession();
         if (!$session) {
-            return back()->withErrors(['error' => 'Necesitas tu caja abierta para registrar el pago.']);
+            return back()->withErrors(['error' => 'Necesitas tu caja abierta para registrar el cobro.']);
         }
 
+        $concept = $validated['concept'] ?? 'alquiler';
+        $amount  = (float) $validated['amount'];
         $meta = [
             'method'    => $validated['method'] ?? 'efectivo',
             'reference' => $validated['reference'] ?? null,
         ];
 
         try {
-            DB::transaction(function () use ($validated, $rental, $session, $meta) {
+            DB::transaction(function () use ($validated, $rental, $session, $meta, $concept, $amount) {
+                // ── Cobro de penalizaciones (se reparte entre las pendientes) ──
+                if ($concept === 'penalizacion') {
+                    $balance = $rental->fresh()->penalties_balance;
+                    if ($amount > $balance + 0.01) {
+                        throw ValidationException::withMessages([
+                            'amount' => 'El monto supera el saldo de penalizaciones (' . money($balance) . ').',
+                        ]);
+                    }
+                    $this->applyPenaltyPayment($rental, $amount, $session, $meta + [
+                        'notes' => $validated['notes'] ?? null,
+                    ]);
+                    return;
+                }
+
+                // ── Cobro de alquiler ──
                 // Cobrar mora acumulada de la cuota (si se solicitó)
                 if (!empty($validated['charge_late_fee']) && !empty($validated['installment_id'])) {
                     $inst = $rental->installments()->find($validated['installment_id']);
@@ -443,19 +469,20 @@ class RentalController extends Controller
                     }
                 }
 
+                $balance = $rental->fresh()->rental_balance;
+                if ($amount > $balance + 0.01) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'El monto supera el saldo de alquiler (' . money($balance) . ').',
+                    ]);
+                }
+
                 if ($rental->isRenta()) {
                     // Distribuir entre cuotas pendientes (oldest-first)
-                    $this->applyRentPayment($rental, (float) $validated['amount'], $session, $meta + [
+                    $this->applyRentPayment($rental, $amount, $session, $meta + [
                         'notes' => $validated['notes'] ?? null,
                     ]);
                 } else {
-                    $balance = (float) $rental->fresh()->balance;
-                    if ((float) $validated['amount'] > $balance + 0.01) {
-                        throw ValidationException::withMessages([
-                            'amount' => 'El monto supera el saldo pendiente (' . money($balance) . ').',
-                        ]);
-                    }
-                    $this->chargeToCaja($rental, 'alquiler', (float) $validated['amount'], $session, $meta + [
+                    $this->chargeToCaja($rental, 'alquiler', $amount, $session, $meta + [
                         'notes' => $validated['notes'] ?? 'Abono de alquiler',
                     ]);
                 }
@@ -464,7 +491,7 @@ class RentalController extends Controller
             return back()->withInput()->withErrors($e->errors());
         }
 
-        return back()->with('success', 'Pago registrado.');
+        return back()->with('success', $concept === 'penalizacion' ? 'Cobro de penalización registrado.' : 'Cobro registrado.');
     }
 
     // ── Cobros de renta (cuotas) ──────────────────────────────
@@ -512,23 +539,44 @@ class RentalController extends Controller
             'amount'       => 'required|numeric|min:0.01',
             'penalty_date' => 'nullable|date',
             'notes'        => 'nullable|string',
+            'charge_now'   => 'nullable|boolean',
+            'method'       => 'nullable|string|max:30',
         ]);
 
-        DB::transaction(function () use ($validated, $rental) {
-            RentalPenalty::create([
+        // "Cobrar ahora" requiere caja abierta (el dinero entra en el acto).
+        $chargeNow = !empty($validated['charge_now']);
+        $session   = $chargeNow ? $this->currentOpenSession() : null;
+        if ($chargeNow && !$session) {
+            return back()->withInput()->withErrors(['error' => 'Necesitas tu caja abierta para cobrar la penalización ahora. Puedes agregarla sin cobrar y cobrarla después con «Registrar cobro».']);
+        }
+
+        DB::transaction(function () use ($validated, $rental, $chargeNow, $session) {
+            $amount  = (float) $validated['amount'];
+            $penalty = RentalPenalty::create([
                 'company_id'         => $rental->company_id,
                 'rental_contract_id' => $rental->id,
                 'concept'            => $validated['concept'],
-                'amount'             => (float) $validated['amount'],
+                'amount'             => $amount,
                 'penalty_date'       => $validated['penalty_date'] ?? now()->toDateString(),
                 'notes'              => $validated['notes'] ?? null,
                 'created_by'         => auth()->id(),
             ]);
-            $rental->increment('penalties_total', (float) $validated['amount']);
+            $rental->increment('penalties_total', $amount);
             $rental->refresh()->recalcTotals();
+
+            if ($chargeNow) {
+                $this->chargeToCaja($rental, 'penalizacion', $amount, $session, [
+                    'method'            => $validated['method'] ?? 'efectivo',
+                    'rental_penalty_id' => $penalty->id,
+                    'notes'             => 'Cobro de penalización · ' . $penalty->concept,
+                ]);
+                $penalty->update(['paid_amount' => $amount]);
+            }
         });
 
-        return back()->with('success', 'Penalización agregada.');
+        return back()->with('success', $chargeNow
+            ? 'Penalización agregada y cobrada en caja.'
+            : 'Penalización agregada. Queda PENDIENTE de cobro: usa «Registrar cobro» → Penalizaciones cuando el cliente pague.');
     }
 
     // ── Historial / Show / Cancelar ───────────────────────────

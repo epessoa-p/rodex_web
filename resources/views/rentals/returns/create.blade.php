@@ -92,7 +92,7 @@
                     </div>
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Depósito retenido</span><span class="fw-semibold">{{ money($rental->deposit) }}</span></div>
-                        <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Penalizaciones previas</span><span class="fw-semibold">{{ money($rental->penalties_total) }}</span></div>
+                        <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Penalizaciones pendientes de cobro</span><span class="fw-semibold">{{ money($rental->penalties_balance) }}</span></div>
                         <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Cargos en esta devolución</span><span class="fw-semibold text-danger" id="sumNewFees">{{ currency_symbol() }} 0.00</span></div>
                         <div class="d-flex justify-content-between fw-bold border-top pt-2"><span>A reembolsar</span><span class="fs-5" id="sumRefund">{{ currency_symbol() }} 0.00</span></div>
 
@@ -121,7 +121,7 @@
 @push('scripts')
 <script>
 const DEPOSIT = {{ (float) $rental->deposit }};
-const PREV_PENALTIES = {{ (float) $rental->penalties_total }};
+const PREV_PENALTIES = {{ (float) $rental->penalties_balance }}; // solo lo aún no cobrado se descuenta del depósito
 function recalc() {
     const late = parseFloat(document.getElementById('late_fee').value) || 0;
     const dmg  = parseFloat(document.getElementById('damage_fee').value) || 0;

@@ -25,7 +25,7 @@ class RentalPayment extends Model
     ];
 
     protected $fillable = [
-        'company_id', 'rental_contract_id', 'rental_installment_id', 'cash_register_session_id',
+        'company_id', 'rental_contract_id', 'rental_installment_id', 'rental_penalty_id', 'cash_register_session_id',
         'type', 'amount', 'method', 'payment_date', 'reference', 'notes', 'user_id',
     ];
 
@@ -37,6 +37,7 @@ class RentalPayment extends Model
     public function company(): BelongsTo  { return $this->belongsTo(Company::class); }
     public function contract(): BelongsTo { return $this->belongsTo(RentalContract::class, 'rental_contract_id'); }
     public function installment(): BelongsTo { return $this->belongsTo(RentalInstallment::class, 'rental_installment_id'); }
+    public function penalty(): BelongsTo     { return $this->belongsTo(RentalPenalty::class, 'rental_penalty_id'); }
     public function session(): BelongsTo  { return $this->belongsTo(CashRegisterSession::class, 'cash_register_session_id'); }
     public function user(): BelongsTo     { return $this->belongsTo(User::class); }
 

@@ -123,6 +123,9 @@ class MotoUnitController extends Controller
         $branches = Branch::when($cid, fn ($q) => $q->where('company_id', $cid))->where('active', true)->orderBy('name')->get();
         // Todas las marcas activas (no solo las que tienen modelos relacionados).
         $brands = MotoBrand::when($cid, fn ($q) => $q->where('company_id', $cid))->where('active', true)->orderBy('name')->get();
-        return compact('models', 'branches', 'brands');
+        // Sucursal por defecto al registrar: la del personal del usuario (si está entre las activas).
+        $personalBranchId = auth()->user()->personal?->branch_id;
+        $defaultBranchId  = $branches->contains('id', $personalBranchId) ? $personalBranchId : null;
+        return compact('models', 'branches', 'brands', 'defaultBranchId');
     }
 }

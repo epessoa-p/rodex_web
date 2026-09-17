@@ -5,7 +5,7 @@
 
     <div class="mb-4">
         <h1 class="mb-1 fw-bold fs-4"><i class="bi bi-exclamation-triangle me-2 text-danger"></i>Penalizaciones</h1>
-        <p class="text-muted mb-0 small">Cargos aplicados a contratos de alquiler.</p>
+        <p class="text-muted mb-0 small">Cargos aplicados a contratos de alquiler. Los pendientes se cobran desde el contrato con «Registrar cobro».</p>
     </div>
 
     @include('rentals.partials.flash')
@@ -20,7 +20,9 @@
                             <th class="py-3 fw-semibold text-muted text-uppercase" style="font-size:.72rem;">Contrato</th>
                             <th class="py-3 fw-semibold text-muted text-uppercase" style="font-size:.72rem;">Cliente</th>
                             <th class="py-3 fw-semibold text-muted text-uppercase" style="font-size:.72rem;">Concepto</th>
-                            <th class="py-3 fw-semibold text-muted text-uppercase text-end pe-4" style="font-size:.72rem;">Monto</th>
+                            <th class="py-3 fw-semibold text-muted text-uppercase text-end" style="font-size:.72rem;">Monto</th>
+                            <th class="py-3 fw-semibold text-muted text-uppercase text-end" style="font-size:.72rem;">Saldo</th>
+                            <th class="py-3 fw-semibold text-muted text-uppercase text-end pe-4" style="font-size:.72rem;">Estado</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -30,10 +32,12 @@
                             <td class="py-2"><a href="{{ route('rentals.show', $p->rental_contract_id) }}" class="text-decoration-none fw-semibold text-dark font-monospace" style="font-size:.8rem;">{{ $p->contract?->code }}</a></td>
                             <td class="py-2 small">{{ $p->contract?->client?->full_name ?? '—' }}</td>
                             <td class="py-2 small">{{ $p->concept }}</td>
-                            <td class="py-2 text-end fw-semibold pe-4">{{ money($p->amount) }}</td>
+                            <td class="py-2 text-end fw-semibold">{{ money($p->amount) }}</td>
+                            <td class="py-2 text-end {{ $p->balance > 0.01 ? "text-danger fw-semibold" : "text-muted" }}">{{ money($p->balance) }}</td>
+                            <td class="py-2 text-end pe-4"><span class="badge bg-{{ $p->status_color }}-subtle text-{{ $p->status_color }} border border-{{ $p->status_color }}-subtle" style="font-size:.66rem;">{{ $p->status_label }}</span></td>
                         </tr>
                         @empty
-                        <tr><td colspan="5" class="text-center py-5 text-muted"><i class="bi bi-exclamation-triangle fs-2 opacity-25 d-block mb-2"></i>Sin penalizaciones registradas.</td></tr>
+                        <tr><td colspan="7" class="text-center py-5 text-muted"><i class="bi bi-exclamation-triangle fs-2 opacity-25 d-block mb-2"></i>Sin penalizaciones registradas.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

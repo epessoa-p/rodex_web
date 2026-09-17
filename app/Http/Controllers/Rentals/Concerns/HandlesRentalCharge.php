@@ -37,6 +37,7 @@ trait HandlesRentalCharge
             'company_id'               => $contract->company_id,
             'rental_contract_id'       => $contract->id,
             'rental_installment_id'    => $meta['rental_installment_id'] ?? null,
+            'rental_penalty_id'        => $meta['rental_penalty_id'] ?? null,
             'cash_register_session_id' => $session?->id,
             'type'                     => $type,
             'amount'                   => $amount,
@@ -131,11 +132,13 @@ trait HandlesRentalCharge
 
         $contract = $installment->contract;
 
-        RentalPenalty::create([
+        // Se cobra en el acto: la penalización nace pagada y enlazada al cobro.
+        $penalty = RentalPenalty::create([
             'company_id'         => $contract->company_id,
             'rental_contract_id' => $contract->id,
             'concept'            => 'Mora por atraso · cuota ' . $installment->number,
             'amount'             => $accrued,
+            'paid_amount'        => $accrued,
             'penalty_date'       => now()->toDateString(),
             'created_by'         => auth()->id(),
         ]);
@@ -145,12 +148,51 @@ trait HandlesRentalCharge
 
         $this->chargeToCaja($contract, 'penalizacion', $accrued, $session, $meta + [
             'rental_installment_id' => $installment->id,
+            'rental_penalty_id'     => $penalty->id,
             'notes' => 'Mora por atraso · cuota ' . $installment->number,
         ]);
 
         $installment->increment('late_fee_charged', $accrued);
 
         return $accrued;
+    }
+
+    /**
+     * Aplica un cobro de penalizaciones repartiéndolo entre las penalizaciones
+     * con saldo (de la más antigua a la más nueva). Con $session null no
+     * genera movimiento de caja (p. ej. cuando se aplica el depósito de
+     * garantía, cuyo dinero ya entró a caja en la entrega).
+     * Devuelve el monto realmente aplicado.
+     */
+    protected function applyPenaltyPayment(RentalContract $contract, float $amount, ?CashRegisterSession $session, array $meta = []): float
+    {
+        $remaining = $amount;
+        $applied   = 0.0;
+
+        $pending = $contract->penalties()
+            ->whereColumn('paid_amount', '<', 'amount')
+            ->reorder() // la relación ordena por fecha DESC; aquí va de la más antigua a la más nueva
+            ->orderBy('penalty_date')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($pending as $penalty) {
+            if ($remaining <= 0.001) {
+                break;
+            }
+            $apply = min($remaining, $penalty->balance);
+            if ($apply > 0) {
+                $this->chargeToCaja($contract, 'penalizacion', $apply, $session, $meta + [
+                    'rental_penalty_id' => $penalty->id,
+                    'notes' => $meta['notes'] ?? ('Cobro de penalización · ' . $penalty->concept),
+                ]);
+                $penalty->increment('paid_amount', $apply);
+                $remaining -= $apply;
+                $applied   += $apply;
+            }
+        }
+
+        return $applied;
     }
 
     protected function nextRentalCode(int $companyId): string

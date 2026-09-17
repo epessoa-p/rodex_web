@@ -7,6 +7,13 @@
     $canEdit  = auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('rentals.edit', $company);
     $canDeliver = auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('rentals.deliver', $company);
     $canReturn  = auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('rentals.return', $company);
+
+    // Un solo punto de cobro: el modal #payModal (alquiler o penalizaciones).
+    // Se puede cobrar mientras haya saldo y el contrato no esté anulado ni sin confirmar.
+    $rentalBalance    = $rental->rental_balance;
+    $penaltiesBalance = $rental->penalties_balance;
+    $canCollect       = $canPay && !in_array($rental->status, ['reservada', 'anulada']) && $rental->balance > 0.01;
+    $methodLabels     = ['efectivo' => 'Efectivo', 'transferencia' => 'Transferencia', 'tarjeta' => 'Tarjeta', 'qr' => 'QR', 'deposito' => 'Depósito de garantía'];
 @endphp
 <div class="container-fluid">
 
@@ -71,9 +78,6 @@
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
                     <h6 class="mb-0 fw-semibold"><i class="bi bi-calendar2-week me-2 text-muted"></i>Calendario de renta</h6>
-                    @if($canPay && in_array($rental->status, ['contrato','entregada']) && $rental->balance > 0.01)
-                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#payModal"><i class="bi bi-cash-coin me-1"></i>Registrar cobro</button>
-                    @endif
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -167,24 +171,32 @@
             {{-- Pagos --}}
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 fw-semibold"><i class="bi bi-cash-coin me-2 text-muted"></i>Pagos</h6>
-                    @if($canPay && in_array($rental->status, ['contrato','entregada','devuelta']) && $rental->balance > 0.01)
-                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#payModal"><i class="bi bi-plus-lg me-1"></i>Registrar pago</button>
-                    @endif
+                    <h6 class="mb-0 fw-semibold"><i class="bi bi-cash-coin me-2 text-muted"></i>Cobros registrados</h6>
+                    <span class="text-muted small">Para cobrar usa «Registrar cobro» (a la derecha)</span>
                 </div>
                 <div class="card-body p-0">
                     <table class="table table-sm align-middle mb-0" style="font-size:.82rem;">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4 py-2">Fecha</th>
+                                <th class="py-2">Concepto</th>
+                                <th class="py-2">Detalle</th>
+                                <th class="py-2">Método</th>
+                                <th class="py-2 text-end pe-4">Monto</th>
+                            </tr>
+                        </thead>
                         <tbody>
                             @forelse($rental->payments as $p)
                             @php $isRefund = $p->type === 'devolucion_deposito'; @endphp
                             <tr>
                                 <td class="ps-4 py-2 text-muted">{{ $p->payment_date?->format('d/m/Y') }}</td>
-                                <td class="py-2">{{ $p->type_label }}</td>
-                                <td class="py-2 text-muted">{{ ucfirst($p->method) }}</td>
+                                <td class="py-2 fw-semibold">{{ $p->type_label }}</td>
+                                <td class="py-2 text-muted">{{ $p->notes ?: '—' }}</td>
+                                <td class="py-2 text-muted">{{ $methodLabels[$p->method] ?? ucfirst((string) $p->method) }}</td>
                                 <td class="py-2 text-end pe-4 fw-semibold {{ $isRefund ? 'text-danger' : '' }}">{{ $isRefund ? '-' : '' }}{{ money($p->amount) }}</td>
                             </tr>
                             @empty
-                            <tr><td colspan="4" class="text-center py-3 text-muted small">Sin pagos.</td></tr>
+                            <tr><td colspan="5" class="text-center py-3 text-muted small">Sin cobros.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -193,23 +205,46 @@
 
             {{-- Penalizaciones --}}
             <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 fw-semibold"><i class="bi bi-exclamation-triangle me-2 text-muted"></i>Penalizaciones</h6>
-                    @if($canEdit && !in_array($rental->status, ['cerrada','anulada']))
-                    <button class="btn btn-sm btn-light border" data-bs-toggle="modal" data-bs-target="#penaltyModal"><i class="bi bi-plus-lg me-1"></i>Agregar</button>
-                    @endif
+                <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="bi bi-exclamation-triangle me-2 text-muted"></i>Penalizaciones
+                        @if($penaltiesBalance > 0.01)
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-2" style="font-size:.66rem;">{{ money($penaltiesBalance) }} sin cobrar</span>
+                        @endif
+                    </h6>
+                    <div class="d-flex gap-2">
+                        @if($canCollect && $penaltiesBalance > 0.01)
+                        <button type="button" class="btn btn-sm btn-primary" onclick="openPay('penalizacion')"><i class="bi bi-cash-coin me-1"></i>Cobrar penalización</button>
+                        @endif
+                        @if($canEdit && !in_array($rental->status, ['cerrada','anulada']))
+                        <button type="button" class="btn btn-sm btn-light border" data-bs-toggle="modal" data-bs-target="#penaltyModal"><i class="bi bi-plus-lg me-1"></i>Agregar</button>
+                        @endif
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <table class="table table-sm align-middle mb-0" style="font-size:.82rem;">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4 py-2">Fecha</th>
+                                <th class="py-2">Concepto</th>
+                                <th class="py-2 text-end">Monto</th>
+                                <th class="py-2 text-end">Cobrado</th>
+                                <th class="py-2 text-end">Saldo</th>
+                                <th class="py-2 text-end pe-4">Estado</th>
+                            </tr>
+                        </thead>
                         <tbody>
                             @forelse($rental->penalties as $p)
                             <tr>
                                 <td class="ps-4 py-2 text-muted">{{ $p->penalty_date?->format('d/m/Y') }}</td>
-                                <td class="py-2">{{ $p->concept }}</td>
-                                <td class="py-2 text-end pe-4 fw-semibold">{{ money($p->amount) }}</td>
+                                <td class="py-2">{{ $p->concept }}@if($p->notes)<div class="text-muted" style="font-size:.72rem;">{{ $p->notes }}</div>@endif</td>
+                                <td class="py-2 text-end">{{ money($p->amount) }}</td>
+                                <td class="py-2 text-end text-success">{{ money($p->paid_amount) }}</td>
+                                <td class="py-2 text-end fw-semibold">{{ money($p->balance) }}</td>
+                                <td class="py-2 text-end pe-4"><span class="badge bg-{{ $p->status_color }}-subtle text-{{ $p->status_color }} border border-{{ $p->status_color }}-subtle" style="font-size:.66rem;">{{ $p->status_label }}</span></td>
                             </tr>
                             @empty
-                            <tr><td colspan="3" class="text-center py-3 text-muted small">Sin penalizaciones.</td></tr>
+                            <tr><td colspan="6" class="text-center py-3 text-muted small">Sin penalizaciones.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -222,14 +257,42 @@
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-bottom py-3 px-4"><h6 class="mb-0 fw-semibold"><i class="bi bi-calculator me-2 text-muted"></i>Resumen financiero</h6></div>
                 <div class="card-body p-4">
-                    <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Alquiler</span><span class="fw-semibold">{{ money($rental->rental_total) }}</span></div>
-                    <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Penalizaciones</span><span class="fw-semibold">{{ money($rental->penalties_total) }}</span></div>
-                    <div class="d-flex justify-content-between mb-2 fw-bold border-top pt-2"><span>Total</span><span>{{ money($rental->total) }}</span></div>
-                    <div class="d-flex justify-content-between mb-2 small"><span class="text-muted">Pagado</span><span class="fw-semibold text-success">{{ money($rental->paid_amount) }}</span></div>
-                    <div class="d-flex justify-content-between mb-3 small"><span class="text-muted">Saldo</span><span class="fw-semibold text-danger">{{ money($rental->balance) }}</span></div>
-                    <div class="text-center">
+                    <table class="table table-sm table-borderless mb-2 small align-middle">
+                        <thead>
+                            <tr class="text-muted" style="font-size:.7rem;"><th class="ps-0 fw-normal"></th><th class="text-end fw-normal">Total</th><th class="text-end fw-normal">Cobrado</th><th class="text-end pe-0 fw-normal">Saldo</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="ps-0 text-muted">Alquiler</td>
+                                <td class="text-end">{{ money($rental->rental_total) }}</td>
+                                <td class="text-end text-success">{{ money($rental->rental_paid) }}</td>
+                                <td class="text-end pe-0 fw-semibold {{ $rentalBalance > 0.01 ? 'text-danger' : '' }}">{{ money($rentalBalance) }}</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-0 text-muted">Penalizaciones</td>
+                                <td class="text-end">{{ money($rental->penalties_total) }}</td>
+                                <td class="text-end text-success">{{ money($rental->penalties_paid) }}</td>
+                                <td class="text-end pe-0 fw-semibold {{ $penaltiesBalance > 0.01 ? 'text-danger' : '' }}">{{ money($penaltiesBalance) }}</td>
+                            </tr>
+                            <tr class="border-top fw-bold">
+                                <td class="ps-0 pt-2">Total</td>
+                                <td class="text-end pt-2">{{ money($rental->total) }}</td>
+                                <td class="text-end pt-2 text-success">{{ money($rental->paid_amount) }}</td>
+                                <td class="text-end pe-0 pt-2 text-danger">{{ money($rental->balance) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="text-center mb-3">
                         <span class="badge bg-{{ $rental->payment_status_color }}-subtle text-{{ $rental->payment_status_color }} border border-{{ $rental->payment_status_color }}-subtle">{{ $rental->payment_status_label }}</span>
                     </div>
+                    @if($canCollect)
+                    <button type="button" class="btn btn-primary w-100" onclick="openPay({{ $penaltiesBalance > 0.01 && $rentalBalance <= 0.01 ? "'penalizacion'" : "'alquiler'" }})">
+                        <i class="bi bi-cash-coin me-1"></i>Registrar cobro
+                    </button>
+                    <p class="text-muted text-center mb-0 mt-2" style="font-size:.72rem;">Cobra alquiler (cuotas) o penalizaciones pendientes desde aquí.</p>
+                    @elseif($rental->balance <= 0.01 && $rental->total > 0)
+                    <div class="text-center text-success small"><i class="bi bi-check-circle me-1"></i>Sin saldo pendiente</div>
+                    @endif
                 </div>
             </div>
             <div class="card border-0 shadow-sm">
@@ -250,12 +313,27 @@
   <div class="modal-dialog">
     <form class="modal-content" action="{{ route('rentals.pay', $rental) }}" method="POST">
       @csrf
-      <div class="modal-header"><h6 class="modal-title fw-semibold"><i class="bi bi-cash-coin me-2"></i>Registrar pago</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header"><h6 class="modal-title fw-semibold"><i class="bi bi-cash-coin me-2"></i>Registrar cobro</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
-        <p class="small text-muted">Saldo pendiente: <strong>{{ money($rental->balance) }}</strong></p>
+        <div class="mb-3">
+            <label class="form-label small fw-semibold">¿Qué se cobra? *</label>
+            <div class="d-flex flex-column gap-2">
+                <label class="border rounded p-2 d-flex align-items-center gap-2 {{ $rentalBalance <= 0.01 ? 'opacity-50' : '' }}" style="cursor:pointer;">
+                    <input class="form-check-input mt-0" type="radio" name="concept" value="alquiler" data-balance="{{ number_format($rentalBalance, 2, '.', '') }}" {{ $rentalBalance <= 0.01 ? 'disabled' : '' }} onchange="payConceptChanged()">
+                    <span class="flex-grow-1 small"><strong>Alquiler</strong>@if($rental->isRenta()) <span class="text-muted">· se aplica a las cuotas más antiguas</span>@endif</span>
+                    <span class="small fw-semibold {{ $rentalBalance > 0.01 ? 'text-danger' : 'text-success' }}">{{ $rentalBalance > 0.01 ? 'saldo ' . money($rentalBalance) : 'al día' }}</span>
+                </label>
+                <label class="border rounded p-2 d-flex align-items-center gap-2 {{ $penaltiesBalance <= 0.01 ? 'opacity-50' : '' }}" style="cursor:pointer;">
+                    <input class="form-check-input mt-0" type="radio" name="concept" value="penalizacion" data-balance="{{ number_format($penaltiesBalance, 2, '.', '') }}" {{ $penaltiesBalance <= 0.01 ? 'disabled' : '' }} onchange="payConceptChanged()">
+                    <span class="flex-grow-1 small"><strong>Penalizaciones</strong> <span class="text-muted">· se aplica a las pendientes más antiguas</span></span>
+                    <span class="small fw-semibold {{ $penaltiesBalance > 0.01 ? 'text-danger' : 'text-success' }}">{{ $penaltiesBalance > 0.01 ? 'saldo ' . money($penaltiesBalance) : 'sin pendientes' }}</span>
+                </label>
+            </div>
+        </div>
         <div class="mb-3"><label class="form-label small fw-semibold">Monto *</label>
             <div class="input-group"><span class="input-group-text bg-light">{{ currency_symbol() }}</span>
-            <input type="number" name="amount" class="form-control" step="0.01" min="0.01" max="{{ $rental->balance }}" value="{{ number_format($rental->balance, 2, '.', '') }}" required></div></div>
+            <input type="number" name="amount" id="pay_amount" class="form-control" step="0.01" min="0.01" required></div>
+            <div class="form-text" id="pay_hint"></div></div>
         <div class="mb-3"><label class="form-label small fw-semibold">Método</label>
             <select name="method" class="form-select">
                 <option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option><option value="qr">QR</option>
@@ -263,7 +341,7 @@
         <div class="mb-3"><label class="form-label small fw-semibold">Referencia</label><input type="text" name="reference" class="form-control"></div>
         <div class="mb-0"><label class="form-label small fw-semibold">Notas</label><textarea name="notes" rows="2" class="form-control"></textarea></div>
       </div>
-      <div class="modal-footer"><button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Registrar</button></div>
+      <div class="modal-footer"><button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Registrar cobro</button></div>
     </form>
   </div>
 </div>
@@ -282,12 +360,58 @@
             <div class="input-group"><span class="input-group-text bg-light">{{ currency_symbol() }}</span>
             <input type="number" name="amount" class="form-control" step="0.01" min="0.01" required></div></div>
         <div class="mb-3"><label class="form-label small fw-semibold">Fecha</label><input type="date" name="penalty_date" class="form-control" value="{{ now()->format('Y-m-d') }}"></div>
-        <div class="mb-0"><label class="form-label small fw-semibold">Notas</label><textarea name="notes" rows="2" class="form-control"></textarea></div>
+        <div class="mb-3"><label class="form-label small fw-semibold">Notas</label><textarea name="notes" rows="2" class="form-control"></textarea></div>
+        @if($canPay)
+        <div class="border rounded p-3 bg-light">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="charge_now" id="pen_charge_now" value="1" onchange="document.getElementById('pen_method_wrap').style.display = this.checked ? '' : 'none'">
+                <label class="form-check-label small fw-semibold" for="pen_charge_now">Cobrar ahora en caja</label>
+            </div>
+            <div class="mt-2" id="pen_method_wrap" style="display:none;">
+                <select name="method" class="form-select form-select-sm">
+                    <option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option><option value="qr">QR</option>
+                </select>
+            </div>
+            <div class="text-muted mt-2" style="font-size:.72rem;">
+                <i class="bi bi-info-circle me-1"></i>Si no la cobras ahora, queda <strong>pendiente</strong> y podrás cobrarla después con «Registrar cobro» → Penalizaciones. En la devolución, el depósito de garantía se aplica a las penalizaciones pendientes.
+            </div>
+        </div>
+        @else
+        <div class="text-muted" style="font-size:.72rem;"><i class="bi bi-info-circle me-1"></i>La penalización queda pendiente de cobro.</div>
+        @endif
       </div>
       <div class="modal-footer"><button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Agregar</button></div>
     </form>
   </div>
 </div>
 @endif
+
+@push('scripts')
+<script>
+// ── Modal de cobro: un solo modal para alquiler y penalizaciones ──
+function payConceptChanged() {
+    const sel = document.querySelector('#payModal input[name="concept"]:checked');
+    const amt = document.getElementById('pay_amount');
+    const hint = document.getElementById('pay_hint');
+    if (!sel || !amt) return;
+    const bal = parseFloat(sel.getAttribute('data-balance') || '0') || 0;
+    amt.max = bal.toFixed(2);
+    amt.value = bal.toFixed(2);
+    hint.textContent = 'Máximo: ' + bal.toFixed(2) + ' (saldo de ' + (sel.value === 'penalizacion' ? 'penalizaciones' : 'alquiler') + ').';
+}
+
+function openPay(concept) {
+    const modalEl = document.getElementById('payModal');
+    if (!modalEl) return;
+    let radio = modalEl.querySelector('input[name="concept"][value="' + concept + '"]');
+    if (!radio || radio.disabled) {
+        radio = modalEl.querySelector('input[name="concept"]:not([disabled])');
+    }
+    if (radio) { radio.checked = true; }
+    payConceptChanged();
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+}
+</script>
+@endpush
 
 @endsection

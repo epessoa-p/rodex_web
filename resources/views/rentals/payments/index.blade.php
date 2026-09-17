@@ -34,7 +34,7 @@
                                 @php $isRefund = $p->type === 'devolucion_deposito'; @endphp
                                 <span class="badge bg-{{ $isRefund ? 'danger' : 'success' }}-subtle text-{{ $isRefund ? 'danger' : 'success' }} border border-{{ $isRefund ? 'danger' : 'success' }}-subtle" style="font-size:.68rem;">{{ $p->type_label }}</span>
                             </td>
-                            <td class="py-2 small text-muted">{{ ucfirst($p->method) }}</td>
+                            <td class="py-2 small text-muted">{{ $p->method === "deposito" ? "Depósito de garantía" : ucfirst((string) $p->method) }}</td>
                             <td class="py-2 text-end fw-semibold pe-4 {{ $isRefund ? 'text-danger' : '' }}">{{ $isRefund ? '-' : '' }}{{ money($p->amount) }}</td>
                         </tr>
                         @empty

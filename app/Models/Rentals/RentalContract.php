@@ -107,6 +107,32 @@ class RentalContract extends Model
         return (float) ($this->total - $this->paid_amount);
     }
 
+    // ── Desglose alquiler / penalizaciones ────────────────────
+    // paid_amount acumula ambos conceptos; el detalle por penalización vive
+    // en rental_penalties.paid_amount, así que el alquiler es la diferencia.
+
+    /** Cobrado por penalizaciones (suma de paid_amount de las penalizaciones). */
+    public function getPenaltiesPaidAttribute(): float
+    {
+        $penalties = $this->relationLoaded('penalties') ? $this->penalties : $this->penalties()->get();
+        return (float) $penalties->sum(fn ($p) => (float) $p->paid_amount);
+    }
+
+    public function getPenaltiesBalanceAttribute(): float
+    {
+        return max(0.0, (float) $this->penalties_total - $this->penalties_paid);
+    }
+
+    public function getRentalPaidAttribute(): float
+    {
+        return max(0.0, (float) $this->paid_amount - $this->penalties_paid);
+    }
+
+    public function getRentalBalanceAttribute(): float
+    {
+        return max(0.0, (float) $this->rental_total - $this->rental_paid);
+    }
+
     public function getPaymentModeLabelAttribute(): string { return self::PAYMENT_MODES[$this->payment_mode] ?? $this->payment_mode; }
     public function getBillingPeriodLabelAttribute(): string { return self::BILLING_PERIODS[$this->billing_period] ?? ($this->billing_period ?? '—'); }
 

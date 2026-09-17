@@ -39,6 +39,48 @@ class MotoBrandController extends Controller
         }
     }
 
+    /**
+     * Alta rápida vía AJAX desde el formulario de unidades.
+     * Si ya existe una marca con el mismo nombre en la empresa, la reutiliza (y la reactiva).
+     */
+    public function quickStore()
+    {
+        $companyId = auth()->user()->getCurrentCompany()?->id;
+        if (!$companyId) {
+            return response()->json(['ok' => false, 'message' => 'No hay una empresa activa.'], 422);
+        }
+
+        $validated = request()->validate([
+            'name'    => 'required|string|max:255',
+            'country' => 'nullable|string|max:100',
+        ]);
+
+        try {
+            $name  = mb_strtoupper(trim($validated['name']));
+            $brand = MotoBrand::where('company_id', $companyId)->whereRaw('UPPER(name) = ?', [$name])->first();
+            if ($brand) {
+                if (!$brand->active) {
+                    $brand->update(['active' => true]);
+                }
+            } else {
+                $brand = MotoBrand::create([
+                    'company_id' => $companyId,
+                    'name'       => $name,
+                    'country'    => $validated['country'] ?? null,
+                    'active'     => true,
+                ]);
+            }
+
+            return response()->json([
+                'ok'    => true,
+                'brand' => ['id' => $brand->id, 'name' => $brand->name],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error en alta rápida de marca moto', ['msg' => $e->getMessage()]);
+            return response()->json(['ok' => false, 'message' => 'No se pudo guardar la marca.'], 500);
+        }
+    }
+
     public function edit(MotoBrand $brand)
     {
         $this->authorizeBrand($brand);

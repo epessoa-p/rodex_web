@@ -18,6 +18,7 @@ Route::middleware(['auth', 'plan:inventory'])->group(function () {
         Route::get('/',           [MotoBrandController::class, 'index'])->name('index')->middleware('check-permission:moto-brands.view');
         Route::get('/create',     [MotoBrandController::class, 'create'])->name('create')->middleware('check-permission:moto-brands.create');
         Route::post('/',          [MotoBrandController::class, 'store'])->name('store')->middleware('check-permission:moto-brands.create');
+        Route::post('/quick',     [MotoBrandController::class, 'quickStore'])->name('quick-store')->middleware('check-permission:moto-brands.create');
         Route::get('/{brand}/edit',[MotoBrandController::class, 'edit'])->name('edit')->middleware('check-permission:moto-brands.edit');
         Route::put('/{brand}',    [MotoBrandController::class, 'update'])->name('update')->middleware('check-permission:moto-brands.edit');
         Route::delete('/{brand}', [MotoBrandController::class, 'destroy'])->name('destroy')->middleware('check-permission:moto-brands.delete');
@@ -28,6 +29,7 @@ Route::middleware(['auth', 'plan:inventory'])->group(function () {
         Route::get('/',           [MotoModelController::class, 'index'])->name('index')->middleware('check-permission:moto-models.view');
         Route::get('/create',     [MotoModelController::class, 'create'])->name('create')->middleware('check-permission:moto-models.create');
         Route::post('/',          [MotoModelController::class, 'store'])->name('store')->middleware('check-permission:moto-models.create');
+        Route::post('/quick',     [MotoModelController::class, 'quickStore'])->name('quick-store')->middleware('check-permission:moto-models.create');
         Route::get('/{model}/edit',[MotoModelController::class, 'edit'])->name('edit')->middleware('check-permission:moto-models.edit');
         Route::put('/{model}',    [MotoModelController::class, 'update'])->name('update')->middleware('check-permission:moto-models.edit');
         Route::delete('/{model}', [MotoModelController::class, 'destroy'])->name('destroy')->middleware('check-permission:moto-models.delete');

@@ -40,6 +40,70 @@ class MotoModelController extends Controller
         }
     }
 
+    /**
+     * Alta rápida vía AJAX desde el formulario de unidades.
+     * Si ya existe un modelo con el mismo nombre para esa marca, lo reutiliza (y lo reactiva).
+     */
+    public function quickStore()
+    {
+        $companyId = auth()->user()->getCurrentCompany()?->id;
+        if (!$companyId) {
+            return response()->json(['ok' => false, 'message' => 'No hay una empresa activa.'], 422);
+        }
+
+        $validated = request()->validate([
+            'moto_brand_id'   => 'required|integer',
+            'name'            => 'required|string|max:255',
+            'engine_cc'       => 'nullable|string|max:30',
+            'year'            => 'nullable|integer|min:1900|max:2100',
+            'suggested_price' => 'nullable|numeric|min:0',
+        ]);
+
+        $brand = MotoBrand::where('company_id', $companyId)->find($validated['moto_brand_id']);
+        if (!$brand) {
+            return response()->json(['ok' => false, 'message' => 'La marca seleccionada no existe.'], 422);
+        }
+
+        try {
+            $name  = mb_strtoupper(trim($validated['name']));
+            $model = MotoModel::where('company_id', $companyId)
+                ->where('moto_brand_id', $brand->id)
+                ->whereRaw('UPPER(name) = ?', [$name])
+                ->first();
+
+            if ($model) {
+                if (!$model->active) {
+                    $model->update(['active' => true]);
+                }
+            } else {
+                $model = MotoModel::create([
+                    'company_id'      => $companyId,
+                    'moto_brand_id'   => $brand->id,
+                    'name'            => $name,
+                    'engine_cc'       => $validated['engine_cc'] ?? null,
+                    'year'            => $validated['year'] ?? null,
+                    'suggested_price' => $validated['suggested_price'] ?? 0,
+                    'active'          => true,
+                ]);
+            }
+            $model->setRelation('brand', $brand);
+
+            return response()->json([
+                'ok'    => true,
+                'model' => [
+                    'id'              => $model->id,
+                    'name'            => $model->name,
+                    'display_name'    => $model->display_name,
+                    'moto_brand_id'   => $brand->id,
+                    'suggested_price' => (float) $model->suggested_price,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error en alta rápida de modelo moto', ['msg' => $e->getMessage()]);
+            return response()->json(['ok' => false, 'message' => 'No se pudo guardar el modelo.'], 500);
+        }
+    }
+
     public function edit(MotoModel $model)
     {
         $this->authorizeModel($model);
