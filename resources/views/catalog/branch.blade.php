@@ -45,12 +45,13 @@
         .others .b { display:inline-block; background:#eef2ff; color:#3730a3; border-radius:50rem; padding:1px 8px; margin:2px 2px 0 0; }
         .empty { text-align:center; color:#888; padding:60px 0; }
         .cat-foot { text-align:center; color:#888; font-size:.82rem; padding: 8px 30px 30px; }
-        .count { color:#666; font-size:.82rem; margin-bottom:12px; }
-        .count a { color:var(--brand); }
-        .pager { display:flex; justify-content:center; margin-top:22px; }
-        .pager .pagination { margin:0; flex-wrap:wrap; }
-        .pager .page-link { color:#111; }
-        .pager .page-item.active .page-link { background:var(--brand); border-color:var(--brand); }
+        .count { color:#666; font-size:.82rem; margin-bottom:12px; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+        .count a { color:var(--brand); text-decoration:none; font-weight:600; }
+        .pager { display:flex; justify-content:center; margin-top:26px; }
+        .pager .pagination { margin:0; flex-wrap:wrap; gap:4px; }
+        .pager .page-link { color:#111; border-radius:8px !important; min-width:38px; text-align:center; border-color:#e5e7eb; }
+        .pager .page-item.active .page-link { background:var(--brand); border-color:var(--brand); color:#fff; }
+        .pager .page-item.disabled .page-link { color:#bbb; }
         .toolbar { position:sticky; top:0; background:#111; color:#fff; padding:10px 16px; display:flex; gap:8px; justify-content:center; z-index:10; }
         .toolbar a { border:0; border-radius:8px; padding:8px 16px; font-size:.9rem; text-decoration:none; }
         .btn-pdf { background:var(--brand); color:#fff; }
@@ -98,12 +99,19 @@
                 @endif
             @else
             <div class="count">
-                @if($products->total() > $products->perPage())
-                    Mostrando {{ $products->firstItem() }}–{{ $products->lastItem() }} de {{ $products->total() }} productos
-                @else
-                    {{ $products->total() }} {{ $products->total() === 1 ? 'producto' : 'productos' }}
+                <span>
+                    @if($products->total() > $products->perPage())
+                        Mostrando <strong>{{ $products->firstItem() }}–{{ $products->lastItem() }}</strong> de <strong>{{ $products->total() }}</strong> productos
+                    @else
+                        <strong>{{ $products->total() }}</strong> {{ $products->total() === 1 ? 'producto' : 'productos' }}
+                    @endif
+                    @if(($q ?? '') !== '') para «{{ $q }}»@endif
+                </span>
+                @if(($q ?? '') !== '')
+                    <a href="{{ route('catalog.public', $branch->public_token) }}"><i class="bi bi-x-circle"></i> Ver todo el catálogo</a>
+                @elseif($products->hasPages())
+                    <span>Página {{ $products->currentPage() }} de {{ $products->lastPage() }}</span>
                 @endif
-                @if(($q ?? '') !== '') para «{{ $q }}» · <a href="{{ route('catalog.public', $branch->public_token) }}">ver todo</a>@endif
             </div>
             <div class="grid" id="catGrid">
                 @foreach($products as $p)
@@ -137,7 +145,7 @@
                 @endforeach
             </div>
             @if($products->hasPages())
-                <div class="pager">{{ $products->onEachSide(1)->links() }}</div>
+                <div class="pager">{{ $products->onEachSide(1)->links('catalog.pagination') }}</div>
             @endif
             @endif
         </div>

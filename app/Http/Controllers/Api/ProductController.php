@@ -241,10 +241,14 @@ class ProductController extends Controller
             'active'      => ['nullable', 'boolean'],
         ]);
 
+        // Las columnas NOT NULL no admiten null aunque el campo venga vacío.
         $product->update([
             ...$data,
-            'name'   => trim($data['name']),
-            'active' => $request->boolean('active', true),
+            'name'      => trim($data['name']),
+            'min_stock' => (int) ($data['min_stock'] ?? 0),
+            'cost'      => (float) ($data['cost'] ?? 0),
+            'unit'      => trim((string) ($data['unit'] ?? '')) ?: config('inventory.default_unit', 'Unidad'),
+            'active'    => $request->boolean('active', true),
         ]);
 
         return $this->show($product->fresh());

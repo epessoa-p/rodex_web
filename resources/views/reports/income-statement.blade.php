@@ -11,9 +11,11 @@
             <h1 class="mb-1 fw-bold fs-4"><i class="bi bi-clipboard-data me-2 text-primary"></i>Estado de resultados</h1>
             <p class="text-muted mb-0 small">Ingresos y egresos reales (caja + tesorería) del período.</p>
         </div>
-        {{-- Presets (como en el móvil): Este mes · Mes anterior · Todo · Rango --}}
+        {{-- Presets (como en el móvil): Esta semana · Semana anterior · Este mes · Mes anterior · Todo · Rango --}}
         @php
             $presets = [
+                'this_week'  => 'Esta semana',
+                'last_week'  => 'Semana anterior',
                 'this_month' => 'Este mes',
                 'last_month' => 'Mes anterior',
                 'all'        => 'Todo',

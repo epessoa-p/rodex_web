@@ -33,7 +33,13 @@ class IncomeStatementService
     {
         $today = Carbon::today();
 
+        // Semana de lunes a domingo (la actual termina hoy).
         return match ($preset) {
+            'this_week' => [$today->copy()->startOfWeek(Carbon::MONDAY), $today],
+            'last_week' => [
+                $today->copy()->subWeek()->startOfWeek(Carbon::MONDAY),
+                $today->copy()->subWeek()->endOfWeek(Carbon::SUNDAY),
+            ],
             'this_month' => [$today->copy()->startOfMonth(), $today],
             'last_month' => [
                 $today->copy()->subMonthNoOverflow()->startOfMonth(),

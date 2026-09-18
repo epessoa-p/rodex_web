@@ -126,9 +126,13 @@ Route::middleware(['auth:sanctum', 'api.fresh'])->group(function () {
             // Catálogos de apoyo
             Route::get('mechanics', [WorkshopMetaController::class, 'mechanics'])
                 ->middleware('api.permission:workshop.view,mechanics.view');
-            // Alta rápida de servicio del catálogo (desde la cita)
+            // Catálogo de servicios: listado/gestión (tab Servicios) y alta rápida (desde la cita)
+            Route::get('services', [\App\Http\Controllers\Api\ServiceController::class, 'index'])
+                ->middleware('api.permission:services.view,services.create,services.edit');
             Route::post('services', [\App\Http\Controllers\Api\ServiceController::class, 'store'])
                 ->middleware('api.permission:services.create');
+            Route::put('services/{service}', [\App\Http\Controllers\Api\ServiceController::class, 'update'])
+                ->middleware('api.permission:services.edit');
             // Gestión de mecánicos (listado completo + alta/edición)
             Route::get('mechanics/all', [MechanicController::class, 'index'])
                 ->middleware('api.permission:mechanics.view');

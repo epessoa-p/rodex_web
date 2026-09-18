@@ -12,13 +12,13 @@ class IncomeStatementController extends Controller
     public function __construct(private IncomeStatementService $service) {}
 
     /**
-     * ?preset=this_month|last_month|all (como en el móvil) o ?from=&to= (rango).
+     * ?preset=this_week|last_week|this_month|last_month|all (como en el móvil) o ?from=&to= (rango).
      * Sin parámetros: este mes.
      */
     public function index(Request $request)
     {
         $data = $request->validate([
-            'preset' => ['nullable', 'in:this_month,last_month,all,custom'],
+            'preset' => ['nullable', 'in:this_week,last_week,this_month,last_month,all,custom'],
             'from'   => ['nullable', 'date'],
             'to'     => ['nullable', 'date'],
         ]);
