@@ -31,6 +31,9 @@
                         <span class="badge bg-{{ $order->payment_status_color }}-subtle text-{{ $order->payment_status_color }} border border-{{ $order->payment_status_color }}-subtle">
                             {{ $order->payment_status_label }}
                         </span>
+                        @if($order->is_quick)
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle"><i class="bi bi-lightning-charge me-1"></i>Servicio rápido</span>
+                        @endif
                     </div>
                     <div class="d-flex flex-wrap gap-3 text-muted small mt-1">
                         <span><i class="bi bi-person me-1"></i>{{ $order->client?->full_name ?? '—' }}</span>
@@ -259,6 +262,19 @@
         {{-- ── RIGHT COLUMN ─────────────────────────────────────────── --}}
         <div class="col-lg-4">
             <div class="sticky-top" style="top:20px">
+
+                {{-- Servicio rápido sin cliente/vehículo registrados --}}
+                @if(!$order->client || (!$order->vehicle && $order->quick_vehicle))
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-bottom py-3 px-4">
+                        <h6 class="mb-0 fw-semibold"><i class="bi bi-lightning-charge me-2 text-warning"></i>Servicio al paso</h6>
+                    </div>
+                    <div class="card-body p-4 small">
+                        @if(!$order->client)<div class="mb-1"><span class="text-muted">Cliente:</span> <strong>Cliente de paso</strong></div>@endif
+                        @if(!$order->vehicle && $order->quick_vehicle)<div><span class="text-muted">Vehículo:</span> <strong>{{ $order->quick_vehicle }}</strong></div>@endif
+                    </div>
+                </div>
+                @endif
 
                 {{-- Datos del cliente --}}
                 @if($order->client)

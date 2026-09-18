@@ -45,7 +45,7 @@ class WorkOrder extends Model
     protected $fillable = [
         'company_id', 'branch_id', 'client_id', 'vehicle_id', 'moto_unit_id', 'mechanic_id', 'cash_register_session_id',
         'mechanic_payment_id', 'commission_amount',
-        'code', 'public_token', 'status',
+        'code', 'public_token', 'status', 'is_quick', 'quick_vehicle',
         'mileage', 'fuel_level', 'reported_issue', 'received_items', 'reception_date',
         'diagnosis', 'diagnosis_date',
         'payment_type', 'subtotal_services', 'subtotal_parts', 'discount', 'tax', 'total',
@@ -56,6 +56,7 @@ class WorkOrder extends Model
 
     protected $casts = [
         'reception_date'    => 'date',
+        'is_quick'          => 'boolean',
         'diagnosis_date'    => 'date',
         'delivered_at'      => 'datetime',
         'mileage'           => 'integer',
@@ -101,6 +102,18 @@ class WorkOrder extends Model
         }
 
         return $this->public_token;
+    }
+
+    /** Nombre del cliente o "Cliente de paso" (servicio rápido sin cliente). */
+    public function getClientDisplayAttribute(): string
+    {
+        return $this->client?->full_name ?: 'Cliente de paso';
+    }
+
+    /** Vehículo registrado, o el texto libre del servicio rápido. */
+    public function getVehicleDisplayAttribute(): ?string
+    {
+        return $this->vehicle?->display_name ?: ($this->quick_vehicle ?: null);
     }
 
     public function getStatusLabelAttribute(): string

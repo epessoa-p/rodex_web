@@ -151,6 +151,9 @@ Route::middleware(['auth:sanctum', 'api.fresh'])->group(function () {
                 ->middleware('api.permission:workshop.view');
             Route::post('work-orders', [WorkOrderController::class, 'store'])
                 ->middleware('api.permission:workshop.create');
+            // Servicio rápido: OT creada + entregada + cobrada en un paso.
+            Route::post('work-orders/quick', [WorkOrderController::class, 'quick'])
+                ->middleware('api.permission:workshop.create');
 
             Route::post('work-orders/{order}/services', [WorkOrderController::class, 'addService'])
                 ->middleware('api.permission:workshop.edit');

@@ -72,7 +72,17 @@ class WorkOrderController extends Controller
         $mechanics = Mechanic::when($cid, fn ($q) => $q->where('company_id', $cid))->where('active', true)->orderBy('name')->get();
         $clients   = Client::when($cid, fn ($q) => $q->where('company_id', $cid))->orderBy('full_name')->get(['id', 'full_name']);
 
+        // Para el modal "Servicio rápido": catálogo de servicios activos y caja abierta.
+        $services = Service::when($cid, fn ($q) => $q->where('company_id', $cid))->where('active', true)->orderBy('name')->get(['id', 'name', 'price']);
+        $quickSession = $this->currentOpenSession();
+        $vehicles = Vehicle::when($cid, fn ($q) => $q->where('company_id', $cid))->where('active', true)
+            ->orderBy('brand')->get(['id', 'client_id', 'brand', 'model', 'plate'])
+            ->map(fn ($v) => ['id' => $v->id, 'client_id' => $v->client_id, 'label' => $v->display_name])->values();
+
         return view('workshop.orders.index', [
+            'services'      => $services,
+            'quickSession'  => $quickSession,
+            'vehicles'      => $vehicles,
             'orders'        => $query->paginate(15)->withQueryString(),
             'mechanics'     => $mechanics,
             'clients'       => $clients,
@@ -183,6 +193,45 @@ class WorkOrderController extends Controller
             Log::error('Error en recepción de taller', ['msg' => $e->getMessage()]);
             return back()->withInput()->withErrors(['error' => 'Error al guardar: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * Servicio rápido (web): OT creada, entregada y cobrada en un paso, con
+     * cliente y vehículo opcionales. Misma lógica que la API (QuickServiceService).
+     */
+    public function quickStore(Request $request, \App\Services\Workshop\QuickServiceService $quick)
+    {
+        $companyId = auth()->user()->getCurrentCompany()?->id;
+        if (! $companyId) {
+            return back()->withErrors(['error' => 'No hay una empresa activa.']);
+        }
+
+        // service_ids[] + cantidades/precios del modal → líneas.
+        $ids  = array_filter((array) $request->input('service_ids', []));
+        $qty  = (array) $request->input('quantities', []);
+        $prc  = (array) $request->input('prices', []);
+        $lines = [];
+        foreach ($ids as $id) {
+            $lines[] = [
+                'service_id' => (int) $id,
+                'quantity'   => (int) ($qty[$id] ?? 1),
+                'price'      => isset($prc[$id]) && $prc[$id] !== '' ? $prc[$id] : null,
+            ];
+        }
+        $request->merge(['services' => $lines]);
+        $data = $request->validate(\App\Services\Workshop\QuickServiceService::rules($companyId));
+
+        try {
+            $order = $quick->run($companyId, auth()->id(), $data, $this->currentOpenSession());
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withInput()->withErrors(['error' => collect($e->errors())->flatten()->first()]);
+        } catch (\Throwable $e) {
+            Log::error('Error en servicio rápido', ['msg' => $e->getMessage()]);
+            return back()->withInput()->withErrors(['error' => 'No se pudo registrar el servicio rápido: ' . $e->getMessage()]);
+        }
+
+        return redirect()->route('workshop.orders.show', $order)
+            ->with('success', "Servicio rápido {$order->code} registrado y cobrado (" . money($order->total) . ').');
     }
 
     public function show(WorkOrder $order)

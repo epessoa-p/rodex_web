@@ -85,13 +85,13 @@
         <div class="meta">
             <div class="box">
                 <h4>Cliente</h4>
-                <div class="row"><b>Nombre:</b> {{ $order->client?->full_name ?? '—' }}</div>
+                <div class="row"><b>Nombre:</b> {{ $order->client_display }}</div>
                 @if($order->client?->id_number)<div class="row"><b>Documento:</b> {{ $order->client->id_number }}</div>@endif
                 @if($order->client?->phone)<div class="row"><b>Teléfono:</b> {{ $order->client->phone }}</div>@endif
             </div>
             <div class="box">
                 <h4>Vehículo</h4>
-                <div class="row"><b>Unidad:</b> {{ $order->vehicle?->display_name ?? '—' }}</div>
+                <div class="row"><b>Unidad:</b> {{ $order->vehicle_display ?? '—' }}</div>
                 @if($order->vehicle?->plate)<div class="row"><b>Placa:</b> {{ $order->vehicle->plate }}</div>@endif
                 <div class="row"><b>Kilometraje:</b> {{ $order->mileage ? number_format($order->mileage) . ' km' : '—' }}</div>
                 @if($order->mechanic)<div class="row"><b>Mecánico:</b> {{ $order->mechanic->name }}</div>@endif

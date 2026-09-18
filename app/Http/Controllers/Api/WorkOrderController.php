@@ -10,6 +10,7 @@ use App\Models\Workshop\WorkOrder;
 use App\Models\Workshop\WorkOrderPart;
 use App\Models\Workshop\WorkOrderPhoto;
 use App\Models\Workshop\WorkOrderService;
+use App\Services\Workshop\QuickServiceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -166,6 +167,34 @@ class WorkOrderController extends Controller
 
             return $order;
         });
+
+        return response()->json(['data' => $this->detail($order)], 201);
+    }
+
+    /**
+     * Servicio rápido: OT creada, entregada y cobrada en un solo paso (cliente y
+     * vehículo opcionales). Requiere caja abierta. Devuelve el detalle ya cerrado.
+     */
+    public function quick(Request $request, QuickServiceService $quick)
+    {
+        $companyId = $request->attributes->get('tenant_company')?->id;
+        $data = $request->validate(QuickServiceService::rules($companyId));
+
+        $session = $this->currentOpenSession();
+        if (! $session) {
+            return response()->json([
+                'message' => 'Necesitas tu caja abierta para cobrar el servicio rápido.',
+                'code'    => 'cash_session_required',
+            ], 422);
+        }
+
+        try {
+            $order = $quick->run($companyId, auth()->id(), $data, $session);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => collect($e->errors())->flatten()->first() ?? 'No se pudo registrar el servicio.',
+            ], 422);
+        }
 
         return response()->json(['data' => $this->detail($order)], 201);
     }
@@ -372,9 +401,11 @@ class WorkOrderController extends Controller
             'payment_status'       => $o->payment_status,
             'total'                => (float) $o->total,
             'balance'              => (float) $o->balance,
-            'client'               => $o->client?->full_name,
+            // Servicio rápido: sin cliente → "Cliente de paso"; vehículo en texto libre.
+            'client'               => $o->client_display,
             'client_phone'         => $o->client?->phone,
-            'vehicle'              => $o->vehicle?->display_name,
+            'vehicle'              => $o->vehicle_display,
+            'is_quick'             => (bool) $o->is_quick,
             'mechanic'             => $o->mechanic?->name,
             'reception_date'       => $o->reception_date?->toIso8601String(),
         ];
