@@ -260,9 +260,12 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        $q = trim((string) $request->query('q', ''));
+        $q       = trim((string) $request->query('q', ''));
+        // Paginado (?page=&per_page=, máx. 100). `data` mantiene la forma de
+        // siempre; `meta` la usa el listado del móvil para cargar más al final.
+        $perPage = min(100, max(10, (int) $request->query('per_page', 30)));
 
-        $products = Product::query()
+        $page = Product::query()
             ->with('photos')
             ->where('active', true)
             ->when($q !== '', function ($query) use ($q) {
@@ -274,11 +277,17 @@ class ProductController extends Controller
                 });
             })
             ->orderBy('name')
-            ->limit(50)
-            ->get()
-            ->map(fn (Product $p) => $this->payload($p));
+            ->paginate($perPage);
 
-        return response()->json(['data' => $products]);
+        return response()->json([
+            'data' => collect($page->items())->map(fn (Product $p) => $this->payload($p))->values(),
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'last_page'    => $page->lastPage(),
+                'per_page'     => $page->perPage(),
+                'total'        => $page->total(),
+            ],
+        ]);
     }
 
     private function payload(Product $p): array

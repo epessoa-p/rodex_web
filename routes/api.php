@@ -232,6 +232,23 @@ Route::middleware(['auth:sanctum', 'api.fresh'])->group(function () {
                 ->middleware('api.permission:products.create');
             Route::put('products/{product}', [ProductController::class, 'update'])
                 ->middleware('api.permission:products.edit');
+
+            // Catálogos del hub Inventario (categorías, marcas, orígenes, marcas y
+            // modelos de moto). Una ruta por tipo para gatear con SU permiso; el
+            // alta también se permite a quien crea/edita productos (selector
+            // "escribir y crear" del formulario de producto).
+            foreach (\App\Http\Controllers\Api\CatalogController::TYPES as $type => [, $module]) {
+                Route::get("catalogs/{$type}", [\App\Http\Controllers\Api\CatalogController::class, 'index'])
+                    ->defaults('type', $type)
+                    ->middleware("api.permission:{$module}.view,{$module}.create,{$module}.edit,products.create,products.edit");
+                Route::post("catalogs/{$type}", [\App\Http\Controllers\Api\CatalogController::class, 'store'])
+                    ->defaults('type', $type)
+                    ->middleware("api.permission:{$module}.create,products.create,products.edit");
+                Route::put("catalogs/{$type}/{id}", [\App\Http\Controllers\Api\CatalogController::class, 'update'])
+                    ->defaults('type', $type)
+                    ->middleware("api.permission:{$module}.edit")
+                    ->whereNumber('id');
+            }
         });
 
         // ── Módulo Compras (plan: purchases) ───────────────────────
