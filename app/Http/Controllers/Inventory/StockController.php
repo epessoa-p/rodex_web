@@ -10,6 +10,7 @@ use App\Models\Inventory\ProductCategory;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Warehouse;
+use App\Services\Inventory\StockValuationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -53,17 +54,14 @@ class StockController extends Controller
         $brands = ProductBrand::when($cid, fn ($q) => $q->where('company_id', $cid))
             ->where('active', true)->orderBy('name')->get(['id', 'name']);
 
-        // ── KPIs de valor de stock (según almacén seleccionado) ──
-        $stockOf = fn ($p) => $isAll ? (float) $p->current_stock : (float) ($stockMap[$p->id] ?? 0);
-        $totalUnits = 0.0; $valueCost = 0.0; $valuePrice = 0.0;
-        foreach ($products as $p) {
-            $s = $stockOf($p);
-            $totalUnits += $s;
-            $valueCost  += $s * (float) $p->cost;
-            $valuePrice += $s * (float) $p->price;
-        }
-        $productCount    = $products->count();
-        $potentialProfit = $valuePrice - $valueCost;
+        // ── KPIs de valor de stock (según almacén seleccionado): mismo cálculo
+        //    que el reporte de inventario del móvil (StockValuationService).
+        $valuation       = app(StockValuationService::class)->build($cid, $whId);
+        $productCount    = $valuation['product_count'];
+        $totalUnits      = $valuation['total_units'];
+        $valueCost       = $valuation['value_cost'];
+        $valuePrice      = $valuation['value_price'];
+        $potentialProfit = $valuation['potential_profit'];
 
         return view('inventory.stock.index', compact(
             'products', 'warehouses', 'categories', 'brands', 'activeWarehouse', 'isAll', 'whId', 'stockMap',
@@ -505,29 +503,10 @@ class StockController extends Controller
         $product->refresh();
     }
 
-    /** Stock neto por almacén para todos los productos: [product_id => qty]. */
+    /** Stock neto por almacén [product_id => qty]: delegado al servicio compartido con la API. */
     private function warehouseStockMap(?int $companyId, int $warehouseId): array
     {
-        $in = InventoryMovement::query()
-            ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
-            ->where(function ($q) use ($warehouseId) {
-                $q->where(fn ($w) => $w->where('warehouse_id', $warehouseId)->whereIn('type', ['in', 'adjustment']))
-                  ->orWhere(fn ($w) => $w->where('destination_warehouse_id', $warehouseId)->where('type', 'transfer'));
-            })
-            ->groupBy('product_id')
-            ->selectRaw('product_id, SUM(quantity) as q')->pluck('q', 'product_id');
-
-        $out = InventoryMovement::query()
-            ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
-            ->where('warehouse_id', $warehouseId)
-            ->whereIn('type', ['out', 'transfer'])
-            ->groupBy('product_id')
-            ->selectRaw('product_id, SUM(quantity) as q')->pluck('q', 'product_id');
-
-        $map = [];
-        foreach ($in as $pid => $q)  $map[$pid] = ($map[$pid] ?? 0) + (float) $q;
-        foreach ($out as $pid => $q) $map[$pid] = ($map[$pid] ?? 0) - (float) $q;
-        return $map;
+        return app(StockValuationService::class)->warehouseStockMap($companyId, $warehouseId);
     }
 
     private function authorizeProduct(Product $product): void

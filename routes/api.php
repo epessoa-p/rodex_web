@@ -73,6 +73,21 @@ Route::middleware(['auth:sanctum', 'api.fresh'])->group(function () {
         Route::put('branches/{branch}', [\App\Http\Controllers\Api\BranchController::class, 'update'])
             ->middleware('api.permission:branches.edit');
 
+        // ── Reportes del móvil: Finanzas (caja) e Inventario ────────
+        Route::middleware('api.plan:cash')->group(function () {
+            Route::get('reports/cash', [\App\Http\Controllers\Api\ReportsController::class, 'cash'])
+                ->middleware('api.permission:cash-registers.view');
+        });
+        // Cuentas por cobrar (ventas crédito + OTs con saldo) y por pagar (compras).
+        Route::get('reports/receivables', [\App\Http\Controllers\Api\ReportsController::class, 'receivables'])
+            ->middleware('api.permission:cash-registers.view,sales.view,workshop.view');
+        Route::get('reports/payables', [\App\Http\Controllers\Api\ReportsController::class, 'payables'])
+            ->middleware('api.permission:accounts-payable.view,purchases.view,cash-registers.view');
+        Route::middleware('api.plan:inventory')->group(function () {
+            Route::get('reports/inventory', [\App\Http\Controllers\Api\ReportsController::class, 'inventory'])
+                ->middleware('api.permission:products.view');
+        });
+
         // ── Módulo Ventas / POS (plan: sales) ──────────────────────
         Route::middleware('api.plan:sales')->group(function () {
 
