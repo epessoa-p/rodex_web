@@ -42,7 +42,7 @@
             @endif
         </div>
 
-        <div class="sidebar-section-title">General</div>
+        <div class="sidebar-section-title" data-sec="general">General</div>
         <ul class="nav flex-column gap-1">
             <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
@@ -60,7 +60,7 @@
         </ul>
 
         @if(auth()->user()->is_super_admin)
-        <div class="sidebar-section-title mt-4">Sistema</div>
+        <div class="sidebar-section-title mt-4" data-sec="sistema">Sistema</div>
         <ul class="nav flex-column gap-1">
             <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('companies.*') ? 'active' : '' }}" href="{{ route('companies.index') }}">
@@ -92,7 +92,7 @@
         </ul>
         @endif
 
-        <div class="sidebar-section-title mt-4">Administración</div>
+        <div class="sidebar-section-title mt-4" data-sec="admin">Administración</div>
         <ul class="nav flex-column gap-1">
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('company-profile.view', $currentCompany))
             <li class="nav-item">
@@ -145,7 +145,7 @@
         </ul>
 
         @module('inventory')
-        <div class="sidebar-section-title mt-4">Inventario</div>
+        <div class="sidebar-section-title mt-4" data-sec="inventario">Inventario</div>
         <ul class="nav flex-column gap-1">
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('products.view', $currentCompany))
             <li class="nav-item">
@@ -242,7 +242,7 @@
         @endphp
         @if($canSales)
         @module('sales')
-        <div class="sidebar-section-title mt-4">Ventas</div>
+        <div class="sidebar-section-title mt-4" data-sec="ventas">Ventas</div>
         <ul class="nav flex-column gap-1">
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('sales-dashboard.view', $currentCompany))
             <li class="nav-item">
@@ -306,7 +306,7 @@
 
         @if($canCredit)
         @module('sales')
-        <div class="sidebar-section-title mt-4">Créditos</div>
+        <div class="sidebar-section-title mt-4" data-sec="creditos">Créditos</div>
         <ul class="nav flex-column gap-1">
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('credit-applications.view', $currentCompany))
             <li class="nav-item">
@@ -369,7 +369,7 @@
         @endphp
         @if($canWorkshop)
         @module('workshop')
-        <div class="sidebar-section-title mt-4">Taller</div>
+        <div class="sidebar-section-title mt-4" data-sec="taller">Taller</div>
         <ul class="nav flex-column gap-1">
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('workshop-dashboard.view', $currentCompany))
             <li class="nav-item">
@@ -421,7 +421,7 @@
         @endphp
         @if($canMotos)
         @module('motos')
-        <div class="sidebar-section-title mt-4">Motos</div>
+        <div class="sidebar-section-title mt-4" data-sec="motos">Motos</div>
         <ul class="nav flex-column gap-1">
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('moto-units.view', $currentCompany))
             <li class="nav-item">
@@ -461,7 +461,7 @@
         @endphp
         @if($canRentals)
         @module('rentals')
-        <div class="sidebar-section-title mt-4">Alquileres</div>
+        <div class="sidebar-section-title mt-4" data-sec="alquileres">Alquileres</div>
         <ul class="nav flex-column gap-1">
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('rentals-dashboard.view', $currentCompany))
             <li class="nav-item">
@@ -548,7 +548,7 @@
         @endphp
         @if($canLoyalty)
         @module('loyalty')
-        <div class="sidebar-section-title mt-4">Fidelización</div>
+        <div class="sidebar-section-title mt-4" data-sec="fidelizacion">Fidelización</div>
         <ul class="nav flex-column gap-1">
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('loyalty-dashboard.view', $currentCompany))
             <li class="nav-item"><a class="nav-link app-link {{ request()->routeIs('loyalty.dashboard') ? 'active' : '' }}" href="{{ route('loyalty.dashboard') }}"><i class="bi bi-award"></i> Dashboard</a></li>
@@ -586,7 +586,7 @@
         @endphp
         @if($canPurchases)
         @module('purchases')
-        <div class="sidebar-section-title mt-4">Compras</div>
+        <div class="sidebar-section-title mt-4" data-sec="compras">Compras</div>
         <ul class="nav flex-column gap-1">
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('purchases-dashboard.view', $currentCompany))
             <li class="nav-item">
@@ -644,7 +644,7 @@
             $paymentsActive = request()->routeIs('payments.*') || request()->routeIs('workshop.mechanic-payments.*') || request()->routeIs('accounts-payable.*');
         @endphp
         @if($canPaymentsHub || $canTreasury || $canExpenseServices)
-        <div class="sidebar-section-title mt-4">Finanzas</div>
+        <div class="sidebar-section-title mt-4" data-sec="finanzas">Finanzas</div>
         <ul class="nav flex-column gap-1">
             @if($canPaymentsHub)
             <li class="nav-item">
@@ -672,7 +672,7 @@
 
         {{-- ── Reportes ── --}}
         @if($canIncomeStatement || $canStatistics)
-        <div class="sidebar-section-title mt-4">Reportes</div>
+        <div class="sidebar-section-title mt-4" data-sec="reportes">Reportes</div>
         <ul class="nav flex-column gap-1">
             @if($canIncomeStatement)
             <li class="nav-item">
@@ -810,7 +810,7 @@
     </div>
     <div class="offcanvas-body p-0">
         <nav class="p-3">
-            <div class="sidebar-section-title">General</div>
+            <div class="sidebar-section-title" data-sec="general">General</div>
             <ul class="nav flex-column gap-1 mb-3">
                 <li><a class="nav-link app-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
                 {{-- "Estadísticas" vive ahora en la sección Reportes. --}}
@@ -820,7 +820,7 @@
             </ul>
 
             @if(auth()->user()->is_super_admin)
-            <div class="sidebar-section-title">Sistema</div>
+            <div class="sidebar-section-title" data-sec="sistema">Sistema</div>
             <ul class="nav flex-column gap-1 mb-3">
                 <li><a class="nav-link app-link {{ request()->routeIs('companies.*') ? 'active' : '' }}" href="{{ route('companies.index') }}"><i class="bi bi-building me-2"></i>Empresas</a></li>
                 <li><a class="nav-link app-link {{ request()->routeIs('roles.*') ? 'active' : '' }}" href="{{ route('roles.index') }}"><i class="bi bi-shield-lock me-2"></i>Roles</a></li>
@@ -832,7 +832,7 @@
             </ul>
             @endif
 
-            <div class="sidebar-section-title">Administración</div>
+            <div class="sidebar-section-title" data-sec="admin">Administración</div>
             <ul class="nav flex-column gap-1 mb-3">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('company-profile.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('company-profile.*') ? 'active' : '' }}" href="{{ route('company-profile.edit') }}"><i class="bi bi-building me-2"></i>Mi empresa</a></li>
@@ -856,7 +856,7 @@
             </ul>
 
             @module('inventory')
-            <div class="sidebar-section-title">Inventario</div>
+            <div class="sidebar-section-title" data-sec="inventario">Inventario</div>
             <ul class="nav flex-column gap-1">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('products.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('products.*') ? 'active' : '' }}" href="{{ route('products.index') }}"><i class="bi bi-box-seam me-2"></i>Productos</a></li>
@@ -894,7 +894,7 @@
 
             @if($canSales)
             @module('sales')
-            <div class="sidebar-section-title">Ventas</div>
+            <div class="sidebar-section-title" data-sec="ventas">Ventas</div>
             <ul class="nav flex-column gap-1 mb-3">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('sales-dashboard.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('sales.dashboard') ? 'active' : '' }}" href="{{ route('sales.dashboard') }}"><i class="bi bi-graph-up-arrow me-2"></i>Dashboard</a></li>
@@ -926,7 +926,7 @@
 
             @if($canCredit)
             @module('sales')
-            <div class="sidebar-section-title">Créditos</div>
+            <div class="sidebar-section-title" data-sec="creditos">Créditos</div>
             <ul class="nav flex-column gap-1 mb-3">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('credit-applications.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('credit-applications.*') ? 'active' : '' }}" href="{{ route('credit-applications.index') }}"><i class="bi bi-file-earmark-medical me-2"></i>Solicitudes</a></li>
@@ -955,7 +955,7 @@
 
             @if($canWorkshop)
             @module('workshop')
-            <div class="sidebar-section-title">Taller</div>
+            <div class="sidebar-section-title" data-sec="taller">Taller</div>
             <ul class="nav flex-column gap-1 mb-3">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('workshop-dashboard.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('workshop.dashboard') ? 'active' : '' }}" href="{{ route('workshop.dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
@@ -978,7 +978,7 @@
 
             @if($canMotos)
             @module('motos')
-            <div class="sidebar-section-title">Motos</div>
+            <div class="sidebar-section-title" data-sec="motos">Motos</div>
             <ul class="nav flex-column gap-1 mb-3">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('moto-units.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('moto-units.*') ? 'active' : '' }}" href="{{ route('moto-units.index') }}"><i class="bi bi-box-seam me-2"></i>Inventario de Motos</a></li>
@@ -998,7 +998,7 @@
 
             @if($canRentals)
             @module('rentals')
-            <div class="sidebar-section-title">Alquileres</div>
+            <div class="sidebar-section-title" data-sec="alquileres">Alquileres</div>
             <ul class="nav flex-column gap-1 mb-3">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('rentals-dashboard.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('rentals.dashboard') ? 'active' : '' }}" href="{{ route('rentals.dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
@@ -1025,7 +1025,7 @@
 
             @if($canLoyalty)
             @module('loyalty')
-            <div class="sidebar-section-title">Fidelización</div>
+            <div class="sidebar-section-title" data-sec="fidelizacion">Fidelización</div>
             <ul class="nav flex-column gap-1 mb-3">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('loyalty-dashboard.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('loyalty.dashboard') ? 'active' : '' }}" href="{{ route('loyalty.dashboard') }}"><i class="bi bi-award me-2"></i>Dashboard</a></li>
@@ -1054,7 +1054,7 @@
 
             @if($canPurchases)
             @module('purchases')
-            <div class="sidebar-section-title">Compras</div>
+            <div class="sidebar-section-title" data-sec="compras">Compras</div>
             <ul class="nav flex-column gap-1 mb-3">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('purchases-dashboard.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('purchases-dashboard.*') ? 'active' : '' }}" href="{{ route('purchases-dashboard.index') }}"><i class="bi bi-graph-up-arrow me-2"></i>Dashboard</a></li>
@@ -1080,7 +1080,7 @@
 
             {{-- ── Finanzas: Pagos (hub) + Tesorería ── --}}
             @if($canPaymentsHub || $canTreasury || $canExpenseServices)
-            <div class="sidebar-section-title">Finanzas</div>
+            <div class="sidebar-section-title" data-sec="finanzas">Finanzas</div>
             <ul class="nav flex-column gap-1 mb-3">
                 @if($canPaymentsHub)
                 <li><a class="nav-link app-link {{ $paymentsActive ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="bi bi-cash-coin me-2"></i>Pagos</a></li>
@@ -1096,7 +1096,7 @@
 
             {{-- ── Reportes ── --}}
             @if($canIncomeStatement || $canStatistics)
-            <div class="sidebar-section-title">Reportes</div>
+            <div class="sidebar-section-title" data-sec="reportes">Reportes</div>
             <ul class="nav flex-column gap-1 mb-3">
                 @if($canIncomeStatement)
                 <li><a class="nav-link app-link {{ request()->routeIs('income-statement.*') ? 'active' : '' }}" href="{{ route('income-statement.index') }}"><i class="bi bi-clipboard-data me-2"></i>Estado de resultados</a></li>
@@ -1505,6 +1505,54 @@
     }
     .sidebar-section-title.collapsed .sec-chevron { transform: rotate(-90deg); }
     .nav-section-hidden { display: none !important; }
+
+    /* ── Color por sección (mismo criterio que la app móvil) ─────────
+       Cada recuadro del menú lleva su color: punto en el título, íconos
+       de sus enlaces y, al estar activa, el contorno y el enlace. */
+    [data-sec="general"], [data-sec="general"] + ul { --sec: #90a4ae; }   /* la variable no cruza a hermanos: también en la lista */
+    [data-sec="sistema"], [data-sec="sistema"] + ul { --sec: #b0bec5; }   /* la variable no cruza a hermanos: también en la lista */
+    [data-sec="admin"], [data-sec="admin"] + ul { --sec: #ffa726; }   /* la variable no cruza a hermanos: también en la lista */
+    [data-sec="inventario"], [data-sec="inventario"] + ul { --sec: #7986cb; }   /* la variable no cruza a hermanos: también en la lista */
+    [data-sec="ventas"], [data-sec="ventas"] + ul { --sec: #66bb6a; }   /* la variable no cruza a hermanos: también en la lista */
+    [data-sec="creditos"], [data-sec="creditos"] + ul { --sec: #d4e157; }   /* la variable no cruza a hermanos: también en la lista */
+    [data-sec="taller"], [data-sec="taller"] + ul { --sec: #b39ddb; }   /* la variable no cruza a hermanos: también en la lista */
+    [data-sec="motos"], [data-sec="motos"] + ul { --sec: #ff8a65; }   /* la variable no cruza a hermanos: también en la lista */
+    [data-sec="alquileres"], [data-sec="alquileres"] + ul { --sec: #4dd0e1; }   /* la variable no cruza a hermanos: también en la lista */
+    [data-sec="fidelizacion"], [data-sec="fidelizacion"] + ul { --sec: #f48fb1; }   /* la variable no cruza a hermanos: también en la lista */
+    [data-sec="compras"], [data-sec="compras"] + ul { --sec: #bcaaa4; }   /* la variable no cruza a hermanos: también en la lista */
+    [data-sec="finanzas"], [data-sec="finanzas"] + ul { --sec: #4db6ac; }   /* la variable no cruza a hermanos: también en la lista */
+    [data-sec="reportes"], [data-sec="reportes"] + ul { --sec: #64b5f6; }   /* la variable no cruza a hermanos: también en la lista */
+
+    .sidebar-section-title[data-sec]::before {
+        content: '';
+        display: inline-block;
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: var(--sec);
+        margin-right: 8px;
+        flex: 0 0 auto;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--sec) 22%, transparent);
+    }
+    /* El título es flex (space-between): texto + chevron; el punto va pegado al texto. */
+    .sidebar-section-title[data-sec] { justify-content: flex-start; }
+    .sidebar-section-title[data-sec] .sec-chevron { margin-left: auto; }
+
+    body .sidebar-section-title[data-sec] + ul .app-link i { color: color-mix(in srgb, var(--sec) 85%, #fff); }
+    body .sidebar-section-title[data-sec] + ul .app-link:hover i { color: var(--sec); }
+    body .sidebar-section-title[data-sec]:has(+ ul .app-link.active) {
+        color: #fff;
+        background: color-mix(in srgb, var(--sec) 16%, transparent);
+        border-color: color-mix(in srgb, var(--sec) 45%, transparent);
+    }
+    body .sidebar-section-title[data-sec] + ul.nav.flex-column:has(.app-link.active) {
+        border-color: color-mix(in srgb, var(--sec) 45%, transparent);
+    }
+    body .sidebar-section-title[data-sec] + ul .app-link.active {
+        background: linear-gradient(90deg, color-mix(in srgb, var(--sec) 18%, transparent) 0%, transparent 100%);
+        border-color: color-mix(in srgb, var(--sec) 35%, transparent);
+    }
+    body .sidebar-section-title[data-sec] + ul .app-link.active::before { background: var(--sec); }
+    body .sidebar-section-title[data-sec] + ul .app-link.active i { color: var(--sec); }
 
     /* ── Toast emergente (mensaje de éxito) ─────────────────────── */
     .app-toast {
