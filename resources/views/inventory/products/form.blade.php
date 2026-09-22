@@ -233,12 +233,12 @@
                         </div>
 
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold">Margen estimado</label>
+                            <label class="form-label fw-semibold">Ganancia</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light border-end-0 text-muted">%</span>
                                 <div id="marginDisplay" class="form-control border-start-0 bg-light fw-bold text-success">—</div>
                             </div>
-                            <div class="form-text text-muted">Se calcula automáticamente.</div>
+                            <div class="form-text text-muted">Sobre el costo, igual que la columna «Ganancia» de Inventario → Stock.</div>
                         </div>
 
                         <div class="col-md-4">
@@ -330,14 +330,19 @@
 
 @push('scripts')
 <script>
+// Ganancia SOBRE EL COSTO (markup), la misma fórmula que la columna
+// "Ganancia" de Inventario → Stock: (precio − costo) / costo × 100.
+// Antes se calculaba sobre el precio y los dos lugares no coincidían.
 function calcMargin() {
     const cost  = parseFloat(document.getElementById('cost').value)  || 0;
     const price = parseFloat(document.getElementById('price').value) || 0;
     const el    = document.getElementById('marginDisplay');
-    if (price > 0 && cost >= 0) {
-        const margin = ((price - cost) / price * 100);
+    if (cost > 0) {
+        const margin = ((price - cost) / cost * 100);
         el.textContent = margin.toFixed(1) + '%';
-        el.className = 'form-control border-start-0 bg-light fw-bold ' + (margin >= 0 ? 'text-success' : 'text-danger');
+        // Mismos cortes que el badge de Stock: <0 rojo, <20 ámbar, resto verde.
+        const tone = margin < 0 ? 'text-danger' : (margin < 20 ? 'text-warning' : 'text-success');
+        el.className = 'form-control border-start-0 bg-light fw-bold ' + tone;
     } else {
         el.textContent = '—';
         el.className = 'form-control border-start-0 bg-light fw-bold text-muted';
