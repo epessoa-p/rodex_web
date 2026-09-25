@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
@@ -254,6 +255,56 @@ class ProductController extends Controller
         return $this->show($product->fresh());
     }
 
+    /**
+     * Foto del producto desde el móvil: sube (o reemplaza) la imagen principal.
+     * Va por POST multipart porque PUT no admite archivos sin spoofing, y así
+     * el listado puede actualizarla de un toque sin abrir el formulario.
+     */
+    public function updatePhoto(Request $request, Product $product)
+    {
+        $request->validate(['photo' => ['required', 'image', 'max:5120']]);
+
+        $file = $request->file('photo');
+        $path = $file->store("company/{$product->company_id}/products/{$product->id}", 'public');
+        $name = $file->getClientOriginalName();
+
+        $main = $product->photos()->where('is_main', true)->first() ?? $product->photos()->first();
+
+        if ($main) {
+            // Reemplazo: borramos el archivo anterior para no dejar basura.
+            Storage::disk('public')->delete($main->file_path);
+            $main->update(['file_path' => $path, 'file_name' => $name, 'is_main' => true]);
+        } else {
+            ProductPhoto::create([
+                'product_id' => $product->id,
+                'company_id' => $product->company_id,
+                'file_path'  => $path,
+                'file_name'  => $name,
+                'is_main'    => true,
+                'sort_order' => 0,
+            ]);
+        }
+
+        return $this->show($product->fresh());
+    }
+
+    /** Quita la foto principal; si hay otras, asciende la siguiente. */
+    public function destroyPhoto(Product $product)
+    {
+        $main = $product->photos()->where('is_main', true)->first() ?? $product->photos()->first();
+
+        if ($main) {
+            Storage::disk('public')->delete($main->file_path);
+            $main->delete();
+
+            $next = $product->photos()->first();
+            if ($next) {
+                $next->update(['is_main' => true]);
+            }
+        }
+
+        return $this->show($product->fresh());
+    }
     /**
      * Listado/búsqueda de productos de la empresa activa (con stock).
      * El aislamiento por empresa lo aplica el global scope automáticamente.

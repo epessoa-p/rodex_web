@@ -6,10 +6,12 @@ use App\Http\Controllers\Workshop\Concerns\HandlesWorkOrderCharge;
 use App\Models\CashRegisterSession;
 use App\Models\Client;
 use App\Models\Personal;
+use App\Models\Product;
 use App\Models\Vehicle;
 use App\Models\Workshop\Mechanic;
 use App\Models\Workshop\Service;
 use App\Models\Workshop\WorkOrder;
+use App\Models\Workshop\WorkOrderPart;
 use App\Models\Workshop\WorkOrderService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -30,11 +32,16 @@ class QuickServiceService
     public static function rules(int $companyId): array
     {
         return [
-            'services'                => ['required', 'array', 'min:1'],
+            // Servicios y/o repuestos: al menos una línea entre los dos.
+            'services'                => ['nullable', 'array'],
             'services.*.service_id'   => ['nullable', 'integer'],
             'services.*.description'  => ['nullable', 'string', 'max:255'],
             'services.*.price'        => ['nullable', 'numeric', 'min:0'],
             'services.*.quantity'     => ['nullable', 'integer', 'min:1'],
+            'parts'                   => ['nullable', 'array'],
+            'parts.*.product_id'      => ['required_with:parts', 'integer'],
+            'parts.*.quantity'        => ['nullable', 'integer', 'min:1'],
+            'parts.*.unit_price'      => ['nullable', 'numeric', 'min:0'],
             'mechanic_id'             => ['nullable', 'integer'],
             'client_id'               => ['nullable', 'integer'],
             'vehicle_id'              => ['nullable', 'integer'],
@@ -74,10 +81,16 @@ class QuickServiceService
             : null;
 
         $lines = $this->resolveLines($companyId, $data['services'] ?? []);
+        $parts = $this->resolveParts($companyId, $data['parts'] ?? []);
+        if (empty($lines) && empty($parts)) {
+            throw ValidationException::withMessages([
+                'services' => 'Agrega al menos un servicio o un repuesto.',
+            ]);
+        }
         $branchId = Personal::where('user_id', $userId)->value('branch_id')
             ?? $session->cashRegister?->branch_id;
 
-        return DB::transaction(function () use ($companyId, $userId, $data, $session, $clientId, $vehicleId, $mechanicId, $lines, $branchId) {
+        return DB::transaction(function () use ($companyId, $userId, $data, $session, $clientId, $vehicleId, $mechanicId, $lines, $parts, $branchId) {
             $order = WorkOrder::create([
                 'company_id'     => $companyId,
                 'branch_id'      => $branchId,
@@ -106,8 +119,18 @@ class QuickServiceService
                     'subtotal'      => $l['price'] * $l['quantity'],
                 ]);
             }
+            foreach ($parts as $p) {
+                WorkOrderPart::create([
+                    'work_order_id' => $order->id,
+                    'product_id'    => $p['product_id'],
+                    'quantity'      => $p['quantity'],
+                    'unit_price'    => $p['unit_price'],
+                    'subtotal'      => $p['unit_price'] * $p['quantity'],
+                ]);
+            }
             $order->recalcTotals();
 
+            // deliverWorkOrder descuenta el stock de los repuestos y registra el kardex.
             $this->deliverWorkOrder($order->fresh(), [
                 'payment_type'   => 'contado',
                 'discount'       => (float) ($data['discount'] ?? 0),
@@ -161,6 +184,34 @@ class QuickServiceService
                 'description' => $name,
                 'price'       => $price,
                 'quantity'    => max(1, (int) ($row['quantity'] ?? 1)),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Normaliza los repuestos: valida que el producto sea de la empresa y toma
+     * su precio de venta cuando no se envía uno.
+     */
+    private function resolveParts(int $companyId, array $parts): array
+    {
+        $out = [];
+        foreach ($parts as $i => $row) {
+            $product = Product::where('company_id', $companyId)->find($row['product_id'] ?? null);
+            if (! $product) {
+                throw ValidationException::withMessages([
+                    "parts.$i" => 'Uno de los repuestos ya no existe.',
+                ]);
+            }
+            $price = isset($row['unit_price']) && $row['unit_price'] !== '' && $row['unit_price'] !== null
+                ? (float) $row['unit_price']
+                : (float) $product->price;
+
+            $out[] = [
+                'product_id' => $product->id,
+                'quantity'   => max(1, (int) ($row['quantity'] ?? 1)),
+                'unit_price' => $price,
             ];
         }
 

@@ -11,6 +11,7 @@ use App\Models\Workshop\WorkOrderPart;
 use App\Models\Workshop\WorkOrderPhoto;
 use App\Models\Workshop\WorkOrderService;
 use App\Services\Workshop\QuickServiceService;
+use App\Services\Workshop\WorkOrderReopenService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -197,6 +198,64 @@ class WorkOrderController extends Controller
         }
 
         return response()->json(['data' => $this->detail($order)], 201);
+    }
+
+    /**
+     * Edita los datos de una OT en curso (no toca dinero ni líneas): cliente y
+     * vehículo cuando faltan (servicio rápido), km, combustible, falla,
+     * recibido con y notas.
+     */
+    public function update(Request $request, WorkOrder $order)
+    {
+        $this->guardEditable($order);
+        $companyId = $order->company_id;
+
+        $data = $request->validate([
+            'client_id'      => ['nullable', Rule::exists('clients', 'id')->where('company_id', $companyId)],
+            'vehicle_id'     => ['nullable', Rule::exists('vehicles', 'id')->where('company_id', $companyId)],
+            'quick_vehicle'  => ['nullable', 'string', 'max:80'],
+            'mileage'        => ['nullable', 'integer', 'min:0'],
+            'fuel_level'     => ['nullable', 'string', 'max:20'],
+            'reported_issue' => ['nullable', 'string'],
+            'received_items' => ['nullable', 'string'],
+            'notes'          => ['nullable', 'string'],
+        ]);
+
+        // El vehículo elegido manda: fija también su cliente.
+        $vehicleId = $data['vehicle_id'] ?? $order->vehicle_id;
+        $clientId  = $data['client_id'] ?? $order->client_id;
+        if (! empty($data['vehicle_id'])) {
+            $clientId = Vehicle::whereKey($data['vehicle_id'])->value('client_id') ?: $clientId;
+        }
+
+        $order->update([
+            'client_id'      => $clientId,
+            'vehicle_id'     => $vehicleId,
+            'quick_vehicle'  => $vehicleId ? null : ($data['quick_vehicle'] ?? $order->quick_vehicle),
+            'mileage'        => $data['mileage'] ?? null,
+            'fuel_level'     => $data['fuel_level'] ?? null,
+            'reported_issue' => $data['reported_issue'] ?? null,
+            'received_items' => $data['received_items'] ?? null,
+            'notes'          => $data['notes'] ?? null,
+        ]);
+
+        return response()->json(['data' => $this->detail($order->fresh())]);
+    }
+
+    /**
+     * Reabre una OT entregada para corregirla: anula el cobro y devuelve el
+     * stock. Solo si la caja de ese cobro sigue abierta.
+     */
+    public function reopen(WorkOrder $order, WorkOrderReopenService $reopen)
+    {
+        $reason = $reopen->blockedReason($order);
+        if ($reason !== null) {
+            return response()->json(['message' => $reason, 'code' => 'reopen_blocked'], 422);
+        }
+
+        $reopen->reopen($order, auth()->id());
+
+        return response()->json(['data' => $this->detail($order->fresh())]);
     }
 
     /** Guardar/actualizar el diagnóstico (recibida → diagnosticada). */
@@ -415,7 +474,12 @@ class WorkOrderController extends Controller
     {
         $o->load(['client', 'vehicle', 'mechanic', 'services.mechanic', 'parts.product', 'photos']);
 
+        $blocked = app(WorkOrderReopenService::class)->blockedReason($o);
+
         return $this->summary($o) + [
+            // Corregir una OT entregada: solo mientras su caja siga abierta.
+            'can_reopen'            => $blocked === null,
+            'reopen_blocked_reason' => $blocked,
             'photos'            => $o->photos->map(fn ($p) => [
                 'id'        => $p->id,
                 'url'       => $p->url,

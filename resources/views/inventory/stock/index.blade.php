@@ -42,6 +42,16 @@
                title="Descargar plantilla Excel">
                 <i class="bi bi-file-earmark-arrow-down me-1"></i>Descargar plantilla
             </a>
+            @php
+                $canEditPrices = auth()->user()->is_super_admin
+                    || auth()->user()->hasPermissionInCompany('products.edit', auth()->user()->getCurrentCompany());
+            @endphp
+            @if($canEditPrices)
+            <button type="button" class="btn btn-sm btn-light border" data-bs-toggle="modal" data-bs-target="#bulkPriceModal"
+                    title="Subir o bajar un % a los precios que estás viendo">
+                <i class="bi bi-percent me-1"></i>Ajustar precios
+            </button>
+            @endif
             <a href="{{ route('inventory.stock.import') }}"
                class="btn btn-sm btn-primary">
                 <i class="bi bi-upload me-1"></i>Importar productos
@@ -388,6 +398,10 @@
     border-color: var(--brand-black, #22242e);
     color: #fff;
 }
+
+.bp-scope { background: rgba(13,110,253,.06); border: 1px solid rgba(13,110,253,.18); }
+.bp-diff-up { color: #198754; }
+.bp-diff-down { color: #dc3545; }
 
 /* ── Category filter bar ─────────────────────────────────── */
 .cat-filter-bar {
@@ -838,7 +852,251 @@
     }
 
 })();
+    // ── Ajuste masivo de precios ──────────────────────────────────────
+    (function () {
+        const modalEl = document.getElementById('bulkPriceModal');
+        if (!modalEl) return;
+        const alertBox = document.getElementById('bpAlert');
+        const percent  = document.getElementById('bpPercent');
+        const rounding = document.getElementById('bpRounding');
+        const withCost = document.getElementById('bpWithCost');
+        const body     = document.getElementById('bpPreviewBody');
+        const applyBtn = document.getElementById('bpApply');
+        const SYMBOL   = @json(currency_symbol());
+        let debounce   = null;
+
+        const money = n => SYMBOL + ' ' + (Number(n) || 0).toFixed(2);
+
+        /// Mismo toast verde que usa el layout para los mensajes flash.
+        function bpToast(text) {
+            const el = document.createElement('div');
+            el.className = 'app-toast app-toast-success';
+            el.setAttribute('role', 'status');
+            el.innerHTML = '<i class="bi bi-check-circle-fill"></i><span class="flex-grow-1"></span>'
+                + '<button type="button" class="app-toast-close" aria-label="Cerrar">&times;</button>';
+            el.querySelector('span').textContent = text;
+            document.body.appendChild(el);
+            const close = function () {
+                el.classList.add('hide');
+                setTimeout(function () { el.remove(); }, 320);
+            };
+            el.querySelector('.app-toast-close').addEventListener('click', close);
+            setTimeout(close, 4000);
+        }
+        const mode  = () => document.querySelector('input[name="bpMode"]:checked').value;
+
+        /// Ids de las filas que pasan los filtros actuales (no solo la página).
+        function visibleIds() {
+            const rows = (typeof filteredRows !== 'undefined' && filteredRows.length)
+                ? filteredRows
+                : Array.from(document.querySelectorAll('#stockBody .stock-row'));
+            // El id vive en los inputs de la fila (data-id), no en el <tr>.
+            return rows
+                .map(r => r.querySelector('.fld-input[data-field="price"]')?.dataset.id)
+                .filter(Boolean);
+        }
+
+        function payload() {
+            return {
+                ids: visibleIds(),
+                percent: parseFloat(percent.value) || 0,
+                mode: mode(),
+                with_cost: withCost.checked,
+                rounding: rounding.value,
+            };
+        }
+
+        function refreshCount() {
+            const n = visibleIds().length;
+            document.getElementById('bpCount').textContent = n;
+            document.getElementById('bpCountBtn').textContent = n;
+            applyBtn.disabled = n === 0;
+        }
+
+        function preview() {
+            const data = payload();
+            if (!data.ids.length || !(data.percent > 0)) {
+                body.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">Elige un porcentaje para ver el resultado.</td></tr>';
+                document.getElementById('bpMore').textContent = '';
+                return;
+            }
+            postJson('{{ route('inventory.stock.bulk-price.preview') }}', data)
+                .then(r => r.json())
+                .then(d => {
+                    if (!d.ok) return;
+                    const up = mode() === 'increase';
+                    body.innerHTML = d.rows.map(function (r) {
+                        return '<tr>'
+                            + '<td class="ps-3">' + r.name + (r.sku ? ' <span class="text-muted">· ' + r.sku + '</span>' : '') + '</td>'
+                            + '<td class="text-end text-muted">' + money(r.price) + '</td>'
+                            + '<td class="text-center ' + (up ? 'bp-diff-up' : 'bp-diff-down') + '"><i class="bi bi-arrow-' + (up ? 'up' : 'down') + '"></i></td>'
+                            + '<td class="text-end pe-3 fw-bold ' + (up ? 'bp-diff-up' : 'bp-diff-down') + '">' + money(r.new_price) + '</td>'
+                            + '</tr>';
+                    }).join('');
+                    const rest = d.count - d.rows.length;
+                    document.getElementById('bpMore').textContent = rest > 0 ? ('y ' + rest + ' producto' + (rest === 1 ? '' : 's') + ' más') : '';
+                })
+                .catch(function () {});
+        }
+
+        function schedulePreview() {
+            clearTimeout(debounce);
+            debounce = setTimeout(preview, 300);
+        }
+
+        modalEl.addEventListener('shown.bs.modal', function () { refreshCount(); preview(); });
+        [percent, rounding, withCost].forEach(el => el.addEventListener('input', schedulePreview));
+        document.querySelectorAll('input[name="bpMode"]').forEach(el => el.addEventListener('change', preview));
+        document.querySelectorAll('.bp-quick').forEach(function (b) {
+            b.addEventListener('click', function () { percent.value = b.dataset.p; preview(); });
+        });
+
+        applyBtn.addEventListener('click', function () {
+            const data = payload();
+            if (!data.ids.length || !(data.percent > 0)) return;
+            const verb = mode() === 'increase' ? 'aumentar' : 'disminuir';
+            if (!confirm('¿Seguro que quieres ' + verb + ' ' + data.percent + '% a ' + data.ids.length + ' productos?')) return;
+
+            alertBox.classList.add('d-none');
+            const original = applyBtn.innerHTML;
+            applyBtn.disabled = true;
+            applyBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Aplicando…';
+
+            postJson('{{ route('inventory.stock.bulk-price') }}', data)
+                .then(r => r.json().then(d => ({ ok: r.ok, d })))
+                .then(function (res) {
+                    if (!res.ok || !res.d.ok) {
+                        alertBox.textContent = res.d.message || 'No se pudo aplicar el ajuste.';
+                        alertBox.classList.remove('d-none');
+                        return;
+                    }
+                    // Refresca la tabla en el sitio (sin recargar ni perder filtros).
+                    Object.entries(res.d.products).forEach(function ([id, vals]) {
+                        const pIn = document.querySelector('.fld-input[data-field="price"][data-id="' + id + '"]');
+                        const cIn = document.querySelector('.fld-input[data-field="cost"][data-id="' + id + '"]');
+                        if (pIn) { pIn.value = Number(vals.price).toFixed(2); flashInput(pIn, 'saved'); }
+                        if (cIn && data.with_cost) { cIn.value = Number(vals.cost).toFixed(2); flashInput(cIn, 'saved'); }
+                        updateMargin(id, Number(vals.price), Number(cIn ? cIn.value : vals.cost));
+                    });
+                    recalcStockKpis();
+                    bootstrap.Modal.getInstance(modalEl)?.hide();
+                    bpToast('Precios actualizados en ' + res.d.updated + ' producto' + (res.d.updated === 1 ? '' : 's') + '.');
+                })
+                .catch(function () {
+                    alertBox.textContent = 'Error de conexión.';
+                    alertBox.classList.remove('d-none');
+                })
+                .finally(function () {
+                    applyBtn.disabled = false;
+                    applyBtn.innerHTML = original;
+                });
+        });
+    })();
 </script>
 @endpush
+
+{{-- ── Ajuste masivo de precios (inflación) ─────────────────────────── --}}
+@if($canEditPrices ?? false)
+<div class="modal fade" id="bulkPriceModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-bottom">
+        <h5 class="modal-title fw-semibold"><i class="bi bi-percent me-2 text-primary"></i>Ajustar precios</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div id="bpAlert" class="alert alert-danger d-none py-2 small"></div>
+
+        {{-- A quién se aplica: lo que el usuario está viendo con sus filtros --}}
+        <div class="bp-scope d-flex align-items-center gap-2 p-3 rounded mb-3">
+          <i class="bi bi-funnel fs-5 text-primary"></i>
+          <div class="small">
+            Se aplicará a los <strong id="bpCount">0</strong> productos de la lista actual
+            <span class="text-muted">(según los filtros de categoría, marca y búsqueda).</span>
+          </div>
+        </div>
+
+        <div class="row g-3">
+          {{-- Subir / bajar --}}
+          <div class="col-12">
+            <label class="form-label fw-semibold small">¿Qué quieres hacer?</label>
+            <div class="btn-group w-100" role="group">
+              <input type="radio" class="btn-check" name="bpMode" id="bpUp" value="increase" checked>
+              <label class="btn btn-outline-success" for="bpUp"><i class="bi bi-arrow-up-right me-1"></i>Aumentar</label>
+              <input type="radio" class="btn-check" name="bpMode" id="bpDown" value="decrease">
+              <label class="btn btn-outline-danger" for="bpDown"><i class="bi bi-arrow-down-right me-1"></i>Disminuir</label>
+            </div>
+          </div>
+
+          {{-- Porcentaje + atajos --}}
+          <div class="col-md-5">
+            <label class="form-label fw-semibold small" for="bpPercent">Porcentaje</label>
+            <div class="input-group">
+              <input type="number" id="bpPercent" class="form-control" min="0.01" max="100" step="0.01" value="5">
+              <span class="input-group-text bg-light">%</span>
+            </div>
+            <div class="d-flex gap-1 mt-2 flex-wrap">
+              @foreach([3, 5, 10, 15, 20] as $q)
+              <button type="button" class="btn btn-sm btn-light border bp-quick" data-p="{{ $q }}">{{ $q }}%</button>
+              @endforeach
+            </div>
+          </div>
+
+          {{-- Redondeo --}}
+          <div class="col-md-4">
+            <label class="form-label fw-semibold small" for="bpRounding">Redondear a</label>
+            <select id="bpRounding" class="form-select" data-no-search>
+              <option value="none">Sin redondeo</option>
+              <option value="0.50">{{ currency_symbol() }} 0,50</option>
+              <option value="1">{{ currency_symbol() }} 1</option>
+              <option value="5">{{ currency_symbol() }} 5</option>
+            </select>
+            <div class="form-text">Precios “redondos”, más fáciles de cobrar.</div>
+          </div>
+
+          {{-- También el costo --}}
+          <div class="col-md-3">
+            <label class="form-label fw-semibold small d-block">Aplicar a</label>
+            <div class="border rounded p-2">
+              <div class="small fw-semibold mb-1"><i class="bi bi-check2 text-success"></i> Precio de venta</div>
+              <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="bpWithCost">
+                <label class="form-check-label small" for="bpWithCost">También el costo</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {{-- Vista previa: ver antes de aplicar --}}
+        <div class="d-flex align-items-center justify-content-between mt-4 mb-2">
+          <h6 class="fw-semibold mb-0"><i class="bi bi-eye me-1 text-muted"></i>Vista previa</h6>
+          <span class="text-muted small" id="bpMore"></span>
+        </div>
+        <div class="table-responsive border rounded">
+          <table class="table table-sm align-middle mb-0" style="font-size:.85rem;">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3">Producto</th>
+                <th class="text-end">Precio actual</th>
+                <th class="text-center" style="width:34px;"></th>
+                <th class="text-end pe-3">Precio nuevo</th>
+              </tr>
+            </thead>
+            <tbody id="bpPreviewBody">
+              <tr><td colspan="4" class="text-center text-muted py-3">Elige un porcentaje para ver el resultado.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer border-top">
+        <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary px-4" id="bpApply">
+          <i class="bi bi-check-lg me-1"></i>Aplicar a <span id="bpCountBtn">0</span> productos
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+@endif
 
 @endsection

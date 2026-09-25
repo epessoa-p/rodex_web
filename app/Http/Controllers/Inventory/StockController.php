@@ -10,6 +10,7 @@ use App\Models\Inventory\ProductCategory;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Warehouse;
+use App\Services\Inventory\BulkPriceUpdateService;
 use App\Services\Inventory\StockValuationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -70,6 +71,59 @@ class StockController extends Controller
     }
 
     /** Actualiza costo, precio u origen (AJAX) */
+    /**
+     * Ajuste masivo de precios (inflación): vista previa y aplicación sobre
+     * los productos que el usuario tiene filtrados en la lista.
+     */
+    public function bulkPricePreview(Request $request, BulkPriceUpdateService $service)
+    {
+        [$cid, $ids, $data] = $this->bulkPriceInput($request);
+
+        $preview = $service->preview($cid, $ids, (float) $data['percent'], $data['mode'], (bool) ($data['with_cost'] ?? false), $data['rounding'] ?? 'none');
+
+        return response()->json([
+            'ok'    => true,
+            'count' => $preview['count'],
+            // Solo una muestra: la tabla del modal enseña las primeras filas.
+            'rows'  => array_slice($preview['rows'], 0, 8),
+        ]);
+    }
+
+    public function bulkPriceApply(Request $request, BulkPriceUpdateService $service)
+    {
+        [$cid, $ids, $data] = $this->bulkPriceInput($request);
+
+        $result = $service->apply($cid, $ids, (float) $data['percent'], $data['mode'], (bool) ($data['with_cost'] ?? false), $data['rounding'] ?? 'none');
+
+        Log::info('Ajuste masivo de precios', [
+            'company' => $cid,
+            'user'    => auth()->id(),
+            'mode'    => $data['mode'],
+            'percent' => $data['percent'],
+            'updated' => $result['updated'],
+        ]);
+
+        return response()->json(['ok' => true] + $result);
+    }
+
+    /** Validación común del ajuste masivo (empresa + ids + parámetros). */
+    private function bulkPriceInput(Request $request): array
+    {
+        $user = auth()->user();
+        $cid  = $user->is_super_admin ? $request->input('company_id') : $user->getCurrentCompany()?->id;
+        abort_unless($cid, 422, 'No hay una empresa activa.');
+
+        $data = $request->validate([
+            'ids'       => ['required', 'array', 'min:1'],
+            'ids.*'     => ['integer'],
+            'percent'   => ['required', 'numeric', 'min:0.01', 'max:100'],
+            'mode'      => ['required', 'in:increase,decrease'],
+            'with_cost' => ['nullable', 'boolean'],
+            'rounding'  => ['nullable', 'in:none,0.50,1,5'],
+        ]);
+
+        return [(int) $cid, $data['ids'], $data];
+    }
     public function updateField(Product $product, Request $request)
     {
         $this->authorizeProduct($product);

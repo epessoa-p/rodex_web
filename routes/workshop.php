@@ -90,6 +90,7 @@ Route::middleware(['auth', 'plan:workshop'])->group(function () {
         Route::post('/{order}/status',      [WorkOrderController::class, 'changeStatus'])->name('status')->middleware('check-permission:workshop.edit');
         Route::post('/{order}/payment',     [WorkOrderController::class, 'registerPayment'])->name('payment')->middleware('check-permission:workshop.deliver');
         Route::post('/{order}/cancel',      [WorkOrderController::class, 'cancel'])->name('cancel')->middleware('check-permission:workshop.edit');
+        Route::post('/{order}/reopen',      [WorkOrderController::class, 'reopen'])->name('reopen')->middleware('check-permission:workshop.edit');
         Route::post('/{order}/photos',         [WorkOrderController::class, 'addPhotos'])->name('photos.add')->middleware('check-permission:workshop.edit');
         Route::put('/{order}/photos/{photo}',  [WorkOrderController::class, 'updatePhoto'])->name('photos.update')->middleware('check-permission:workshop.edit');
         Route::delete('/{order}/photos/{photo}',[WorkOrderController::class, 'deletePhoto'])->name('photos.remove')->middleware('check-permission:workshop.edit');

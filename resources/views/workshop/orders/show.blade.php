@@ -112,6 +112,26 @@
                     </form>
                     @endif
 
+                    {{-- Corregir una OT entregada: solo mientras su caja siga abierta --}}
+                    @if($canEdit && $order->status === 'entregada')
+                    @php $reopenBlocked = app(\App\Services\Workshop\WorkOrderReopenService::class)->blockedReason($order); @endphp
+                    @if($reopenBlocked === null)
+                    <form action="{{ route('workshop.orders.reopen', $order) }}" method="POST" class="d-inline"
+                          onsubmit="return confirm('¿Reabrir la OT {{ addslashes($order->code) }} para corregirla?\n\nSe anulará el cobro y los repuestos volverán al stock. Tendrás que entregarla y cobrarla de nuevo.')">
+                        @csrf
+                        <button class="btn btn-sm btn-light border text-warning-emphasis">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Reabrir para corregir
+                        </button>
+                    </form>
+                    @else
+                    <span class="d-inline-block" data-bs-toggle="tooltip" title="{{ $reopenBlocked }}">
+                        <button class="btn btn-sm btn-light border text-muted" disabled>
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Reabrir para corregir
+                        </button>
+                    </span>
+                    @endif
+                    @endif
+
                     <a href="{{ route('workshop.orders.print', $order) }}" target="_blank" class="btn btn-light border btn-sm">
                         <i class="bi bi-printer me-1"></i>Imprimir
                     </a>

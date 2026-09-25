@@ -299,15 +299,46 @@ class WorkOrderController extends Controller
         return back()->with('success', 'Foto eliminada.');
     }
 
+    /**
+     * Reabre una OT entregada para corregirla (anula el cobro y devuelve el
+     * stock). Solo mientras la caja de ese cobro siga abierta.
+     */
+    public function reopen(WorkOrder $order, \App\Services\Workshop\WorkOrderReopenService $reopen)
+    {
+        $this->authorizeOrder($order);
+
+        $reason = $reopen->blockedReason($order);
+        if ($reason !== null) {
+            return back()->withErrors(['error' => $reason]);
+        }
+
+        try {
+            $reopen->reopen($order, auth()->id());
+        } catch (\Throwable $e) {
+            Log::error('Error al reabrir OT', ['id' => $order->id, 'msg' => $e->getMessage()]);
+
+            return back()->withErrors(['error' => 'No se pudo reabrir: ' . $e->getMessage()]);
+        }
+
+        return redirect()->route('workshop.orders.show', $order)
+            ->with('success', "OT {$order->code} reabierta: se anuló el cobro y el stock volvió al almacén.");
+    }
+
     public function edit(WorkOrder $order)
     {
         $this->authorizeOrder($order);
+        if ($redirect = $this->guardEditableRedirect($order)) {
+            return $redirect;
+        }
         return view('workshop.orders.edit', array_merge($this->formData($order->company_id), ['order' => $order]));
     }
 
     public function update(Request $request, WorkOrder $order)
     {
         $this->authorizeOrder($order);
+        if ($redirect = $this->guardEditableRedirect($order)) {
+            return $redirect;
+        }
 
         $validated = $request->validate([
             'client_id'      => 'required|exists:clients,id',
@@ -707,6 +738,24 @@ class WorkOrderController extends Controller
             ->where('branch_id', $branchId)
             ->count() + 1;
         return 'OT-' . str_pad((string) $count, 5, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Una OT entregada o anulada no se edita: para corregir una entregada hay
+     * que reabrirla (se anula el cobro y vuelve el stock). Misma regla que la
+     * API (`Api\WorkOrderController::guardEditable`).
+     */
+    private function guardEditableRedirect(WorkOrder $order)
+    {
+        if (! in_array($order->status, ['entregada', 'anulada'], true)) {
+            return null;
+        }
+
+        $msg = $order->status === 'anulada'
+            ? 'La orden está anulada y no se puede editar.'
+            : 'La orden ya fue entregada: usa «Reabrir para corregir» para modificarla.';
+
+        return redirect()->route('workshop.orders.show', $order)->withErrors(['error' => $msg]);
     }
 
     private function guardEditable(WorkOrder $order): void

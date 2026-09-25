@@ -170,6 +170,11 @@ Route::middleware(['auth:sanctum', 'api.fresh'])->group(function () {
             Route::post('work-orders/quick', [WorkOrderController::class, 'quick'])
                 ->middleware('api.permission:workshop.create');
 
+            // Editar datos de una OT en curso y reabrir una entregada (caja abierta).
+            Route::put('work-orders/{order}', [WorkOrderController::class, 'update'])
+                ->middleware('api.permission:workshop.edit');
+            Route::post('work-orders/{order}/reopen', [WorkOrderController::class, 'reopen'])
+                ->middleware('api.permission:workshop.edit');
             Route::post('work-orders/{order}/services', [WorkOrderController::class, 'addService'])
                 ->middleware('api.permission:workshop.edit');
             Route::delete('work-orders/{order}/services/{service}', [WorkOrderController::class, 'removeService'])
@@ -249,6 +254,12 @@ Route::middleware(['auth:sanctum', 'api.fresh'])->group(function () {
             Route::post('products', [ProductController::class, 'store'])
                 ->middleware('api.permission:products.create');
             Route::put('products/{product}', [ProductController::class, 'update'])
+                ->middleware('api.permission:products.edit');
+            // Foto principal del producto (multipart): se actualiza de un toque
+            // desde el listado o desde la hoja de edición.
+            Route::post('products/{product}/photo', [ProductController::class, 'updatePhoto'])
+                ->middleware('api.permission:products.edit');
+            Route::delete('products/{product}/photo', [ProductController::class, 'destroyPhoto'])
                 ->middleware('api.permission:products.edit');
 
             // Catálogos del hub Inventario (categorías, marcas, orígenes, marcas y
