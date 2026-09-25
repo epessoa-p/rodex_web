@@ -788,6 +788,11 @@
     // Pintado inicial.
     applyFilters();
 
+    // El ajuste masivo de precios corre en otro bloque (fuera de este IIFE):
+    // le exponemos las filas que pasan los filtros para que aplique SOLO a
+    // esas y no a todo el inventario.
+    window.stockFilteredRows = function () { return filteredRows; };
+
     // Category pills (tienen data-cat)
     document.querySelectorAll('.cat-pill[data-cat]').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -886,9 +891,10 @@
         const mode  = () => document.querySelector('input[name="bpMode"]:checked').value;
 
         /// Ids de las filas que pasan los filtros actuales (no solo la página).
+        /// Si los filtros no dejan ninguna, son cero: nunca "todos".
         function visibleIds() {
-            const rows = (typeof filteredRows !== 'undefined' && filteredRows.length)
-                ? filteredRows
+            const rows = typeof window.stockFilteredRows === 'function'
+                ? window.stockFilteredRows()
                 : Array.from(document.querySelectorAll('#stockBody .stock-row'));
             // El id vive en los inputs de la fila (data-id), no en el <tr>.
             return rows
