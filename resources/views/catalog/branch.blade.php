@@ -119,7 +119,7 @@
                     <div class="prod">
                         <div class="thumb">
                             @php $photo = $p->mainPhoto(); @endphp
-                            @if($photo)<img src="{{ $photo->url }}" alt="{{ $p->name }}">@else<i class="bi bi-box-seam"></i>@endif
+                            @if($photo)<img src="{{ $photo->thumb_url }}" alt="{{ $p->name }}" loading="lazy">@else<i class="bi bi-box-seam"></i>@endif
                         </div>
                         <div class="info">
                             <div class="name">{{ $p->name }}</div>

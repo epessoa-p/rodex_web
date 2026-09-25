@@ -244,8 +244,9 @@
                             {{-- Thumbnail --}}
                             <td class="ps-3 py-2">
                                 @if($mainPhoto)
-                                <img src="{{ $mainPhoto->url }}"
-                                     alt="{{ $product->name }}"
+                                {{-- Miniatura (320 px): el original pesa megas y aquí se ve a 32 px --}}
+                                <img src="{{ $mainPhoto->thumb_url }}"
+                                     alt="{{ $product->name }}" loading="lazy"
                                      class="rounded-2 border object-fit-cover"
                                      style="width:32px;height:32px;object-fit:cover;">
                                 @else
@@ -788,11 +789,6 @@
     // Pintado inicial.
     applyFilters();
 
-    // El ajuste masivo de precios corre en otro bloque (fuera de este IIFE):
-    // le exponemos las filas que pasan los filtros para que aplique SOLO a
-    // esas y no a todo el inventario.
-    window.stockFilteredRows = function () { return filteredRows; };
-
     // Category pills (tienen data-cat)
     document.querySelectorAll('.cat-pill[data-cat]').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -856,7 +852,7 @@
         });
     }
 
-})();
+
     // ── Ajuste masivo de precios ──────────────────────────────────────
     (function () {
         const modalEl = document.getElementById('bulkPriceModal');
@@ -893,9 +889,7 @@
         /// Ids de las filas que pasan los filtros actuales (no solo la página).
         /// Si los filtros no dejan ninguna, son cero: nunca "todos".
         function visibleIds() {
-            const rows = typeof window.stockFilteredRows === 'function'
-                ? window.stockFilteredRows()
-                : Array.from(document.querySelectorAll('#stockBody .stock-row'));
+            const rows = filteredRows;
             // El id vive en los inputs de la fila (data-id), no en el <tr>.
             return rows
                 .map(r => r.querySelector('.fld-input[data-field="price"]')?.dataset.id)
@@ -912,11 +906,22 @@
             };
         }
 
+        /// "1 producto" / "8 productos".
+        const word = n => 'producto' + (n === 1 ? '' : 's');
+
         function refreshCount() {
             const n = visibleIds().length;
             document.getElementById('bpCount').textContent = n;
             document.getElementById('bpCountBtn').textContent = n;
+            document.getElementById('bpCountWord').textContent = word(n);
+            document.getElementById('bpBtnWord').textContent = word(n);
             applyBtn.disabled = n === 0;
+        }
+
+        /// Explica en palabras la opción de redondeo elegida.
+        function refreshRoundingHint() {
+            const hint = document.getElementById('bpRoundingHint');
+            if (hint) hint.textContent = rounding.getAttribute('data-hint-' + rounding.value) || '';
         }
 
         function preview() {
@@ -929,7 +934,11 @@
             postJson('{{ route('inventory.stock.bulk-price.preview') }}', data)
                 .then(r => r.json())
                 .then(d => {
-                    if (!d.ok) return;
+                    if (!d.ok) {
+                        body.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">'
+                            + 'No se pudo calcular la vista previa.</td></tr>';
+                        return;
+                    }
                     const up = mode() === 'increase';
                     body.innerHTML = d.rows.map(function (r) {
                         return '<tr>'
@@ -942,7 +951,10 @@
                     const rest = d.count - d.rows.length;
                     document.getElementById('bpMore').textContent = rest > 0 ? ('y ' + rest + ' producto' + (rest === 1 ? '' : 's') + ' más') : '';
                 })
-                .catch(function () {});
+                .catch(function () {
+                    body.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">'
+                        + 'No se pudo calcular la vista previa. Revisa tu conexión.</td></tr>';
+                });
         }
 
         function schedulePreview() {
@@ -950,7 +962,12 @@
             debounce = setTimeout(preview, 300);
         }
 
-        modalEl.addEventListener('shown.bs.modal', function () { refreshCount(); preview(); });
+        modalEl.addEventListener('shown.bs.modal', function () {
+            refreshCount();
+            refreshRoundingHint();
+            preview();
+        });
+        rounding.addEventListener('change', refreshRoundingHint);
         [percent, rounding, withCost].forEach(el => el.addEventListener('input', schedulePreview));
         document.querySelectorAll('input[name="bpMode"]').forEach(el => el.addEventListener('change', preview));
         document.querySelectorAll('.bp-quick').forEach(function (b) {
@@ -961,7 +978,8 @@
             const data = payload();
             if (!data.ids.length || !(data.percent > 0)) return;
             const verb = mode() === 'increase' ? 'aumentar' : 'disminuir';
-            if (!confirm('¿Seguro que quieres ' + verb + ' ' + data.percent + '% a ' + data.ids.length + ' productos?')) return;
+            if (!confirm('¿Seguro que quieres ' + verb + ' ' + data.percent + '% a '
+                + data.ids.length + ' ' + word(data.ids.length) + '?')) return;
 
             alertBox.classList.add('d-none');
             const original = applyBtn.innerHTML;
@@ -998,6 +1016,7 @@
                 });
         });
     })();
+})();
 </script>
 @endpush
 
@@ -1017,7 +1036,7 @@
         <div class="bp-scope d-flex align-items-center gap-2 p-3 rounded mb-3">
           <i class="bi bi-funnel fs-5 text-primary"></i>
           <div class="small">
-            Se aplicará a los <strong id="bpCount">0</strong> productos de la lista actual
+            Se aplicará a <strong id="bpCount">0</strong> <span id="bpCountWord">productos</span> de la lista actual
             <span class="text-muted">(según los filtros de categoría, marca y búsqueda).</span>
           </div>
         </div>
@@ -1050,14 +1069,22 @@
 
           {{-- Redondeo --}}
           <div class="col-md-4">
-            <label class="form-label fw-semibold small" for="bpRounding">Redondear a</label>
-            <select id="bpRounding" class="form-select" data-no-search>
+            <label class="form-label fw-semibold small" for="bpRounding">
+              Redondear a
+              <i class="bi bi-question-circle text-muted"
+                 title="Después de subir o bajar el porcentaje, el precio queda con centavos raros (ej. {{ currency_symbol() }} 52,47). El redondeo lo acomoda al valor cerrado más cercano para cobrar sin buscar cambio."></i>
+            </label>
+            <select id="bpRounding" class="form-select" data-no-search
+                    data-hint-none="Los precios quedan tal cual salen del cálculo, con centavos (ej. {{ currency_symbol() }} 52,47)."
+                    data-hint-0.50="Los precios terminan en 0,00 o 0,50 (ej. {{ currency_symbol() }} 52,47 → {{ currency_symbol() }} 52,50)."
+                    data-hint-1="Precios enteros, sin centavos (ej. {{ currency_symbol() }} 52,47 → {{ currency_symbol() }} 52)."
+                    data-hint-5="Precios de 5 en 5 (ej. {{ currency_symbol() }} 52,47 → {{ currency_symbol() }} 50).">
               <option value="none">Sin redondeo</option>
               <option value="0.50">{{ currency_symbol() }} 0,50</option>
               <option value="1">{{ currency_symbol() }} 1</option>
               <option value="5">{{ currency_symbol() }} 5</option>
             </select>
-            <div class="form-text">Precios “redondos”, más fáciles de cobrar.</div>
+            <div class="form-text" id="bpRoundingHint"></div>
           </div>
 
           {{-- También el costo --}}
@@ -1097,7 +1124,7 @@
       <div class="modal-footer border-top">
         <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button>
         <button type="button" class="btn btn-primary px-4" id="bpApply">
-          <i class="bi bi-check-lg me-1"></i>Aplicar a <span id="bpCountBtn">0</span> productos
+          <i class="bi bi-check-lg me-1"></i>Aplicar a <span id="bpCountBtn">0</span> <span id="bpBtnWord">productos</span>
         </button>
       </div>
     </div>

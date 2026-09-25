@@ -56,7 +56,7 @@
                         <tr class="border-bottom border-light">
                             <td class="ps-3 py-2">
                                 @if($mainPhoto)
-                                <img src="{{ $mainPhoto->url }}" alt="{{ $product->name }}"
+                                <img src="{{ $mainPhoto->thumb_url }}" alt="{{ $product->name }}" loading="lazy"
                                      class="rounded-2 border object-fit-cover"
                                      style="width:30px;height:30px;object-fit:cover;">
                                 @else

@@ -10,6 +10,7 @@ use App\Models\Inventory\ProductCategory;
 use App\Models\Inventory\ProductOrigin;
 use App\Models\Inventory\ProductUnit;
 use App\Models\Inventory\ProductPhoto;
+use App\Services\Inventory\PhotoThumbnailService;
 use App\Models\Product;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
@@ -278,6 +279,7 @@ class ProductController extends Controller
                     $photo = ProductPhoto::find($photoId);
                     if ($photo && $photo->product_id === $product->id) {
                         Storage::disk('public')->delete($photo->file_path);
+                        app(PhotoThumbnailService::class)->delete($photo->thumb_path);
                         $photo->delete();
                     }
                 }
@@ -313,6 +315,7 @@ class ProductController extends Controller
         $this->authorizeProduct($product);
 
         Storage::disk('public')->delete($photo->file_path);
+        app(PhotoThumbnailService::class)->delete($photo->thumb_path);
         $wasMain = $photo->is_main;
         $photo->delete();
 
@@ -409,12 +412,16 @@ class ProductController extends Controller
         $mainIndex    = (int) request('main_photo_index', 0);
         $currentCount = $product->photos()->count();
 
+        $thumbs = app(PhotoThumbnailService::class);
+
         foreach (request()->file('photos') as $i => $file) {
-            $path = $file->store("company/{$product->company_id}/products/{$product->id}", 'public');
+            $dir  = "company/{$product->company_id}/products/{$product->id}";
+            $path = $file->store($dir, 'public');
             ProductPhoto::create([
                 'product_id' => $product->id,
                 'company_id' => $product->company_id,
                 'file_path'  => $path,
+                'thumb_path' => $thumbs->store($file, $dir),
                 'file_name'  => $file->getClientOriginalName(),
                 'is_main'    => ($i === $mainIndex && $currentCount === 0),
                 'sort_order' => $currentCount + $i,

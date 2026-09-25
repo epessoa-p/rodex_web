@@ -9,6 +9,7 @@ use App\Models\Inventory\ProductPhoto;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Warehouse;
+use App\Services\Inventory\PhotoThumbnailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -96,11 +97,13 @@ class ProductController extends Controller
         // Foto opcional: se guarda en el disco público y se marca como principal.
         if ($request->hasFile('photo')) {
             $file = $request->file('photo');
-            $path = $file->store("company/{$cid}/products/{$product->id}", 'public');
+            $dir  = "company/{$cid}/products/{$product->id}";
+            $path = $file->store($dir, 'public');
             ProductPhoto::create([
                 'product_id' => $product->id,
                 'company_id' => $cid,
                 'file_path'  => $path,
+                'thumb_path' => app(PhotoThumbnailService::class)->store($file, $dir),
                 'file_name'  => $file->getClientOriginalName(),
                 'is_main'    => true,
                 'sort_order' => 0,
@@ -260,25 +263,34 @@ class ProductController extends Controller
      * Va por POST multipart porque PUT no admite archivos sin spoofing, y así
      * el listado puede actualizarla de un toque sin abrir el formulario.
      */
-    public function updatePhoto(Request $request, Product $product)
+    public function updatePhoto(Request $request, Product $product, PhotoThumbnailService $thumbs)
     {
         $request->validate(['photo' => ['required', 'image', 'max:5120']]);
 
-        $file = $request->file('photo');
-        $path = $file->store("company/{$product->company_id}/products/{$product->id}", 'public');
-        $name = $file->getClientOriginalName();
+        $file  = $request->file('photo');
+        $dir   = "company/{$product->company_id}/products/{$product->id}";
+        $path  = $file->store($dir, 'public');
+        $name  = $file->getClientOriginalName();
+        $thumb = $thumbs->store($file, $dir);
 
         $main = $product->photos()->where('is_main', true)->first() ?? $product->photos()->first();
 
         if ($main) {
-            // Reemplazo: borramos el archivo anterior para no dejar basura.
+            // Reemplazo: borramos los archivos anteriores para no dejar basura.
             Storage::disk('public')->delete($main->file_path);
-            $main->update(['file_path' => $path, 'file_name' => $name, 'is_main' => true]);
+            $thumbs->delete($main->thumb_path);
+            $main->update([
+                'file_path'  => $path,
+                'thumb_path' => $thumb,
+                'file_name'  => $name,
+                'is_main'    => true,
+            ]);
         } else {
             ProductPhoto::create([
                 'product_id' => $product->id,
                 'company_id' => $product->company_id,
                 'file_path'  => $path,
+                'thumb_path' => $thumb,
                 'file_name'  => $name,
                 'is_main'    => true,
                 'sort_order' => 0,
@@ -289,12 +301,13 @@ class ProductController extends Controller
     }
 
     /** Quita la foto principal; si hay otras, asciende la siguiente. */
-    public function destroyPhoto(Product $product)
+    public function destroyPhoto(Product $product, PhotoThumbnailService $thumbs)
     {
         $main = $product->photos()->where('is_main', true)->first() ?? $product->photos()->first();
 
         if ($main) {
             Storage::disk('public')->delete($main->file_path);
+            $thumbs->delete($main->thumb_path);
             $main->delete();
 
             $next = $product->photos()->first();
@@ -357,8 +370,10 @@ class ProductController extends Controller
     }
 
     /**
-     * URL de la foto principal del producto (o la primera). Usa la relación ya
-     * cargada si está disponible para evitar consultas N+1 en el listado.
+     * URL de la MINIATURA de la foto principal (o la primera). El listado del
+     * móvil pinta recuadros de 44 px: servir el original ahí gastaba datos de
+     * más. La galería de la ficha sigue usando `photos` (tamaño completo).
+     * Usa la relación ya cargada si está disponible para evitar N+1.
      */
     private function mainPhotoUrl(Product $p): ?string
     {
@@ -366,6 +381,6 @@ class ProductController extends Controller
             ? ($p->photos->firstWhere('is_main', true) ?? $p->photos->first())
             : $p->mainPhoto();
 
-        return $photo?->url;
+        return $photo?->thumb_url;
     }
 }

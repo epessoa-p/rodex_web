@@ -19,6 +19,7 @@ class ProductPhoto extends Model
         'product_id',
         'company_id',
         'file_path',
+        'thumb_path',
         'file_name',
         'is_main',
         'sort_order',
@@ -36,5 +37,14 @@ class ProductPhoto extends Model
     public function getUrlAttribute(): string
     {
         return asset('storage/' . $this->file_path);
+    }
+
+    /**
+     * URL de la miniatura (320 px) para los listados. Las fotos subidas antes
+     * de que existieran las miniaturas caen al original.
+     */
+    public function getThumbUrlAttribute(): string
+    {
+        return $this->thumb_path ? asset('storage/' . $this->thumb_path) : $this->url;
     }
 }

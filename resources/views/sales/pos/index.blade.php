@@ -41,7 +41,8 @@
             'description'      => $p->description ?? '',
             // Modelos compatibles: catálogo estructurado (moto_models) enlazado al producto.
             'compatible_models'=> $p->motoModels->pluck('display_name')->implode(', '),
-            'photo'            => count($photos) > 0 ? $photos[0] : null,
+            // Tarjeta del POS: miniatura (las completas quedan en 'photos' para el visor).
+            'photo'            => $p->mainPhoto()?->thumb_url,
             'photos'           => $photos,
         ];
     })->values();
