@@ -404,6 +404,33 @@
 .bp-diff-up { color: #198754; }
 .bp-diff-down { color: #dc3545; }
 
+/* Confirmación: tarjeta chica DENTRO del modal (no se apilan backdrops). */
+#bulkPriceModal .modal-content { position: relative; overflow: hidden; }
+.bp-confirm {
+    position: absolute; inset: 0; z-index: 5;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(33,37,41,.45); backdrop-filter: blur(2px);
+    animation: bpFade .15s ease-out;
+}
+.bp-confirm-card {
+    width: min(360px, calc(100% - 2rem));
+    background: #fff; border-radius: 1rem; padding: 1.25rem;
+    animation: bpPop .18s ease-out;
+}
+.bp-confirm-icon {
+    width: 48px; height: 48px; border-radius: 50%; font-size: 1.35rem;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto .75rem;
+}
+.bp-confirm-icon.up   { background: rgba(25,135,84,.12);  color: #198754; }
+.bp-confirm-icon.down { background: rgba(220,53,69,.12);  color: #dc3545; }
+.bp-confirm-example {
+    background: #f8f9fa; border: 1px dashed #dee2e6;
+    border-radius: .5rem; padding: .4rem .6rem;
+}
+@keyframes bpFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bpPop  { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+
 /* ── Category filter bar ─────────────────────────────────── */
 .cat-filter-bar {
     display: flex;
@@ -867,6 +894,8 @@
         let debounce   = null;
 
         const money = n => SYMBOL + ' ' + (Number(n) || 0).toFixed(2);
+        /// Última vista previa: de ahí sale el ejemplo de la confirmación.
+        let lastRows = [];
 
         /// Mismo toast verde que usa el layout para los mensajes flash.
         function bpToast(text) {
@@ -927,6 +956,7 @@
         function preview() {
             const data = payload();
             if (!data.ids.length || !(data.percent > 0)) {
+                lastRows = [];
                 body.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">Elige un porcentaje para ver el resultado.</td></tr>';
                 document.getElementById('bpMore').textContent = '';
                 return;
@@ -940,6 +970,7 @@
                         return;
                     }
                     const up = mode() === 'increase';
+                    lastRows = d.rows || [];
                     body.innerHTML = d.rows.map(function (r) {
                         return '<tr>'
                             + '<td class="ps-3">' + r.name + (r.sku ? ' <span class="text-muted">· ' + r.sku + '</span>' : '') + '</td>'
@@ -974,13 +1005,80 @@
             b.addEventListener('click', function () { percent.value = b.dataset.p; preview(); });
         });
 
+        /// Confirmación en una tarjeta dentro del modal: se ve mucho mejor que
+        /// el confirm() del navegador y permite mostrar el ejemplo real.
+        const confirmBox = document.getElementById('bpConfirm');
+
+        function askConfirm(data) {
+            if (!confirmBox) return Promise.resolve(true);
+
+            const up   = data.mode === 'increase';
+            const verb = up ? 'aumentar' : 'disminuir';
+            const n    = data.ids.length;
+            const pct  = String(data.percent).replace('.', ',');
+
+            const icon = document.getElementById('bpConfirmIcon');
+            icon.className   = 'bp-confirm-icon ' + (up ? 'up' : 'down');
+            icon.innerHTML   = '<i class="bi bi-arrow-' + (up ? 'up' : 'down') + '-right"></i>';
+
+            document.getElementById('bpConfirmTitle').textContent =
+                '¿' + verb.charAt(0).toUpperCase() + verb.slice(1) + ' ' + pct + '% a ' + n + ' ' + word(n) + '?';
+            document.getElementById('bpConfirmText').textContent = data.with_cost
+                ? 'Se actualizarán el precio de venta y el costo.'
+                : 'Se actualizará solo el precio de venta.';
+
+            // Ejemplo con un producto real de la vista previa.
+            const ex  = document.getElementById('bpConfirmExample');
+            const row = lastRows[0];
+            if (row) {
+                ex.innerHTML = '<span class="text-muted">' + row.name + '</span><br>'
+                    + money(row.price) + ' <i class="bi bi-arrow-right mx-1"></i>'
+                    + '<strong class="' + (up ? 'bp-diff-up' : 'bp-diff-down') + '">' + money(row.new_price) + '</strong>';
+                ex.classList.remove('d-none');
+            } else {
+                ex.classList.add('d-none');
+            }
+
+            const yes = document.getElementById('bpConfirmYes');
+            const no  = document.getElementById('bpConfirmNo');
+            yes.className   = 'btn flex-fill ' + (up ? 'btn-success' : 'btn-danger');
+            yes.textContent = 'Sí, ' + verb;
+
+            confirmBox.classList.remove('d-none');
+            yes.focus();
+
+            return new Promise(function (resolve) {
+                function close(answer) {
+                    confirmBox.classList.add('d-none');
+                    yes.removeEventListener('click', onYes);
+                    no.removeEventListener('click', onNo);
+                    confirmBox.removeEventListener('click', onBackdrop);
+                    document.removeEventListener('keydown', onKey);
+                    resolve(answer);
+                }
+                function onYes() { close(true); }
+                function onNo()  { close(false); }
+                // Tocar fuera de la tarjeta o Esc = cancelar (sin cerrar el modal).
+                function onBackdrop(e) { if (e.target === confirmBox) close(false); }
+                function onKey(e) {
+                    if (e.key !== 'Escape') return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    close(false);
+                }
+                yes.addEventListener('click', onYes);
+                no.addEventListener('click', onNo);
+                confirmBox.addEventListener('click', onBackdrop);
+                document.addEventListener('keydown', onKey, true);
+            });
+        }
         applyBtn.addEventListener('click', function () {
             const data = payload();
             if (!data.ids.length || !(data.percent > 0)) return;
-            const verb = mode() === 'increase' ? 'aumentar' : 'disminuir';
-            if (!confirm('¿Seguro que quieres ' + verb + ' ' + data.percent + '% a '
-                + data.ids.length + ' ' + word(data.ids.length) + '?')) return;
+            askConfirm(data).then(function (ok) { if (ok) runApply(data); });
+        });
 
+        function runApply(data) {
             alertBox.classList.add('d-none');
             const original = applyBtn.innerHTML;
             applyBtn.disabled = true;
@@ -1014,6 +1112,11 @@
                     applyBtn.disabled = false;
                     applyBtn.innerHTML = original;
                 });
+        }
+
+        // Al cerrar el modal, la confirmación no debe quedar abierta.
+        modalEl.addEventListener('hidden.bs.modal', function () {
+            if (confirmBox) confirmBox.classList.add('d-none');
         });
     })();
 })();
@@ -1121,6 +1224,20 @@
           </table>
         </div>
       </div>
+      {{-- Confirmación: tarjeta sobre el propio modal, sin apilar diálogos --}}
+      <div class="bp-confirm d-none" id="bpConfirm">
+        <div class="bp-confirm-card shadow-lg" role="alertdialog" aria-modal="true" aria-labelledby="bpConfirmTitle">
+          <div class="bp-confirm-icon up" id="bpConfirmIcon"><i class="bi bi-arrow-up-right"></i></div>
+          <h6 class="fw-bold text-center mb-1" id="bpConfirmTitle"></h6>
+          <p class="text-muted small text-center mb-2" id="bpConfirmText"></p>
+          <div class="bp-confirm-example small text-center mb-3 d-none" id="bpConfirmExample"></div>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-light border flex-fill" id="bpConfirmNo">Cancelar</button>
+            <button type="button" class="btn btn-success flex-fill" id="bpConfirmYes">Sí, aplicar</button>
+          </div>
+        </div>
+      </div>
+
       <div class="modal-footer border-top">
         <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button>
         <button type="button" class="btn btn-primary px-4" id="bpApply">
