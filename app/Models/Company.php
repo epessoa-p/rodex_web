@@ -97,6 +97,21 @@ class Company extends Model
         return is_file($path) ? $path : null;
     }
 
+    /**
+     * URL del logo para lo que imprime el NAVEGADOR (recibos, OT).
+     *
+     * No consulta el disco: logo_url/logo_file comprueban public_path(), que en
+     * el hosting puede no coincidir con la carpeta que sirve la web, y entonces
+     * el recibo salía sin logo aunque la imagen se viera bien por URL. Si la
+     * imagen no carga, la vista la oculta con onerror (sin ícono roto).
+     */
+    public function printLogoUrl(): string
+    {
+        return $this->logo
+            ? asset('storage/' . ltrim($this->logo, '/'))
+            : asset(config('brand.logo'));
+    }
+
     /** ¿La empresa definió colores propios para el menú y la cabecera? */
     public function hasTheme(): bool
     {

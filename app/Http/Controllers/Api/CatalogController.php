@@ -37,7 +37,13 @@ class CatalogController extends Controller
 
         $query = $model::query()
             ->when($type === 'moto-models', fn ($w) => $w->with('brand'))
-            ->when($q !== '', fn ($w) => $w->where('name', 'like', "%{$q}%"))
+            ->when($q !== '', fn ($w) => $w->where(function ($x) use ($q, $type) {
+                $x->where('name', 'like', "%{$q}%");
+                // Modelos de moto: también por la marca ("HONDA" → CG 150, XR 190…).
+                if ($type === 'moto-models') {
+                    $x->orWhereHas('brand', fn ($b) => $b->where('name', 'like', "%{$q}%"));
+                }
+            }))
             ->orderByDesc('active')
             ->orderBy('name');
 

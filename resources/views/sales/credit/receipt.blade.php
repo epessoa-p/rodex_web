@@ -55,8 +55,9 @@
 
     {{-- ── Encabezado: logo a la izquierda, datos a la derecha ── --}}
     <div class="head">
-        @if($company?->logo_file)
-        <div class="logo"><img src="{{ $company->logo_url }}" alt="{{ $company->name }}"></div>
+        {{-- Recibo en el navegador: URL directa, sin consultar el disco (ver Company::printLogoUrl). --}}
+        @if($company)
+        <div class="logo"><img src="{{ $company->printLogoUrl() }}" alt="" onerror="this.parentNode.remove()"></div>
         @endif
         <div class="biz">
             <div class="biz-name">{{ $company?->name ?? config('brand.name') }}</div>

@@ -65,8 +65,9 @@
 
     <div class="sheet">
         <div class="head">
-            @if($company?->logo_file)
-            <img src="{{ $company->logo_url }}" alt="{{ $company->name }}">
+            {{-- Impresión en el navegador: URL directa, sin consultar el disco (ver Company::printLogoUrl). --}}
+            @if($company)
+            <img src="{{ $company->printLogoUrl() }}" alt="" onerror="this.remove()">
             @endif
             <div class="biz">
                 <div class="biz-name">{{ $company?->name ?? config('brand.name') }}</div>

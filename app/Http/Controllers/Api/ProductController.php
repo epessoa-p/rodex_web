@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Inventory\ProductBrand;
 use App\Models\Inventory\ProductCategory;
 use App\Models\Inventory\ProductPhoto;
+use App\Models\Inventory\ProductUnit;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Warehouse;
@@ -27,9 +28,13 @@ class ProductController extends Controller
             ->map(fn ($m) => ['id' => $m->id, 'name' => $m->name])->values();
 
         return response()->json(['data' => [
-            'categories' => $opts(ProductCategory::query()),
-            'brands'     => $opts(ProductBrand::query()),
-            'warehouses' => $opts(Warehouse::query()),
+            'categories'   => $opts(ProductCategory::query()),
+            'brands'       => $opts(ProductBrand::query()),
+            'warehouses'   => $opts(Warehouse::query()),
+            // Unidades de medida de la empresa (mismo catálogo que la web).
+            'units'        => ProductUnit::where('company_id', $cid)->where('active', true)
+                ->orderBy('name')->pluck('name')->values(),
+            'default_unit' => config('inventory.default_unit', 'Unidad'),
         ]]);
     }
 
@@ -48,6 +53,11 @@ class ProductController extends Controller
             'cost'          => ['nullable', 'numeric', 'min:0'],
             'unit'          => ['nullable', 'string', 'max:50'],
             'barcode'       => ['nullable', 'string', 'max:100'],
+            'code'          => ['nullable', 'string', 'max:100'],
+            'description'   => ['nullable', 'string', 'max:2000'],
+            'min_stock'     => ['nullable', 'integer', 'min:0'],
+            'moto_models'   => ['nullable', 'array'],
+            'moto_models.*' => ['integer', Rule::exists('moto_models', 'id')->where('company_id', $cid)],
             'category_id'   => ['nullable', Rule::exists('product_categories', 'id')->where('company_id', $cid)],
             'brand_id'      => ['nullable', Rule::exists('product_brands', 'id')->where('company_id', $cid)],
             'initial_stock' => ['nullable', 'numeric', 'min:0'],
@@ -67,13 +77,21 @@ class ProductController extends Controller
                 'sku'           => $this->generateProductSku($cid),
                 'price'         => (float) $data['price'],
                 'cost'          => (float) ($data['cost'] ?? 0),
-                'unit'          => $data['unit'] ?: 'unidad',
+                'unit'          => trim((string) ($data['unit'] ?? '')) ?: config('inventory.default_unit', 'Unidad'),
                 'barcode'       => $data['barcode'] ?? null,
+                'code'          => $data['code'] ?? null,
+                'description'   => $data['description'] ?? null,
+                'min_stock'     => (int) ($data['min_stock'] ?? 0),
                 'category_id'   => $data['category_id'] ?? null,
                 'brand_id'      => $data['brand_id'] ?? null,
                 'current_stock' => 0,
                 'active'        => true,
             ]);
+
+            // Modelos de moto compatibles (ya validados: son de esta empresa).
+            if (! empty($data['moto_models'])) {
+                $product->motoModels()->sync($data['moto_models']);
+            }
 
             if ($initial > 0) {
                 InventoryMovement::create([
@@ -195,7 +213,7 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        $product->load(['category:id,name', 'brand:id,name', 'origin:id,name', 'motoModels', 'photos']);
+        $product->load(['category:id,name', 'brand:id,name', 'origin:id,name', 'motoModels.brand', 'photos']);
 
         $stockByWarehouse = Warehouse::where('company_id', $product->company_id)
             ->orderBy('name')->get(['id', 'name'])
@@ -211,6 +229,14 @@ class ProductController extends Controller
                 'brand'             => $product->brand?->name,
                 'origin'            => $product->origin?->name,
                 'compatible_models' => $product->motoModels->pluck('display_name')->values(),
+                // Para el formulario de edición del móvil (elegidos con su id).
+                'moto_models'       => $product->motoModels->map(fn ($m) => [
+                    'id'        => $m->id,
+                    'name'      => $m->name,
+                    'brand'     => $m->brand?->name,
+                    'engine_cc' => $m->engine_cc,
+                    'year'      => $m->year,
+                ])->values(),
                 'stock_by_warehouse' => $stockByWarehouse,
                 'photos'            => $product->photos->map(fn ($ph) => $ph->url)->values(),
                 // Para el formulario de edición del móvil.
@@ -238,12 +264,17 @@ class ProductController extends Controller
             'cost'        => ['nullable', 'numeric', 'min:0'],
             'unit'        => ['nullable', 'string', 'max:50'],
             'barcode'     => ['nullable', 'string', 'max:100'],
+            'code'        => ['nullable', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:2000'],
             'min_stock'   => ['nullable', 'integer', 'min:0'],
             'category_id' => ['nullable', Rule::exists('product_categories', 'id')->where('company_id', $cid)],
             'brand_id'    => ['nullable', Rule::exists('product_brands', 'id')->where('company_id', $cid)],
             'active'      => ['nullable', 'boolean'],
+            'moto_models'   => ['nullable', 'array'],
+            'moto_models.*' => ['integer', Rule::exists('moto_models', 'id')->where('company_id', $cid)],
         ]);
+        $models = $data['moto_models'] ?? null;
+        unset($data['moto_models']);
 
         // Las columnas NOT NULL no admiten null aunque el campo venga vacío.
         $product->update([
@@ -254,6 +285,12 @@ class ProductController extends Controller
             'unit'      => trim((string) ($data['unit'] ?? '')) ?: config('inventory.default_unit', 'Unidad'),
             'active'    => $request->boolean('active', true),
         ]);
+
+        // Solo si la app los manda: una versión vieja que no conoce el campo no
+        // debe borrar los modelos cargados desde la web. Lista vacía = quitar todos.
+        if ($request->has('moto_models')) {
+            $product->motoModels()->sync($models ?? []);
+        }
 
         return $this->show($product->fresh());
     }
