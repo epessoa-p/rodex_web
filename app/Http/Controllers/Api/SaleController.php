@@ -25,7 +25,9 @@ class SaleController extends Controller
         $query = Sale::with('client')->latest('sale_date');
 
         $canAllRecords = $user->is_super_admin
-            || $user->hasPermissionInCompany('sales.view-all-records', $user->getCurrentCompany());
+            // Empresa del header X-Company-Id (en la API no hay sesión: getCurrentCompany()
+            // devolvía la PRIMERA empresa del usuario, no la que está usando).
+            || $user->hasPermissionInCompany('sales.view-all-records', $request->attributes->get('tenant_company'));
         if (! $canAllRecords) {
             $query->where('created_by', $user->id);
         }
@@ -68,7 +70,9 @@ class SaleController extends Controller
         $query = Sale::whereDate('sale_date', $today)->where('status', 'completed');
 
         $canAllRecords = $user->is_super_admin
-            || $user->hasPermissionInCompany('sales.view-all-records', $user->getCurrentCompany());
+            // Empresa del header X-Company-Id (en la API no hay sesión: getCurrentCompany()
+            // devolvía la PRIMERA empresa del usuario, no la que está usando).
+            || $user->hasPermissionInCompany('sales.view-all-records', $request->attributes->get('tenant_company'));
         if (! $canAllRecords) {
             $query->where('created_by', $user->id);
         }

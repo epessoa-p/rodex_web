@@ -157,9 +157,9 @@ Route::middleware('auth')->group(function () {
         Route::put('/{documentTemplate}',               [DocumentTemplateController::class, 'update'])->name('update')->middleware('check-permission:document-templates.edit');
         Route::delete('/{documentTemplate}',            [DocumentTemplateController::class, 'destroy'])->name('destroy')->middleware('check-permission:document-templates.delete');
     });
-});
 
-    // ── Clientes ──────────────────────────────────────────────────
+    // ── Clientes (dentro del grupo auth: antes quedaba fuera y solo lo
+    //    protegía check-permission; una ruta nueva sin permiso habría sido pública) ──────────────────────────────────────────────────
     Route::prefix('admin/clients')->name('clients.')->group(function () {
         Route::get('/',               [ClientController::class, 'index'])->name('index')->middleware('check-permission:clients.view');
         Route::get('/create',         [ClientController::class, 'create'])->name('create')->middleware('check-permission:clients.create');
@@ -173,6 +173,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/documents/{document}/download', [ClientController::class, 'downloadDocument'])->name('documents.download')->middleware('check-permission:clients.view');
         Route::delete('/documents/{document}', [ClientController::class, 'destroyDocument'])->name('documents.destroy')->middleware('check-permission:clients.edit');
     });
+});
+
 
 // Fallback
 Route::redirect('/', '/dashboard');

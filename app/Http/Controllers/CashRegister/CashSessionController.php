@@ -50,6 +50,8 @@ class CashSessionController extends Controller
 
     public function close(CashRegisterSession $session)
     {
+        $this->authorizeSession($session);
+
         if (!$session->isOpen()) {
             return back()->withErrors(['error' => 'Esta sesión ya está cerrada.']);
         }
@@ -84,6 +86,7 @@ class CashSessionController extends Controller
 
     public function show(CashRegisterSession $session)
     {
+        $this->authorizeSession($session);
         $session->load(['cashRegister.branch', 'openedBy', 'closedBy']);
 
         $movements = $session->movements()
@@ -108,6 +111,8 @@ class CashSessionController extends Controller
 
     public function addMovement(CashRegisterSession $session)
     {
+        $this->authorizeSession($session);
+
         if (!$session->isOpen()) {
             return back()->withErrors(['error' => 'No se pueden agregar movimientos a una sesión cerrada.']);
         }
@@ -148,8 +153,7 @@ class CashSessionController extends Controller
      */
     public function adjustDifference(CashRegisterSession $session)
     {
-        $session->load('cashRegister');
-        $this->authorizeSessionAction($session->cashRegister->company_id);
+        $this->authorizeSession($session);
 
         if ($session->isOpen()) {
             return back()->with('error', 'Solo se pueden ajustar sesiones ya cerradas.');
@@ -212,8 +216,7 @@ class CashSessionController extends Controller
      */
     public function recountClosing(CashRegisterSession $session)
     {
-        $session->load('cashRegister');
-        $this->authorizeSessionAction($session->cashRegister->company_id);
+        $this->authorizeSession($session);
 
         if ($session->isOpen()) {
             return back()->with('error', 'Solo se puede corregir el conteo de sesiones ya cerradas.');
@@ -254,6 +257,20 @@ class CashSessionController extends Controller
             Log::error('Error al corregir conteo de caja', ['session_id' => $session->id, 'message' => $e->getMessage()]);
             return back()->with('error', 'No se pudo corregir el conteo: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * La sesión de caja NO tiene company_id (no la cubre el scope global): la
+     * empresa se toma de su caja. Con otra empresa activa, la relación
+     * cashRegister sale null por el scope → 404, igual que cualquier registro
+     * ajeno. Sin esto, cambiando el id en la URL se podía ver, cerrar o meter
+     * movimientos en la caja de otra empresa.
+     */
+    private function authorizeSession(CashRegisterSession $session): void
+    {
+        $register = $session->cashRegister;
+        abort_if(! $register, 404);
+        $this->authorizeSessionAction($register->company_id);
     }
 
     private function authorizeSessionAction(int $companyId): void

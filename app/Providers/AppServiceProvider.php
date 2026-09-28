@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use App\Support\Tenancy;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
@@ -23,6 +26,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Tope general de la API móvil: 300 peticiones/minuto por usuario (o por
+        // IP si no hay sesión). Holgado para el uso normal; frena abusos o bucles.
+        RateLimiter::for('api', fn (Request $request) =>
+            Limit::perMinute(300)->by($request->user()?->id ?: $request->ip())
+        );
+
         // Usar la paginación con estilos de Bootstrap 5 en toda la app
         Paginator::useBootstrapFive();
 

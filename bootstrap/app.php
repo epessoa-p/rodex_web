@@ -36,9 +36,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // 1) SetTenant fija la empresa activa (aísla los datos por global scope).
         // 2) EnsureSubscriptionActive corta el acceso si la suscripción venció.
         $middleware->web(append: [
+            // 0) Un usuario desactivado pierde la sesión en su siguiente petición.
+            \App\Http\Middleware\EnsureUserActive::class,
             \App\Http\Middleware\SetTenant::class,
             \App\Http\Middleware\EnsureSubscriptionActive::class,
         ]);
+
+        // Tope general de la API: ver el limitador 'api' en AppServiceProvider.
+        $middleware->throttleApi();
 
         $middleware->alias([
             'check-role' => \App\Http\Middleware\CheckRole::class,

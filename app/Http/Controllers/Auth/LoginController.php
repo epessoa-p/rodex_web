@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Models\User;
+use App\Support\LoginThrottle;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
@@ -21,9 +22,21 @@ class LoginController extends Controller
             $login = trim((string) $request->email);
             $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'name';
 
+            // Freno a la adivinación de contraseñas (mismo contador que la API).
+            $throttle = new LoginThrottle($login, (string) $request->ip());
+            if ($wait = $throttle->blockedFor()) {
+                return back()->withInput($request->only('email'))
+                    ->withErrors(['email' => LoginThrottle::message($wait)]);
+            }
+
             if (!Auth::attempt([$field => $login, 'password' => $request->password], $request->boolean('remember'))) {
+                $throttle->failed();
                 return back()->withErrors(['email' => 'Las credenciales no son válidas']);
             }
+
+            $throttle->succeeded();
+            // Sesión nueva al autenticarse (evita fijación de sesión).
+            $request->session()->regenerate();
 
             $user = Auth::user();
 

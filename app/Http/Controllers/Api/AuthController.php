@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\LoginThrottle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -25,9 +26,19 @@ class AuthController extends Controller
         $login = trim($data['email']);
         $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'name';
 
+        // Freno a la adivinación de contraseñas (mismo contador que la web).
+        $throttle = new LoginThrottle($login, (string) $request->ip());
+        if ($wait = $throttle->blockedFor()) {
+            return response()->json([
+                'message' => LoginThrottle::message($wait),
+                'code'    => 'too_many_attempts',
+            ], 429)->header('Retry-After', (string) $wait);
+        }
+
         $user = User::where($field, $login)->first();
 
         if (! $user || ! Hash::check($data['password'], $user->password)) {
+            $throttle->failed();
             throw ValidationException::withMessages([
                 'email' => ['Las credenciales no son válidas.'],
             ]);
@@ -38,6 +49,8 @@ class AuthController extends Controller
                 'email' => ['Tu usuario ha sido desactivado.'],
             ]);
         }
+
+        $throttle->succeeded();
 
         // Higiene: fuera los tokens ya vencidos de este usuario.
         $user->tokens()->where('expires_at', '<', now())->delete();
