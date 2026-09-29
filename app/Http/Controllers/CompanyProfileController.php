@@ -30,6 +30,8 @@ class CompanyProfileController extends Controller
             'tracking_link_days' => ['required', 'integer', 'min:0', 'max:365'],
             'dashboard_order'    => ['nullable', 'string', 'max:60'],
             'logo'               => ['nullable', 'image', 'max:4096'],
+            'pos_rounding_step'  => ['nullable', 'in:0.50,0.5,1,1.00'],
+            'allow_credit_sales' => ['nullable', 'boolean'],
         ]);
 
         $update = [
@@ -38,6 +40,13 @@ class CompanyProfileController extends Controller
             'tracking_link_days' => $data['tracking_link_days'],
             'dashboard_order'    => \App\Support\DashboardOrder::sanitize($data['dashboard_order'] ?? null),
         ];
+        // Punto de venta (solo si el formulario los trae).
+        if (array_key_exists('pos_rounding_step', $data) && $data['pos_rounding_step'] !== null) {
+            $update['pos_rounding_step'] = (float) $data['pos_rounding_step'];
+        }
+        if ($request->has('allow_credit_sales')) {
+            $update['allow_credit_sales'] = $request->boolean('allow_credit_sales');
+        }
 
         if ($request->hasFile('logo')) {
             if ($company->logo) {

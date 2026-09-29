@@ -139,6 +139,9 @@ class SaleController extends Controller
             'down_payment'            => ['nullable', 'numeric', 'min:0'],
         ]);
 
+        // Venta a crédito solo si la empresa la tiene habilitada.
+        $this->ensureCreditAllowed($companyId, $validated['sale_type']);
+
         // La sucursal sale de la caja abierta del usuario (mismo modelo que el web).
         $session  = $this->currentOpenSession();
         $branchId = $session?->cashRegister?->branch_id;

@@ -67,6 +67,8 @@
 
             @include('admin.companies._theme', ['company' => $company])
 
+            @include('admin.companies._pos', ['company' => $company])
+
             <div class="form-group">
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-check-circle"></i> Actualizar

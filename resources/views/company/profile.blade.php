@@ -54,6 +54,9 @@
                                 <div class="form-text">Días que el enlace sigue activo <strong>después de entregar</strong> la OT. <strong>0 = sin caducidad</strong>.</div>
                             </div>
                             <div class="col-12">
+                                @include('admin.companies._pos', ['company' => $company, 'disabled' => ! $canEdit])
+                            </div>
+                            <div class="col-12">
                                 <label class="form-label small fw-semibold">Orden de los tabs del dashboard (móvil)</label>
                                 @php
                                     $labels = ['ventas' => 'Ventas', 'taller' => 'Taller', 'compras' => 'Compras'];

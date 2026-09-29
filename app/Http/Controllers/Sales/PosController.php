@@ -115,6 +115,8 @@ class PosController extends Controller
             'client_id'          => 'nullable|exists:clients,id',
             'sale_type'          => 'required|in:cash,credit',
             'discount_pct'       => 'nullable|integer|min:0|max:100',
+            // Monto del descuento ya calculado en el carrito (% o monto, con redondeo).
+            'discount_amount'    => 'nullable|numeric|min:0',
             'interest'           => 'nullable|numeric|min:0',
             'items'              => 'required|array|min:1',
             'items.*.product_id' => 'nullable|exists:products,id',
@@ -134,18 +136,31 @@ class PosController extends Controller
             return back()->withInput()->withErrors(['client_id' => 'Selecciona un cliente registrado para una venta a crédito (no "Cliente general").']);
         }
 
-        // Descuento en % aplicado SOLO a la ganancia (precio − costo). Se calcula en el servidor.
-        $pct = (int) ($validated['discount_pct'] ?? 0);
-        $discount = 0.0;
-        if ($pct > 0) {
-            $costs = Product::whereIn('id', collect($validated['items'])->pluck('product_id')->filter())->pluck('cost', 'id');
-            foreach ($validated['items'] as $it) {
-                // Ítems de venta rápida sin product_id → costo 0 (toda la línea es ganancia).
-                $cost   = (float) ($costs[$it['product_id'] ?? 0] ?? 0);
-                $profit = ((float) $it['unit_price'] - $cost) * (float) $it['quantity'];
-                if ($profit > 0) $discount += $profit * $pct / 100;
-            }
-            $discount = round($discount, 2);
+        // Venta a crédito solo si la empresa la tiene habilitada.
+        $this->ensureCreditAllowed($companyId, $validated['sale_type']);
+
+        // Descuento SOLO sobre la ganancia (precio − costo): el tope es la ganancia
+        // (total = costo). El carrito manda el monto final (por % o por monto, y
+        // ya redondeado); si no lo manda (versión anterior), se calcula desde el %.
+        $costs = Product::whereIn('id', collect($validated['items'])->pluck('product_id')->filter())
+            ->pluck('cost', 'id')->all();
+        $maxDiscount = self::maxDiscountFor($validated['items'], $costs);
+
+        if (isset($validated['discount_amount'])) {
+            $discount = round((float) $validated['discount_amount'], 2);
+        } else {
+            $pct = (int) ($validated['discount_pct'] ?? 0);
+            $discount = round($maxDiscount * $pct / 100, 2);
+        }
+
+        if ($discount > $maxDiscount + 0.005) {
+            $subtotal = collect($validated['items'])->sum(fn ($i) => (float) $i['unit_price'] * (float) $i['quantity']);
+            $company  = $user->getCurrentCompany();
+
+            return back()->withInput()->withErrors([
+                'discount_amount' => 'El total no puede quedar por debajo del costo (mínimo '
+                    . money($subtotal - $maxDiscount, $company) . ').',
+            ]);
         }
 
         try {

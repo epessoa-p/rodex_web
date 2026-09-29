@@ -17,11 +17,18 @@ class Company extends Model
     protected $fillable = [
         'name', 'ruc', 'currency', 'address', 'phone', 'email', 'logo', 'description', 'active',
         'theme_primary', 'theme_accent', 'tracking_link_days', 'dashboard_order',
+        // POS: paso del botón "Redondear" y si la empresa vende a crédito.
+        'pos_rounding_step', 'allow_credit_sales',
     ];
+
+    /** Pasos de redondeo del total que se ofrecen en el POS. */
+    public const ROUNDING_STEPS = ['0.50', '1'];
 
     protected $casts = [
         'active' => 'boolean',
         'tracking_link_days' => 'integer',
+        'pos_rounding_step' => 'float',
+        'allow_credit_sales' => 'boolean',
         'deleted_at' => 'datetime',
     ];
 
@@ -110,6 +117,26 @@ class Company extends Model
         return $this->logo
             ? asset('storage/' . ltrim($this->logo, '/'))
             : asset(config('brand.logo'));
+    }
+
+    /**
+     * Paso del botón "Redondear" del POS (0.50 o 1). Si la columna aún no
+     * existe o viene vacía (SQL sin correr), 0.50: el valor por defecto.
+     */
+    public function posRoundingStep(): float
+    {
+        $step = (float) ($this->pos_rounding_step ?? 0);
+
+        return $step > 0 ? $step : 0.5;
+    }
+
+    /**
+     * ¿La empresa vende a crédito? Sin dato (SQL sin correr) = sí, como
+     * funcionaba antes: nunca se oculta el crédito por falta de la columna.
+     */
+    public function allowsCreditSales(): bool
+    {
+        return $this->allow_credit_sales === null ? true : (bool) $this->allow_credit_sales;
     }
 
     /** ¿La empresa definió colores propios para el menú y la cabecera? */

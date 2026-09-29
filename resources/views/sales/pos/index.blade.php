@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Punto de venta')
 @section('page')
+@php $posCompany = auth()->user()?->getCurrentCompany(); @endphp
 
 @if(!$session)
 {{-- ─── EMPTY STATE: no open register ─────────────────────────────────── --}}
@@ -205,23 +206,46 @@
                                 <span class="text-muted">Subtotal</span>
                                 <span id="cartSubtotal">{{ currency_symbol() }} 0.00</span>
                             </div>
+                            {{-- Descuento: por % de la ganancia o por monto (se sincronizan).
+                                 El % es solo ayuda visual (sin name): viaja el monto final en
+                                 discount_amount, que el servidor valida contra el costo. --}}
                             <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
                                 <label class="text-muted small mb-0" for="discountPct">Descuento <span class="text-muted" style="font-size:.72rem;">(% s/ ganancia)</span></label>
-                                <div class="input-group input-group-sm" style="width:92px;">
-                                    <input type="number" id="discountPct" name="discount_pct"
-                                           class="form-control text-end" min="0" max="100" step="1" inputmode="numeric"
+                                <div class="input-group input-group-sm" style="width:108px;">
+                                    <input type="number" id="discountPct"
+                                           class="form-control text-end" min="0" max="100" step="any" inputmode="decimal"
                                            value="0" placeholder="0"
-                                           oninput="recalcCart()">
+                                           oninput="onDiscountPct()">
                                     <span class="input-group-text bg-light px-2">%</span>
                                 </div>
                             </div>
-                            <div class="d-flex justify-content-between align-items-center small mb-1" id="discountAmountRow" style="display:none;">
+                            <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
+                                <label class="text-muted small mb-0" for="discountAmt">Descuento <span class="text-muted" style="font-size:.72rem;">(en {{ currency_symbol() }})</span></label>
+                                <div class="input-group input-group-sm" style="width:108px;">
+                                    <span class="input-group-text bg-light px-2">{{ currency_symbol() }}</span>
+                                    <input type="number" id="discountAmt"
+                                           class="form-control text-end" min="0" step="any" inputmode="decimal"
+                                           value="" placeholder="0.00"
+                                           oninput="onDiscountAmount()">
+                                </div>
+                            </div>
+                            <input type="hidden" name="discount_amount" id="discountAmountInput" value="0">
+                            <div id="discountHint" class="small text-end mb-1 d-none"></div>
+                            {{-- d-none/d-flex por clase: style.display no gana al !important de d-flex. --}}
+                            <div class="justify-content-between align-items-center small mb-1 d-none" id="discountAmountRow">
                                 <span class="text-muted">Descuento aplicado</span>
-                                <span class="text-danger" id="cartDiscount">-$0.00</span>
+                                <span class="text-danger" id="cartDiscount">-{{ currency_symbol() }} 0.00</span>
                             </div>
                             <div class="d-flex justify-content-between fw-bold border-top pt-2 mt-1">
                                 <span>TOTAL</span>
                                 <span id="cartTotal" class="fs-5 text-dark">{{ currency_symbol() }} 0.00</span>
+                            </div>
+                            {{-- Redondeo (paso de la empresa): solo si el total tiene "centavos sueltos". --}}
+                            <div class="text-end">
+                                <button type="button" id="btnRound" class="btn btn-sm btn-link text-decoration-none px-0 py-0 d-none"
+                                        onclick="roundTotal()" title="Baja el total al valor cerrado más cercano (a favor del cliente)">
+                                    <i class="bi bi-arrow-down-short"></i><span id="btnRoundLabel"></span>
+                                </button>
                             </div>
                         </div>
                         {{-- Action buttons --}}
@@ -230,10 +254,12 @@
                                     id="btnCash" onclick="submitCash()">
                                 <i class="bi bi-cash me-2"></i>Cobrar (Contado)
                             </button>
+                            @if($posCompany?->allowsCreditSales() ?? true)
                             <button type="button" class="btn btn-light border w-100 py-2"
                                     id="btnCredit" onclick="openCreditModal()">
                                 <i class="bi bi-calendar2-check me-2"></i>A Crédito
                             </button>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -1078,26 +1104,109 @@ function updateQty(pid, val) {
     renderCart();
 }
 
-function recalcCart() {
-    const items  = Object.values(cart);
-    const sub    = items.reduce((s, it) => s + it.qty * it.product.price, 0);
-    const profit = items.reduce((s, it) => s + it.qty * (it.product.price - (it.product.cost || 0)), 0);
-    let pct = parseInt(document.getElementById('discountPct').value, 10) || 0;
-    pct = Math.min(100, Math.max(0, pct));
-    // El descuento solo afecta a la ganancia (precio − costo)
-    const disc  = Math.max(0, Math.round(Math.max(0, profit) * pct / 100 * 100) / 100);
-    const total = Math.max(0, sub - disc);
+// ── Descuento y redondeo ─────────────────────────────────────────────
+// El descuento es SOBRE LA GANANCIA (precio − costo), igual que el servidor:
+// por línea y solo si la línea gana. Su tope (100 %) deja el total = costo.
+const ROUND_STEP = @json($posCompany?->posRoundingStep() ?? 0.5);
+let discountSource = 'pct';   // qué escribió el usuario por última vez: 'pct' | 'amount'
 
-    document.getElementById('cartSubtotal').textContent = money(sub, 2);
-    const dRow = document.getElementById('discountAmountRow');
-    if (disc > 0) {
-        dRow.style.display = '';
-        document.getElementById('cartDiscount').textContent = '-' + money(disc, 2);
-    } else {
-        dRow.style.display = 'none';
+const round2 = n => Math.round((Number(n) || 0) * 100) / 100;
+
+function cartFigures() {
+    const items = Object.values(cart);
+    const sub = items.reduce((s, it) => s + it.qty * it.product.price, 0);
+    const maxDisc = items.reduce((s, it) => {
+        const p = (it.product.price - (it.product.cost || 0)) * it.qty;
+        return s + (p > 0 ? p : 0);
+    }, 0);
+    return { sub: round2(sub), maxDisc: round2(maxDisc) };
+}
+
+function onDiscountPct()    { discountSource = 'pct';    recalcCart(); updateBalanceIndicatorSafe(); }
+function onDiscountAmount() { discountSource = 'amount'; recalcCart(); updateBalanceIndicatorSafe(); }
+
+function updateBalanceIndicatorSafe() {
+    if (typeof updateBalanceIndicator === 'function' && document.getElementById('cm_balance_indicator')) {
+        updateBalanceIndicator();
     }
+}
+
+/** Total redondeado hacia ABAJO al paso de la empresa (a favor del cliente).
+ *  Si eso lo deja bajo el costo, hacia arriba; si arriba sería un recargo, nada. */
+function roundTarget(total, sub, maxDisc) {
+    const stepC = Math.round(ROUND_STEP * 100);
+    const cents = Math.round(total * 100);
+    if (total <= 0 || stepC <= 0 || cents % stepC === 0) return null;
+    const minTotal = round2(sub - maxDisc);
+    let t = Math.floor(cents / stepC) * stepC / 100;
+    if (t < minTotal - 0.005) t = Math.ceil(cents / stepC) * stepC / 100;
+    if (t > sub + 0.005 || t < minTotal - 0.005) return null;
+    return round2(t);
+}
+
+function roundTotal() {
+    const { sub, maxDisc } = cartFigures();
+    const t = roundTarget(recalcCart().total, sub, maxDisc);
+    if (t === null) return;
+    discountSource = 'amount';
+    document.getElementById('discountAmt').value = round2(sub - t).toFixed(2);
+    recalcCart();
+    updateBalanceIndicatorSafe();
+}
+
+function recalcCart() {
+    const { sub, maxDisc } = cartFigures();
+    const pctEl = document.getElementById('discountPct');
+    const amtEl = document.getElementById('discountAmt');
+    const hint  = document.getElementById('discountHint');
+    let disc = 0, pct = 0, over = false;
+
+    if (sub <= 0) {
+        // Carrito vacío: sin descuento ni avisos.
+        amtEl.value = '';
+        pctEl.value = 0;
+    } else if (discountSource === 'amount') {
+        let a = parseFloat(String(amtEl.value).replace(',', '.')) || 0;
+        if (a < 0) a = 0;
+        if (a > maxDisc + 0.005) { a = maxDisc; over = true; amtEl.value = a.toFixed(2); }
+        disc = round2(a);
+        pct  = maxDisc > 0 ? disc / maxDisc * 100 : 0;
+        pctEl.value = disc > 0 ? Math.round(pct * 10) / 10 : 0;
+    } else {
+        pct  = Math.min(100, Math.max(0, parseFloat(String(pctEl.value).replace(',', '.')) || 0));
+        disc = round2(maxDisc * pct / 100);
+        amtEl.value = disc > 0 ? disc.toFixed(2) : '';
+    }
+
+    const total = Math.max(0, round2(sub - disc));
+    document.getElementById('discountAmountInput').value = disc.toFixed(2);
+    document.getElementById('cartSubtotal').textContent = money(sub, 2);
+
+    const dRow = document.getElementById('discountAmountRow');
+    dRow.classList.toggle('d-flex', disc > 0);
+    dRow.classList.toggle('d-none', disc <= 0);
+    document.getElementById('cartDiscount').textContent = '-' + money(disc, 2);
+
+    // Aviso bajo el descuento: tope alcanzado, o el % equivalente al monto escrito.
+    if (over) {
+        hint.className = 'small text-end mb-1 text-danger';
+        hint.textContent = 'Máximo ' + money(maxDisc, 2) + ': el total no puede bajar del costo.';
+    } else if (disc > 0 && discountSource === 'amount') {
+        hint.className = 'small text-end mb-1 text-muted';
+        hint.textContent = '≈ ' + (Math.round(pct * 10) / 10).toString().replace('.', ',') + ' % de la ganancia';
+    } else {
+        hint.className = 'small text-end mb-1 d-none';
+        hint.textContent = '';
+    }
+
     document.getElementById('cartTotal').textContent = money(total, 2);
-    return { sub, disc, total, pct, profit };
+
+    const target = roundTarget(total, sub, maxDisc);
+    const btn = document.getElementById('btnRound');
+    btn.classList.toggle('d-none', target === null);
+    document.getElementById('btnRoundLabel').textContent = target === null ? '' : 'Redondear a ' + money(target, 2);
+
+    return { sub, disc, total, pct, profit: maxDisc };
 }
 
 // ── SUBMIT ──────────────────────────────────────────────────────────
@@ -1307,7 +1416,6 @@ document.addEventListener('DOMContentLoaded', function () {
         renderGrid(this.value);
     });
 
-    document.getElementById('discountPct').addEventListener('input', updateBalanceIndicator);
 
     document.getElementById('creditModal').addEventListener('show.bs.modal', function () {
         updateBalanceIndicator();

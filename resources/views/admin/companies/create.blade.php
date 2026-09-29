@@ -57,6 +57,8 @@
 
             @include('admin.companies._theme')
 
+            @include('admin.companies._pos')
+
             {{-- ═══ Alta lista para usar: plan · sucursal · cargo · personal + acceso + caja ═══ --}}
             <hr class="my-4">
             <h5 class="fw-bold mb-1"><i class="bi bi-rocket-takeoff me-2 text-danger"></i>Dejarla lista para usar</h5>

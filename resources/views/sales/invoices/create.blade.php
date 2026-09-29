@@ -231,10 +231,13 @@
                             <button type="button" class="btn btn-primary w-100 py-2" id="btnContado" onclick="submitContado()">
                                 <i class="bi bi-cash me-1"></i>Cobrar (Contado)
                             </button>
+                            {{-- Solo si la empresa vende a crédito (Mi empresa → Punto de venta). --}}
+                            @if(auth()->user()?->getCurrentCompany()?->allowsCreditSales() ?? true)
                             <button type="button" class="btn btn-light border w-100 py-2" id="btnCredito"
                                     data-bs-toggle="modal" data-bs-target="#saleCreditModal">
                                 <i class="bi bi-calendar2-check me-1"></i>A Crédito
                             </button>
+                            @endif
                             <a href="{{ route('sales.index') }}" class="btn btn-link text-muted w-100">
                                 <i class="bi bi-x-lg me-1"></i>Cancelar
                             </a>

@@ -265,6 +265,9 @@ class SaleController extends Controller
             'application_id'           => 'nullable|exists:credit_applications,id',
         ]);
 
+        // Venta a crédito solo si la empresa la tiene habilitada.
+        $this->ensureCreditAllowed($companyId, $validated['sale_type']);
+
         // La sucursal se toma de la caja abierta del personal logueado
         $session  = $this->currentOpenSession();
         $branchId = $session?->cashRegister?->branch_id;

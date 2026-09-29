@@ -19,6 +19,47 @@ trait HandlesSaleCreation
     use ResolvesCashSession;
 
     /**
+     * Si la empresa apagó las ventas a crédito, rechaza una venta 'credit'
+     * (el botón ya no se muestra; esto cubre peticiones armadas a mano y la API).
+     */
+    protected function ensureCreditAllowed(?int $companyId, string $saleType): void
+    {
+        if ($saleType !== 'credit' || ! $companyId) {
+            return;
+        }
+
+        $company = \App\Models\Company::find($companyId);
+        if ($company && ! $company->allowsCreditSales()) {
+            throw ValidationException::withMessages([
+                'sale_type' => 'Esta empresa no tiene habilitadas las ventas a crédito.',
+            ]);
+        }
+    }
+
+    /**
+     * Descuento máximo del POS: la ganancia de cada línea (precio − costo) × cantidad,
+     * sumando solo las líneas con ganancia positiva. Es el mismo criterio del
+     * "% sobre la ganancia": el 100 % deja el total igual al costo, nunca debajo.
+     * Ítems de venta rápida (sin product_id) cuentan costo 0.
+     *
+     * @param  array<int, array{product_id?: int|null, quantity: mixed, unit_price: mixed}>  $items
+     * @param  array<int, float|string>  $costs  product_id => costo
+     */
+    public static function maxDiscountFor(array $items, array $costs): float
+    {
+        $max = 0.0;
+        foreach ($items as $it) {
+            $cost   = (float) ($costs[$it['product_id'] ?? 0] ?? 0);
+            $profit = ((float) $it['unit_price'] - $cost) * (float) $it['quantity'];
+            if ($profit > 0) {
+                $max += $profit;
+            }
+        }
+
+        return round($max, 2);
+    }
+
+    /**
      * Crea una venta completa (contado o crédito) dentro de una transacción:
      * descuenta stock, genera movimiento de inventario y, si aplica, registra
      * el ingreso en la caja abierta y/o el cronograma de cuotas.

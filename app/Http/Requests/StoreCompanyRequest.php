@@ -30,6 +30,9 @@ class StoreCompanyRequest extends FormRequest
             // Colores base (white-label): menú de navegación y cabecera. Formato #RRGGBB.
             'theme_primary' => ['nullable', 'regex:/^#([0-9a-fA-F]{6})$/'],
             'theme_accent'  => ['nullable', 'regex:/^#([0-9a-fA-F]{6})$/'],
+            // Punto de venta: paso del botón "Redondear" y ventas a crédito.
+            'pos_rounding_step'  => ['sometimes', 'required', Rule::in(['0.50', '0.5', '1', '1.00'])],
+            'allow_credit_sales' => ['sometimes', 'boolean'],
         ] + ($this->isMethod('post') ? $this->onboardingRules() : []);
     }
 
