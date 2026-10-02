@@ -19,6 +19,8 @@ class Company extends Model
         'theme_primary', 'theme_accent', 'tracking_link_days', 'dashboard_order',
         // POS: paso del botón "Redondear" y si la empresa vende a crédito.
         'pos_rounding_step', 'allow_credit_sales',
+        // Formas de cobro aceptadas y si lo no-efectivo sirve para pagar gastos.
+        'payment_methods', 'expenses_use_other_methods',
     ];
 
     /** Pasos de redondeo del total que se ofrecen en el POS. */
@@ -29,6 +31,7 @@ class Company extends Model
         'tracking_link_days' => 'integer',
         'pos_rounding_step' => 'float',
         'allow_credit_sales' => 'boolean',
+        'expenses_use_other_methods' => 'boolean',
         'deleted_at' => 'datetime',
     ];
 
@@ -137,6 +140,49 @@ class Company extends Model
     public function allowsCreditSales(): bool
     {
         return $this->allow_credit_sales === null ? true : (bool) $this->allow_credit_sales;
+    }
+
+    /**
+     * Formas de cobro que acepta la empresa, en el orden de CashMovement::SALE_METHODS.
+     * Efectivo siempre está. Sin columna o vacío (SQL sin correr) = solo efectivo.
+     *
+     * @return array<int, string>
+     */
+    public function paymentMethods(): array
+    {
+        $chosen = array_filter(array_map('trim', explode(',', (string) ($this->payment_methods ?? ''))));
+
+        return array_values(array_filter(
+            CashMovement::SALE_METHODS,
+            fn ($m) => $m === 'efectivo' || in_array($m, $chosen, true)
+        ));
+    }
+
+    /** Guarda la lista normalizada: efectivo siempre, solo valores válidos, orden oficial. */
+    public function setPaymentMethodsAttribute($value): void
+    {
+        $chosen = is_array($value) ? $value : explode(',', (string) $value);
+        $chosen = array_map(fn ($m) => trim((string) $m), $chosen);
+
+        $this->attributes['payment_methods'] = implode(',', array_values(array_filter(
+            CashMovement::SALE_METHODS,
+            fn ($m) => $m === 'efectivo' || in_array($m, $chosen, true)
+        )));
+    }
+
+    /** ¿Ofrece algo más que efectivo? (para mostrar el selector de forma de pago). */
+    public function hasPaymentChoice(): bool
+    {
+        return count($this->paymentMethods()) > 1;
+    }
+
+    /**
+     * ¿Lo cobrado por QR/transferencia/tarjeta sirve para pagar gastos desde la
+     * caja? Sin dato (SQL sin correr) = sí, como funcionaba antes.
+     */
+    public function expensesUseOtherMethods(): bool
+    {
+        return $this->expenses_use_other_methods === null ? true : (bool) $this->expenses_use_other_methods;
     }
 
     /** ¿La empresa definió colores propios para el menú y la cabecera? */

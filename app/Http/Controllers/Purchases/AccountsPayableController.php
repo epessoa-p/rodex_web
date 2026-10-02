@@ -136,7 +136,8 @@ class AccountsPayableController extends Controller
             return back()->withErrors(['error' => 'No tienes una caja abierta para pagar desde caja.']);
         }
 
-        $available = $session->expectedBalance();
+        // Efectivo y, si la empresa lo permite, también lo cobrado por QR/otros.
+        $available = $session->availableForOutflow();
         if ($amount > $available + 0.001) {
             return back()->withErrors(['error' => 'La caja no tiene saldo suficiente (disponible: ' . money($available) . ').']);
         }
@@ -160,20 +161,15 @@ class AccountsPayableController extends Controller
                 ]);
 
                 // 2. Egreso en la caja
-                CashMovement::create([
-                    'company_id'               => $purchase->company_id,
-                    'cash_register_id'         => $session->cash_register_id,
-                    'cash_register_session_id' => $session->id,
-                    'user_id'                  => auth()->id(),
-                    'type'                     => 'expense',
-                    'category'                 => 'expense_supplier',
-                    'amount'                   => $amount,
-                    'method'                   => $method,
-                    'reference_type'           => Purchase::class,
-                    'reference_id'             => $purchase->id,
-                    'description'              => $desc,
-                    'movement_date'            => $validated['payment_date'],
-                ]);
+                $session->recordOutflow([
+                    'company_id'     => $purchase->company_id,
+                    'user_id'        => auth()->id(),
+                    'category'       => 'expense_supplier',
+                    'reference_type' => Purchase::class,
+                    'reference_id'   => $purchase->id,
+                    'description'    => $desc,
+                    'movement_date'  => $validated['payment_date'],
+                ], $amount, $method);
 
                 // 3. Actualizar la compra
                 $purchase->increment('paid_amount', $amount);

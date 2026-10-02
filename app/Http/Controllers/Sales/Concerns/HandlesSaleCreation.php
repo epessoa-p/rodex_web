@@ -37,6 +37,29 @@ trait HandlesSaleCreation
     }
 
     /**
+     * Forma de pago del cobro: la que llega si la empresa la acepta; sin dato,
+     * efectivo. Una forma no habilitada se rechaza con un mensaje claro.
+     */
+    protected function resolvePaymentMethod(?int $companyId, ?string $method): string
+    {
+        $method = trim((string) $method);
+        if ($method === '' || $method === 'efectivo') {
+            return 'efectivo';
+        }
+
+        $company = $companyId ? \App\Models\Company::find($companyId) : null;
+        $allowed = $company ? $company->paymentMethods() : ['efectivo'];
+        if (! in_array($method, $allowed, true)) {
+            throw ValidationException::withMessages([
+                'method' => 'La forma de pago «' . \App\Models\CashMovement::shortLabel($method)
+                    . '» no está habilitada para esta empresa.',
+            ]);
+        }
+
+        return $method;
+    }
+
+    /**
      * Descuento máximo del POS: la ganancia de cada línea (precio − costo) × cantidad,
      * sumando solo las líneas con ganancia positiva. Es el mismo criterio del
      * "% sobre la ganancia": el 100 % deja el total igual al costo, nunca debajo.

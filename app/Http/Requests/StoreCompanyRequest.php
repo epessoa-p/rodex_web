@@ -33,6 +33,10 @@ class StoreCompanyRequest extends FormRequest
             // Punto de venta: paso del botón "Redondear" y ventas a crédito.
             'pos_rounding_step'  => ['sometimes', 'required', Rule::in(['0.50', '0.5', '1', '1.00'])],
             'allow_credit_sales' => ['sometimes', 'boolean'],
+            // Formas de cobro aceptadas y si lo no-efectivo paga gastos.
+            'payment_methods'            => ['sometimes', 'array'],
+            'payment_methods.*'          => [Rule::in(\App\Models\CashMovement::SALE_METHODS)],
+            'expenses_use_other_methods' => ['sometimes', 'boolean'],
         ] + ($this->isMethod('post') ? $this->onboardingRules() : []);
     }
 

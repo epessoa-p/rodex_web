@@ -53,7 +53,9 @@ class ExpenseController extends Controller
             'suppliers'        => $suppliers,
             'pendingPurchases' => $pendingPurchases,
             'session'          => $session ? [
-                'balance' => round($session->expectedBalance(), 2),
+                // Disponible para pagar: efectivo y, si la empresa lo permite, el QR/otros.
+                'balance'   => $session->availableForOutflow(),
+                'breakdown' => $session->availabilityBreakdownText(),
                 'income'  => round($session->totalIncome(), 2),
                 'expense' => round($session->totalExpense(), 2),
                 'opening' => round((float) $session->opening_amount, 2),
@@ -94,20 +96,16 @@ class ExpenseController extends Controller
             DB::transaction(function () use ($validated, $session, $companyId, $amount, $method, $date, $notes) {
                 [$category, $description, $refType, $refId] = $this->resolveExpense($validated, $companyId, $amount, $method, $date);
 
-                CashMovement::create([
-                    'company_id'               => $companyId,
-                    'cash_register_id'         => $session->cash_register_id,
-                    'cash_register_session_id' => $session->id,
-                    'user_id'                  => auth()->id(),
-                    'type'                     => 'expense',
-                    'category'                 => $category,
-                    'amount'                   => $amount,
-                    'method'                   => $method,
-                    'reference_type'           => $refType,
-                    'reference_id'             => $refId,
-                    'description'              => $notes ? ($description . ' — ' . $notes) : $description,
-                    'movement_date'            => $date,
-                ]);
+                // Efectivo primero; lo que falte, del QR/otro medio (según la empresa).
+                $session->recordOutflow([
+                    'company_id'     => $companyId,
+                    'user_id'        => auth()->id(),
+                    'category'       => $category,
+                    'reference_type' => $refType,
+                    'reference_id'   => $refId,
+                    'description'    => $notes ? ($description . ' — ' . $notes) : $description,
+                    'movement_date'  => $date,
+                ], $amount, $method);
             });
         } catch (ValidationException $e) {
             return back()->withInput()->withErrors($e->errors());

@@ -2,7 +2,9 @@
      con openPay({...}): kind, título, personal/servicio, concepto, monto.
      Origen: caja abierta del usuario o cuenta de tesorería. --}}
 @php
-    $available = $session ? (float) $session->expectedBalance() : null;
+    // Disponible: efectivo y, si la empresa lo permite, también lo cobrado por QR/otros.
+    $available = $session ? $session->availableForOutflow() : null;
+    $availableText = $session?->availabilityBreakdownText();
 @endphp
 <div class="modal fade" id="payModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -60,7 +62,7 @@
                         <i class="bi bi-cash-stack text-success"></i>
                         <span class="flex-grow-1">Mi caja
                             @if($session)
-                                <small class="text-muted">· disponible {{ money($available) }}</small>
+                                <small class="text-muted">· disponible {{ money($available) }}@if($availableText) ({{ $availableText }})@endif</small>
                             @else
                                 <small class="text-muted">· no tienes una caja abierta</small>
                             @endif

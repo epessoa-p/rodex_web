@@ -189,7 +189,8 @@
                                 <span class="small fw-semibold text-success-emphasis">
                                     <i class="bi bi-cash-stack me-1"></i>{{ $cashSession->cashRegister->name ?? 'Caja' }}
                                 </span>
-                                <span class="fw-bold text-success">Disponible: {{ money($cashSession->expectedBalance()) }}</span>
+                                <span class="fw-bold text-success">Disponible: {{ money($cashSession->availableForOutflow()) }}</span>
+                                @if($t = $cashSession->availabilityBreakdownText())<small class="text-muted d-block">{{ $t }}</small>@endif
                             </div>
                             <div class="form-text">El pago saldrá de tu caja abierta como egreso.</div>
                             @else

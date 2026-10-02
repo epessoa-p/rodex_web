@@ -145,9 +145,7 @@
                                 <label class="form-label fw-semibold" for="method">Método de pago</label>
                                 <select id="method" name="method"
                                         class="form-select @error('method') is-invalid @enderror">
-                                    <option value="efectivo" {{ old('method', 'efectivo') === 'efectivo' ? 'selected' : '' }}>Efectivo</option>
-                                    <option value="transferencia" {{ old('method') === 'transferencia' ? 'selected' : '' }}>Transferencia</option>
-                                    <option value="tarjeta" {{ old('method') === 'tarjeta' ? 'selected' : '' }}>Tarjeta</option>
+                                    @include('partials.payment-method-options', ['selected' => old('method')])
                                 </select>
                                 @error('method')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>

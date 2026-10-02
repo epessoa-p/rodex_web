@@ -52,6 +52,21 @@ trait HandlesRentalCharge
 
         if ($session) {
             $clientName = $contract->client?->full_name ?? $contract->client?->name;
+            $desc = RentalPayment::TYPES[$type] . ' ' . $contract->code . ($clientName ? ' — ' . $clientName : '');
+
+            // Devolución de depósito = salida: efectivo primero y, si la empresa lo
+            // permite, lo que falte del QR/otro medio (como los demás gastos).
+            if ($map['type'] === 'expense') {
+                $session->recordOutflow([
+                    'company_id'     => $contract->company_id,
+                    'user_id'        => auth()->id(),
+                    'category'       => $map['category'],
+                    'reference_type' => RentalContract::class,
+                    'reference_id'   => $contract->id,
+                    'description'    => $desc,
+                    'movement_date'  => now(),
+                ], $amount, $meta['method'] ?? null);
+            } else {
             CashMovement::create([
                 'company_id'               => $contract->company_id,
                 'cash_register_id'         => $session->cash_register_id,
@@ -63,9 +78,10 @@ trait HandlesRentalCharge
                 'method'                   => $meta['method'] ?? 'efectivo',
                 'reference_type'           => RentalContract::class,
                 'reference_id'             => $contract->id,
-                'description'              => RentalPayment::TYPES[$type] . ' ' . $contract->code . ($clientName ? ' — ' . $clientName : ''),
+                'description'              => $desc,
                 'movement_date'            => now(),
             ]);
+            }
         }
 
         // Actualizar acumulados del contrato

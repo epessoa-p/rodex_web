@@ -26,7 +26,7 @@ class QuickServiceService
 {
     use HandlesWorkOrderCharge;
 
-    public const METHODS = ['efectivo', 'transferencia', 'tarjeta', 'qr'];
+    public const METHODS = \App\Models\CashMovement::SALE_METHODS;
 
     /** Reglas de validación (mismas para web y API). */
     public static function rules(int $companyId): array
@@ -46,7 +46,8 @@ class QuickServiceService
             'client_id'               => ['nullable', 'integer'],
             'vehicle_id'              => ['nullable', 'integer'],
             'quick_vehicle'           => ['nullable', 'string', 'max:80'],
-            'method'                  => ['nullable', 'in:' . implode(',', self::METHODS)],
+            // Solo las formas de cobro que acepta la empresa (efectivo siempre).
+            'method'                  => ['nullable', 'in:' . implode(',', \App\Models\Company::find($companyId)?->paymentMethods() ?? ['efectivo'])],
             'discount'                => ['nullable', 'numeric', 'min:0'],
             'notes'                   => ['nullable', 'string', 'max:1000'],
         ];

@@ -58,8 +58,8 @@
                             <th>Apertura</th>
                             <th>Cajero</th>
                             <th class="text-end">Monto inicial</th>
-                            <th class="text-end">Ingresos</th>
-                            <th class="text-end">Egresos</th>
+                            <th class="text-end">Ingresos efectivo</th>
+                            <th class="text-end">Egresos efectivo</th>
                             <th class="text-end">Monto cierre</th>
                             <th class="text-end">Diferencia</th>
                             <th>Estado</th>
@@ -69,8 +69,8 @@
                     <tbody>
                         @forelse($sessions as $session)
                         @php
-                            $income   = $session->totalIncome();
-                            $expense  = $session->totalExpense();
+                            $income   = $session->cashIncome();
+                            $expense  = $session->cashExpense();
                             $expected = $session->expectedBalance();
                             $diff     = $session->closing_amount !== null ? (float)$session->closing_amount - $expected : null;
                         @endphp

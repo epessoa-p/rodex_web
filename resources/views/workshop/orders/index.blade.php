@@ -258,7 +258,7 @@
           <div class="col-md-6">
             <label class="form-label fw-semibold">Forma de pago</label>
             <select name="method" class="form-select" data-no-search>
-              <option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option><option value="qr">QR</option>
+              @include('partials.payment-method-options')
             </select>
           </div>
 

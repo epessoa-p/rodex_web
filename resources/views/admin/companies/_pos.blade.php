@@ -9,6 +9,10 @@
     $step     = (string) old('pos_rounding_step', $company ? number_format($company->posRoundingStep(), 2, '.', '') : '0.50');
     $step     = in_array($step, ['1', '1.00'], true) ? '1' : '0.50';
     $credit   = (bool) old('allow_credit_sales', $company ? $company->allowsCreditSales() : true);
+    $methods  = (array) old('payment_methods', $company ? $company->paymentMethods() : ['efectivo']);
+    $otherPay = (bool) old('expenses_use_other_methods', $company ? $company->expensesUseOtherMethods() : true);
+    $labels   = \App\Models\CashMovement::METHOD_SHORT;
+    $icons    = ['efectivo' => 'bi-cash', 'qr' => 'bi-qr-code', 'transferencia' => 'bi-bank', 'tarjeta' => 'bi-credit-card'];
 @endphp
 
 <div class="border rounded-3 p-3 mb-3">
@@ -41,6 +45,40 @@
                 Los créditos ya dados se siguen cobrando normalmente.
             </div>
             @error('allow_credit_sales')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label small fw-semibold d-block">Formas de pago aceptadas</label>
+            {{-- Efectivo siempre: se envía oculto (el checkbox deshabilitado no viaja). --}}
+            <input type="hidden" name="payment_methods[]" value="efectivo" {{ $disabled ? 'disabled' : '' }}>
+            <div class="d-flex flex-wrap gap-3">
+                @foreach(\App\Models\CashMovement::SALE_METHODS as $m)
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="pm_{{ $m }}"
+                           @if($m === 'efectivo') checked disabled @else name="payment_methods[]" value="{{ $m }}" {{ in_array($m, $methods, true) ? 'checked' : '' }} {{ $disabled ? 'disabled' : '' }} @endif>
+                    <label class="form-check-label" for="pm_{{ $m }}"><i class="bi {{ $icons[$m] ?? 'bi-wallet2' }} me-1 text-muted"></i>{{ $labels[$m] ?? $m }}</label>
+                </div>
+                @endforeach
+            </div>
+            <div class="form-text">
+                Con más de una, el POS y los cobros del taller muestran botones para elegir cómo paga el cliente.
+                En el cierre de caja se cuenta solo el efectivo; lo demás aparece aparte.
+            </div>
+            @error('payment_methods')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+        </div>
+        <div class="col-md-6">
+            <label class="form-label small fw-semibold d-block">Gastos con lo cobrado por QR / transferencia</label>
+            <input type="hidden" name="expenses_use_other_methods" value="0" {{ $disabled ? 'disabled' : '' }}>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" id="expenses_use_other_methods"
+                       name="expenses_use_other_methods" value="1" {{ $otherPay ? 'checked' : '' }} {{ $disabled ? 'disabled' : '' }}>
+                <label class="form-check-label" for="expenses_use_other_methods">Usarlo para pagar gastos desde la caja</label>
+            </div>
+            <div class="form-text">
+                Ej.: cobraste {{ $symbol }} 100 en efectivo y {{ $symbol }} 100 por QR. Un gasto de {{ $symbol }} 150
+                se registra {{ $symbol }} 100 en efectivo + {{ $symbol }} 50 por QR, y el cierre queda exacto.
+                Apagado: solo se puede gastar el efectivo del cajón.
+            </div>
         </div>
     </div>
 </div>

@@ -56,6 +56,33 @@ class CashMovement extends Model
         'qr'            => 'QR',
     ];
 
+    /** Formas de cobro que se pueden activar por empresa (efectivo siempre). */
+    public const SALE_METHODS = ['efectivo', 'qr', 'transferencia', 'tarjeta'];
+
+    /** Etiquetas cortas para botones y resúmenes. */
+    public const METHOD_SHORT = [
+        'efectivo'      => 'Efectivo',
+        'qr'            => 'QR',
+        'transferencia' => 'Transferencia',
+        'tarjeta'       => 'Tarjeta',
+        'cheque'        => 'Cheque',
+    ];
+
+    /** Sin método (movimientos viejos) cuenta como efectivo. */
+    public static function isCash(?string $method): bool
+    {
+        return $method === null || $method === '' || $method === 'efectivo';
+    }
+
+    public static function shortLabel(?string $method): string
+    {
+        if (self::isCash($method)) {
+            return 'Efectivo';
+        }
+
+        return self::METHOD_SHORT[$method] ?? ucfirst((string) $method);
+    }
+
     public function getMethodLabelAttribute(): string
     {
         if (!$this->method) {

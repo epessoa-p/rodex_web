@@ -99,9 +99,8 @@ class CashSessionController extends Controller
             return response()->json(['message' => 'No tienes una caja abierta.'], 422);
         }
 
-        $income   = $session->totalIncome();
-        $expense  = $session->totalExpense();
-        $expected = (float) $session->opening_amount + $income - $expense;
+        // Solo efectivo: lo cobrado por QR/transferencia no está en el cajón.
+        $expected = $session->expectedBalance();
         $closing  = (float) $data['closing_amount'];
 
         $session->update([
@@ -120,6 +119,7 @@ class CashSessionController extends Controller
                 'expected_amount' => $expected,
                 'closing_amount'  => $closing,
                 'difference'      => $closing - $expected,
+                'other_methods'   => $session->otherMethodsSummary(),
             ],
         ]);
     }
@@ -176,18 +176,14 @@ class CashSessionController extends Controller
             $concept = CashMovement::CATEGORIES[$category]['label'] ?? 'Gasto';
         }
 
-        CashMovement::create([
-            'company_id'               => $session->cashRegister->company_id,
-            'cash_register_id'         => $session->cash_register_id,
-            'cash_register_session_id' => $session->id,
-            'user_id'                  => auth()->id(),
-            'type'                     => 'expense',
-            'category'                 => $category,
-            'amount'                   => (float) $data['amount'],
-            'method'                   => $data['method'] ?? 'efectivo',
-            'description'              => $concept,
-            'movement_date'            => now(),
-        ]);
+        // Efectivo primero; lo que falte, del QR/otro medio (según la empresa).
+        $session->recordOutflow([
+            'company_id'    => $session->cashRegister->company_id,
+            'user_id'       => auth()->id(),
+            'category'      => $category,
+            'description'   => $concept,
+            'movement_date' => now(),
+        ], (float) $data['amount'], $data['method'] ?? null);
 
         $session->load('cashRegister.branch');
 
@@ -205,7 +201,14 @@ class CashSessionController extends Controller
             'opened_at'      => $s->opened_at?->toIso8601String(),
             'total_income'   => $s->totalIncome(),
             'total_expense'  => $s->totalExpense(),
-            'expected_amount'=> (float) $s->opening_amount + $s->totalIncome() - $s->totalExpense(),
+            // Efectivo del cajón (lo que se cuenta al cerrar) y los otros medios aparte.
+            'cash_income'    => $s->cashIncome(),
+            'cash_expense'   => $s->cashExpense(),
+            'expected_amount'=> $s->expectedBalance(),
+            'other_methods'  => $s->otherMethodsSummary(),
+            // Para pagar gastos: efectivo y, si la empresa lo permite, también lo del QR.
+            'available_amount'            => $s->availableForOutflow(),
+            'expenses_use_other_methods'  => $s->usesOtherMethodsForOutflows(),
         ];
     }
 }

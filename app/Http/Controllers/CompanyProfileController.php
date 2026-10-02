@@ -32,6 +32,9 @@ class CompanyProfileController extends Controller
             'logo'               => ['nullable', 'image', 'max:4096'],
             'pos_rounding_step'  => ['nullable', 'in:0.50,0.5,1,1.00'],
             'allow_credit_sales' => ['nullable', 'boolean'],
+            'payment_methods'            => ['nullable', 'array'],
+            'payment_methods.*'          => ['in:' . implode(',', \App\Models\CashMovement::SALE_METHODS)],
+            'expenses_use_other_methods' => ['nullable', 'boolean'],
         ]);
 
         $update = [
@@ -46,6 +49,12 @@ class CompanyProfileController extends Controller
         }
         if ($request->has('allow_credit_sales')) {
             $update['allow_credit_sales'] = $request->boolean('allow_credit_sales');
+        }
+        if (array_key_exists('payment_methods', $data) && $data['payment_methods'] !== null) {
+            $update['payment_methods'] = $data['payment_methods'];   // el modelo lo normaliza
+        }
+        if ($request->has('expenses_use_other_methods')) {
+            $update['expenses_use_other_methods'] = $request->boolean('expenses_use_other_methods');
         }
 
         if ($request->hasFile('logo')) {

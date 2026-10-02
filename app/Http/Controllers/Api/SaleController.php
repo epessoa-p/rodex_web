@@ -129,7 +129,12 @@ class SaleController extends Controller
             'tax'                => ['nullable', 'numeric', 'min:0'],
             'notes'              => ['nullable', 'string'],
             'items'              => ['required', 'array', 'min:1'],
-            'items.*.product_id' => ['required', Rule::exists('products', 'id')->where('company_id', $companyId)],
+            // Venta rápida (producto que no está en el inventario): sin product_id,
+            // con nombre y direct=1, igual que el POS web. Si el nombre coincide con
+            // un producto existente, confirmSale() descuenta su stock.
+            'items.*.product_id' => ['required_without:items.*.direct', 'nullable', Rule::exists('products', 'id')->where('company_id', $companyId)],
+            'items.*.direct'     => ['nullable', 'boolean'],
+            'items.*.name'       => ['required_with:items.*.direct', 'nullable', 'string', 'max:255'],
             'items.*.quantity'   => ['required', 'numeric', 'min:0.01'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
             'items.*.discount'   => ['nullable', 'numeric', 'min:0'],
@@ -137,10 +142,12 @@ class SaleController extends Controller
             'installments.*.due_date' => ['required_with:installments', 'date'],
             'installments.*.amount'   => ['required_with:installments', 'numeric', 'min:0.01'],
             'down_payment'            => ['nullable', 'numeric', 'min:0'],
+            'method'                  => ['nullable', 'string', 'max:20'],
         ]);
 
         // Venta a crédito solo si la empresa la tiene habilitada.
         $this->ensureCreditAllowed($companyId, $validated['sale_type']);
+        $method = $this->resolvePaymentMethod($companyId, $validated['method'] ?? null);
 
         // La sucursal sale de la caja abierta del usuario (mismo modelo que el web).
         $session  = $this->currentOpenSession();
@@ -173,6 +180,7 @@ class SaleController extends Controller
                 'items'        => $validated['items'],
                 'installments' => $validated['installments'] ?? [],
                 'down_payment' => $validated['down_payment'] ?? 0,
+                'method'       => $method,
             ], $session);
 
             $sale->load(['items', 'client']);

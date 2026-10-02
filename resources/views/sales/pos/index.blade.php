@@ -250,9 +250,30 @@
                         </div>
                         {{-- Action buttons --}}
                         <div class="p-3 d-flex flex-column gap-2">
+                            {{-- Forma de pago: solo si la empresa acepta más que efectivo. --}}
+                            @php
+                                $posMethods = $posCompany?->paymentMethods() ?? ['efectivo'];
+                                $pmLabels   = \App\Models\CashMovement::METHOD_SHORT;
+                                $pmIcons    = ['efectivo' => 'bi-cash', 'qr' => 'bi-qr-code', 'transferencia' => 'bi-bank', 'tarjeta' => 'bi-credit-card'];
+                            @endphp
+                            <input type="hidden" name="method" id="paymentMethodInput" value="efectivo">
+                            @if(count($posMethods) > 1)
+                            <div>
+                                <div class="text-muted small mb-1">Forma de pago</div>
+                                <div class="d-flex gap-1 flex-wrap" role="group" aria-label="Forma de pago" id="paymentMethodGroup">
+                                    @foreach($posMethods as $m)
+                                    <input type="radio" class="btn-check" name="pm_choice" id="pm_{{ $m }}" value="{{ $m }}"
+                                           autocomplete="off" {{ $m === 'efectivo' ? 'checked' : '' }} onchange="onPaymentMethod(this.value)">
+                                    <label class="btn btn-sm btn-outline-secondary flex-fill" for="pm_{{ $m }}">
+                                        <i class="bi {{ $pmIcons[$m] ?? 'bi-wallet2' }} me-1"></i>{{ $pmLabels[$m] ?? $m }}
+                                    </label>
+                                    @endforeach
+                                </div>
+                            </div>
+                            @endif
                             <button type="button" class="btn btn-primary w-100 py-2"
                                     id="btnCash" onclick="submitCash()">
-                                <i class="bi bi-cash me-2"></i>Cobrar (Contado)
+                                <i class="bi bi-cash me-2" id="btnCashIcon"></i><span id="btnCashLabel">Cobrar (Contado)</span>
                             </button>
                             @if($posCompany?->allowsCreditSales() ?? true)
                             <button type="button" class="btn btn-light border w-100 py-2"
@@ -1125,6 +1146,27 @@ function cartFigures() {
 function onDiscountPct()    { discountSource = 'pct';    recalcCart(); updateBalanceIndicatorSafe(); }
 function onDiscountAmount() { discountSource = 'amount'; recalcCart(); updateBalanceIndicatorSafe(); }
 
+// ── Forma de pago ────────────────────────────────────────────────────
+const PAY_METHODS = @json($posMethods ?? ['efectivo']);
+const PAY_PHRASE  = { efectivo: 'en efectivo', qr: 'con QR', transferencia: 'por transferencia', tarjeta: 'con tarjeta' };
+const PAY_ICON    = { efectivo: 'bi-cash', qr: 'bi-qr-code', transferencia: 'bi-bank', tarjeta: 'bi-credit-card' };
+
+function onPaymentMethod(m) {
+    document.getElementById('paymentMethodInput').value = m;
+    recalcCart();
+}
+
+/** "Cobrar $ 91.50 con QR" (con más de una forma de pago); si no, como siempre. */
+function refreshCashButton(total) {
+    const label = document.getElementById('btnCashLabel');
+    const icon  = document.getElementById('btnCashIcon');
+    if (!label) return;
+    if (PAY_METHODS.length < 2) { label.textContent = 'Cobrar (Contado)'; return; }
+    const m = document.getElementById('paymentMethodInput').value || 'efectivo';
+    label.textContent = 'Cobrar ' + money(total, 2) + ' ' + (PAY_PHRASE[m] || '');
+    if (icon) icon.className = 'bi ' + (PAY_ICON[m] || 'bi-cash') + ' me-2';
+}
+
 function updateBalanceIndicatorSafe() {
     if (typeof updateBalanceIndicator === 'function' && document.getElementById('cm_balance_indicator')) {
         updateBalanceIndicator();
@@ -1200,6 +1242,7 @@ function recalcCart() {
     }
 
     document.getElementById('cartTotal').textContent = money(total, 2);
+    refreshCashButton(total);
 
     const target = roundTarget(total, sub, maxDisc);
     const btn = document.getElementById('btnRound');

@@ -259,6 +259,7 @@ class SaleController extends Controller
             'installments.*.due_date'  => 'required_with:installments|date',
             'installments.*.amount'    => 'required_with:installments|numeric|min:0.01',
             'down_payment'             => 'nullable|numeric|min:0',
+            'method'                   => 'nullable|string|max:20',
             'quote_id'                 => 'nullable|exists:quotes,id',
             'interest'                 => 'nullable|numeric|min:0',
             'payment_plan_id'          => 'nullable|exists:payment_plans,id',
@@ -267,6 +268,7 @@ class SaleController extends Controller
 
         // Venta a crédito solo si la empresa la tiene habilitada.
         $this->ensureCreditAllowed($companyId, $validated['sale_type']);
+        $method = $this->resolvePaymentMethod($companyId, $validated['method'] ?? null);
 
         // La sucursal se toma de la caja abierta del personal logueado
         $session  = $this->currentOpenSession();
@@ -301,6 +303,7 @@ class SaleController extends Controller
                 'items'                 => $validated['items'],
                 'installments'          => $validated['installments'] ?? [],
                 'down_payment'          => $validated['down_payment'] ?? 0,
+                'method'                => $method,
             ], $session);
 
             // Si viene de una cotización, marcarla como convertida

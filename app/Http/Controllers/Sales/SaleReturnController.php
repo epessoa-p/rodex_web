@@ -189,20 +189,15 @@ class SaleReturnController extends Controller
 
                 // Egreso de caja solo por el efectivo realmente reembolsado
                 if ($session && $cashRefund > 0) {
-                    CashMovement::create([
-                        'company_id'               => $sale->company_id,
-                        'cash_register_id'         => $session->cash_register_id,
-                        'cash_register_session_id' => $session->id,
-                        'user_id'                  => auth()->id(),
-                        'type'                     => 'expense',
-                        'category'                 => 'sale_return',
-                        'amount'                   => $cashRefund,
-                        'method'                   => 'efectivo',
-                        'reference_type'           => SaleReturn::class,
-                        'reference_id'             => $return->id,
-                        'description'              => 'Devolución ' . $return->code . ' (venta ' . $sale->code . ')',
-                        'movement_date'            => now(),
-                    ]);
+                    $session->recordOutflow([
+                        'company_id'     => $sale->company_id,
+                        'user_id'        => auth()->id(),
+                        'category'       => 'sale_return',
+                        'reference_type' => SaleReturn::class,
+                        'reference_id'   => $return->id,
+                        'description'    => 'Devolución ' . $return->code . ' (venta ' . $sale->code . ')',
+                        'movement_date'  => now(),
+                    ], $cashRefund);
                 }
 
                 return $return;

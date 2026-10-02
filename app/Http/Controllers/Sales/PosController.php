@@ -117,6 +117,8 @@ class PosController extends Controller
             'discount_pct'       => 'nullable|integer|min:0|max:100',
             // Monto del descuento ya calculado en el carrito (% o monto, con redondeo).
             'discount_amount'    => 'nullable|numeric|min:0',
+            // Forma de pago (efectivo, qr, transferencia, tarjeta) según la empresa.
+            'method'             => 'nullable|string|max:20',
             'interest'           => 'nullable|numeric|min:0',
             'items'              => 'required|array|min:1',
             'items.*.product_id' => 'nullable|exists:products,id',
@@ -138,6 +140,7 @@ class PosController extends Controller
 
         // Venta a crédito solo si la empresa la tiene habilitada.
         $this->ensureCreditAllowed($companyId, $validated['sale_type']);
+        $method = $this->resolvePaymentMethod($companyId, $validated['method'] ?? null);
 
         // Descuento SOLO sobre la ganancia (precio − costo): el tope es la ganancia
         // (total = costo). El carrito manda el monto final (por % o por monto, y
@@ -177,6 +180,7 @@ class PosController extends Controller
                 'items'        => $validated['items'],
                 'installments' => $validated['installments'] ?? [],
                 'down_payment' => $validated['down_payment'] ?? 0,
+                'method'       => $method,
             ], $session);
 
             // Volver al POS para seguir vendiendo; el recibo térmico se imprime solo

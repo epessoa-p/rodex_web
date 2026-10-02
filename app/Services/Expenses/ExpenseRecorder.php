@@ -111,27 +111,25 @@ class ExpenseRecorder
             if (! $session) {
                 throw new ExpenseException('Necesitas tener tu caja abierta para registrar un gasto.', 'no_open_session');
             }
-            if ($amount > (float) $session->expectedBalance() + 0.001) {
+            // Disponible: efectivo y, si la empresa lo permite, lo cobrado por QR/otros.
+            $available = $session->availableForOutflow();
+            if ($amount > $available + 0.001) {
                 throw new ExpenseException(
-                    'La caja no tiene saldo suficiente (disponible: ' . number_format($session->expectedBalance(), 2) . ').',
+                    'La caja no tiene saldo suficiente (disponible: ' . number_format($available, 2) . ').',
                     'insufficient_balance'
                 );
             }
 
-            $movement = CashMovement::create([
-                'company_id'               => $companyId,
-                'cash_register_id'         => $session->cash_register_id,
-                'cash_register_session_id' => $session->id,
-                'user_id'                  => $userId,
-                'type'                     => 'expense',
-                'category'                 => $cashCategory,
-                'amount'                   => $amount,
-                'method'                   => $data['method'] ?? 'efectivo',
-                'reference_type'           => $refType,
-                'reference_id'             => $refId,
-                'description'              => $description,
-                'movement_date'            => now(),
-            ]);
+            // Efectivo primero; lo que falte, del QR/otro medio (ver recordOutflow).
+            $movement = $session->recordOutflow([
+                'company_id'     => $companyId,
+                'user_id'        => $userId,
+                'category'       => $cashCategory,
+                'reference_type' => $refType,
+                'reference_id'   => $refId,
+                'description'    => $description,
+                'movement_date'  => now(),
+            ], $amount, $data['method'] ?? null)->first();
             $source = 'Caja';
         } else {
             $account = TreasuryAccount::find($data['treasury_account_id'] ?? null);

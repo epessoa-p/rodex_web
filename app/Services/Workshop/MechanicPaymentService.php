@@ -183,20 +183,15 @@ class MechanicPaymentService
                 ]);
                 $account->decrement('balance', $amount);
             } else {
-                CashMovement::create([
-                    'company_id'               => $mechanic->company_id,
-                    'cash_register_id'         => $session->cash_register_id,
-                    'cash_register_session_id' => $session->id,
-                    'user_id'                  => auth()->id(),
-                    'type'                     => 'expense',
-                    'category'                 => 'expense_payroll',
-                    'amount'                   => $amount,
-                    'method'                   => $method,
-                    'reference_type'           => MechanicPayment::class,
-                    'reference_id'             => $payment->id,
-                    'description'              => 'Pago a mecánico ' . $mechanic->name,
-                    'movement_date'            => now(),
-                ]);
+                $session->recordOutflow([
+                    'company_id'     => $mechanic->company_id,
+                    'user_id'        => auth()->id(),
+                    'category'       => 'expense_payroll',
+                    'reference_type' => MechanicPayment::class,
+                    'reference_id'   => $payment->id,
+                    'description'    => 'Pago a mecánico ' . $mechanic->name,
+                    'movement_date'  => now(),
+                ], $amount, $method);
             }
 
             return $payment;

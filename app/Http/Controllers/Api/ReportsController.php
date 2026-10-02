@@ -91,9 +91,11 @@ class ReportsController extends Controller
             ->limit(100)
             ->get()
             ->map(function (CashRegisterSession $s) {
-                $inc = $s->totalIncome();
-                $exp = $s->totalExpense();
-                $expected = $s->status === 'open' ? (float) $s->opening_amount + $inc - $exp : (float) $s->expected_amount;
+                // Ingresos/egresos en EFECTIVO (cuadran con el esperado del cajón);
+                // lo cobrado por QR/transferencia va aparte en other_methods.
+                $inc = $s->cashIncome();
+                $exp = $s->cashExpense();
+                $expected = $s->status === 'open' ? $s->expectedBalance() : (float) $s->expected_amount;
                 return [
                     'id'              => $s->id,
                     'status'          => $s->status,
@@ -107,6 +109,7 @@ class ReportsController extends Controller
                     'income'          => $inc,
                     'expense'         => $exp,
                     'expected_amount' => $expected,
+                    'other_methods'   => $s->otherMethodsSummary(),
                     'closing_amount'  => $s->closing_amount !== null ? (float) $s->closing_amount : null,
                     'difference'      => $s->difference !== null ? (float) $s->difference : null,
                     'notes'           => $s->notes,

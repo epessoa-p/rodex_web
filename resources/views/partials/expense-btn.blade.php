@@ -29,7 +29,8 @@
                         <span class="small fw-semibold text-success-emphasis">
                             <i class="bi bi-cash-stack me-1"></i>Disponible en caja
                         </span>
-                        <span class="fw-bold fs-6 text-success" id="gastoCajaBalance">{{ money($expSession->expectedBalance()) }}</span>
+                        <span class="fw-bold fs-6 text-success" id="gastoCajaBalance">{{ money($expSession->availableForOutflow()) }}</span>
+                        @if($t = $expSession->availabilityBreakdownText())<div class="small text-muted">{{ $t }}</div>@endif
                     </div>
 
                     <div id="gastoLoading" class="text-center text-muted py-2 small"><span class="spinner-border spinner-border-sm me-1"></span>Cargando…</div>

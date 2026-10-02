@@ -52,8 +52,9 @@
 
         {{-- Modal cierre desde navbar --}}
         @php
-            $income   = $activeCashSession->totalIncome();
-            $expense  = $activeCashSession->totalExpense();
+            // Solo efectivo (lo del cajón); QR/transferencia van aparte.
+            $income   = $activeCashSession->cashIncome();
+            $expense  = $activeCashSession->cashExpense();
             $expected = $activeCashSession->expectedBalance();
         @endphp
         <div class="modal fade" id="modalCerrarCajaNavbar" tabindex="-1">
@@ -73,19 +74,20 @@
                                         <div class="fw-bold">{{ number_format($activeCashSession->opening_amount, 2) }}</div>
                                     </div>
                                     <div class="col-4">
-                                        <div class="text-muted small">Ingresos</div>
+                                        <div class="text-muted small">Ingresos efectivo</div>
                                         <div class="fw-bold text-success">+{{ number_format($income, 2) }}</div>
                                     </div>
                                     <div class="col-4">
-                                        <div class="text-muted small">Egresos</div>
+                                        <div class="text-muted small">Egresos efectivo</div>
                                         <div class="fw-bold text-danger">-{{ number_format($expense, 2) }}</div>
                                     </div>
                                 </div>
                                 <hr class="my-2">
                                 <div class="text-center">
-                                    <div class="text-muted small">Saldo esperado</div>
+                                    <div class="text-muted small">Efectivo que debe haber en el cajón</div>
                                     <div class="fs-5 fw-bold text-primary">{{ number_format($expected, 2) }}</div>
                                 </div>
+                                @include('cash.session._other-methods', ['session' => $activeCashSession, 'compact' => true])
                             </div>
                             <div class="row g-3">
                                 <div class="col-12">

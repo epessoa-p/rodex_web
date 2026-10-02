@@ -101,9 +101,7 @@
                         <div class="col-md-4">
                             <label class="form-label fw-semibold" for="method_{{ $sale->id }}">Método de pago</label>
                             <select name="method" id="method_{{ $sale->id }}" class="form-select">
-                                <option value="efectivo" {{ old('method', 'efectivo') === 'efectivo' ? 'selected' : '' }}>Efectivo</option>
-                                <option value="transferencia" {{ old('method') === 'transferencia' ? 'selected' : '' }}>Transferencia</option>
-                                <option value="tarjeta" {{ old('method') === 'tarjeta' ? 'selected' : '' }}>Tarjeta</option>
+                                @include('partials.payment-method-options', ['selected' => old('method')])
                             </select>
                         </div>
                     </div>

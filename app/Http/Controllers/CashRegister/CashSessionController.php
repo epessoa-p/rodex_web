@@ -62,9 +62,8 @@ class CashSessionController extends Controller
         ]);
 
         try {
-            $income         = $session->totalIncome();
-            $expense        = $session->totalExpense();
-            $expectedAmount = (float) $session->opening_amount + $income - $expense;
+            // Solo efectivo: lo cobrado por QR/transferencia no está en el cajón.
+            $expectedAmount = $session->expectedBalance();
             $closingAmount  = (float) $validated['closing_amount'];
 
             $session->update([
@@ -194,7 +193,8 @@ class CashSessionController extends Controller
 
                 // Recalcular esperado y diferencia con el nuevo movimiento incluido.
                 $session->refresh();
-                $expected = (float) $session->opening_amount + $session->totalIncome() - $session->totalExpense();
+                $session->forgetBreakdown();
+                $expected = $session->expectedBalance();
                 $session->update([
                     'expected_amount' => $expected,
                     'difference'      => (float) $session->closing_amount - $expected,
@@ -233,7 +233,7 @@ class CashSessionController extends Controller
         try {
             $old      = (float) $session->closing_amount;
             $new      = (float) $validated['counted_amount'];
-            $expected = (float) $session->opening_amount + $session->totalIncome() - $session->totalExpense();
+            $expected = $session->expectedBalance();
 
             $note = sprintf(
                 '[Corrección de conteo · %s · %s] %s. Monto contado: %s → %s',

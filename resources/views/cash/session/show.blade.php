@@ -59,8 +59,9 @@
 
     {{-- KPIs --}}
     @php
-        $income   = $session->totalIncome();
-        $expense  = $session->totalExpense();
+        // Solo efectivo: cuadra con lo que debe haber en el cajón. Lo demás va aparte.
+        $income   = $session->cashIncome();
+        $expense  = $session->cashExpense();
         $expected = $session->expectedBalance();
     @endphp
     <div class="row g-3 mb-4">
@@ -75,7 +76,7 @@
         <div class="col-6 col-md-3">
             <div class="card border-0 shadow-sm h-100 border-start border-success border-3">
                 <div class="card-body">
-                    <div class="text-muted small mb-1"><i class="bi bi-arrow-down-circle text-success"></i> Total ingresos</div>
+                    <div class="text-muted small mb-1"><i class="bi bi-arrow-down-circle text-success"></i> Ingresos en efectivo</div>
                     <div class="fs-4 fw-bold text-success">+{{ number_format($income, 2) }}</div>
                 </div>
             </div>
@@ -83,7 +84,7 @@
         <div class="col-6 col-md-3">
             <div class="card border-0 shadow-sm h-100 border-start border-danger border-3">
                 <div class="card-body">
-                    <div class="text-muted small mb-1"><i class="bi bi-arrow-up-circle text-danger"></i> Total egresos</div>
+                    <div class="text-muted small mb-1"><i class="bi bi-arrow-up-circle text-danger"></i> Egresos en efectivo</div>
                     <div class="fs-4 fw-bold text-danger">-{{ number_format($expense, 2) }}</div>
                 </div>
             </div>
@@ -91,12 +92,14 @@
         <div class="col-6 col-md-3">
             <div class="card border-0 shadow-sm h-100 border-start border-primary border-3">
                 <div class="card-body">
-                    <div class="text-muted small mb-1"><i class="bi bi-calculator text-primary"></i> Saldo esperado</div>
+                    <div class="text-muted small mb-1"><i class="bi bi-calculator text-primary"></i> Esperado en efectivo</div>
                     <div class="fs-4 fw-bold text-primary">{{ number_format($expected, 2) }}</div>
                 </div>
             </div>
         </div>
     </div>
+    @include('cash.session._other-methods', ['session' => $session])
+    <div class="mb-4"></div>
 
     @if(!$session->isOpen())
     {{-- Cierre info --}}
@@ -176,7 +179,7 @@
                                 <div>{{ $movement->movement_date->format('d/m/Y') }}</div>
                                 <small class="text-muted">{{ $movement->movement_date->format('H:i') }}</small>
                             </td>
-                            <td>{{ $movement->category_label }}</td>
+                            <td>{{ $movement->category_label }}@unless(\App\Models\CashMovement::isCash($movement->method)) <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1" title="No está en el cajón"><i class="bi bi-phone"></i> {{ \App\Models\CashMovement::shortLabel($movement->method) }}</span>@endunless</td>
                             <td>
                                 @if($movement->type === 'income')
                                     <span class="badge bg-success-subtle text-success border border-success-subtle">
@@ -297,19 +300,20 @@
                                 <div class="fw-bold">{{ number_format($session->opening_amount, 2) }}</div>
                             </div>
                             <div class="col-4">
-                                <div class="text-muted small">Ingresos</div>
+                                <div class="text-muted small">Ingresos efectivo</div>
                                 <div class="fw-bold text-success">+{{ number_format($income, 2) }}</div>
                             </div>
                             <div class="col-4">
-                                <div class="text-muted small">Egresos</div>
+                                <div class="text-muted small">Egresos efectivo</div>
                                 <div class="fw-bold text-danger">-{{ number_format($expense, 2) }}</div>
                             </div>
                         </div>
                         <hr class="my-2">
                         <div class="text-center">
-                            <div class="text-muted small">Saldo esperado en caja</div>
+                            <div class="text-muted small">Efectivo que debe haber en el cajón</div>
                             <div class="fs-5 fw-bold text-primary">{{ number_format($expected, 2) }}</div>
                         </div>
+                        @include('cash.session._other-methods', ['session' => $session, 'compact' => true])
                     </div>
 
                     <div class="row g-3">

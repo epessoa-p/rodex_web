@@ -1,6 +1,7 @@
 @php
-    $income   = $session->totalIncome();
-    $expense  = $session->totalExpense();
+    // Solo efectivo (cuadra con el esperado del cajón); lo demás va aparte.
+    $income   = $session->cashIncome();
+    $expense  = $session->cashExpense();
     $expected = $session->expectedBalance();
     $isOpen   = $session->isOpen();
     $diff     = (float) $session->difference;
@@ -19,19 +20,19 @@
         </div>
         <div class="col-6 col-lg">
             <div class="sd-kpi sd-kpi-income">
-                <div class="sd-kpi-label"><i class="bi bi-arrow-down-circle me-1"></i>Ingresos</div>
+                <div class="sd-kpi-label"><i class="bi bi-arrow-down-circle me-1"></i>Ingresos efectivo</div>
                 <div class="sd-kpi-value text-success">+{{ number_format($income, 2) }}</div>
             </div>
         </div>
         <div class="col-6 col-lg">
             <div class="sd-kpi sd-kpi-expense">
-                <div class="sd-kpi-label"><i class="bi bi-arrow-up-circle me-1"></i>Egresos</div>
+                <div class="sd-kpi-label"><i class="bi bi-arrow-up-circle me-1"></i>Egresos efectivo</div>
                 <div class="sd-kpi-value text-danger">−{{ number_format($expense, 2) }}</div>
             </div>
         </div>
         <div class="col-6 col-lg">
             <div class="sd-kpi sd-kpi-expected">
-                <div class="sd-kpi-label"><i class="bi bi-calculator me-1"></i>Esperado</div>
+                <div class="sd-kpi-label"><i class="bi bi-calculator me-1"></i>Esperado efectivo</div>
                 <div class="sd-kpi-value">{{ $money($expected) }}</div>
             </div>
         </div>
@@ -59,6 +60,8 @@
         </div>
         @endunless
     </div>
+    @include('cash.session._other-methods', ['session' => $session])
+    <div class="mb-3"></div>
 
     {{-- Barra de acciones --}}
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
@@ -119,7 +122,7 @@
                             <div>{{ $mov->movement_date->format('d/m/Y') }}</div>
                             <small class="text-muted">{{ $mov->movement_date->format('H:i') }}</small>
                         </td>
-                        <td class="py-2">{{ $mov->category_label }}</td>
+                        <td class="py-2">{{ $mov->category_label }}@unless(\App\Models\CashMovement::isCash($mov->method)) <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1" title="No está en el cajón"><i class="bi bi-phone"></i> {{ \App\Models\CashMovement::shortLabel($mov->method) }}</span>@endunless</td>
                         <td class="py-2">
                             @if($mov->type === 'income')
                                 <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-arrow-down-short"></i> Ingreso</span>

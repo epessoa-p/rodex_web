@@ -158,20 +158,15 @@ class PurchaseOrderController extends Controller
                     $account->decrement('balance', $subtotal);
                 } else {
                     // Gasto desde la caja abierta.
-                    CashMovement::create([
-                        'company_id'               => $cid,
-                        'cash_register_id'         => $session->cash_register_id,
-                        'cash_register_session_id' => $session->id,
-                        'user_id'                  => auth()->id(),
-                        'type'                     => 'expense',
-                        'category'                 => 'expense_supplier',
-                        'amount'                   => $subtotal,
-                        'method'                   => $method,
-                        'reference_type'           => Purchase::class,
-                        'reference_id'             => $purchase->id,
-                        'description'              => 'Compra ' . $purchase->code,
-                        'movement_date'            => now(),
-                    ]);
+                    $session->recordOutflow([
+                        'company_id'     => $cid,
+                        'user_id'        => auth()->id(),
+                        'category'       => 'expense_supplier',
+                        'reference_type' => Purchase::class,
+                        'reference_id'   => $purchase->id,
+                        'description'    => 'Compra ' . $purchase->code,
+                        'movement_date'  => now(),
+                    ], $subtotal, $method);
                 }
 
                 return $purchase;
@@ -300,9 +295,10 @@ class PurchaseOrderController extends Controller
             if (! $session) {
                 return response()->json(['message' => 'No tienes una caja abierta para pagar desde caja.', 'code' => 'no_open_session'], 422);
             }
-            if ($amount > (float) $session->expectedBalance() + 0.001) {
+            $available = $session->availableForOutflow();
+            if ($amount > $available + 0.001) {
                 return response()->json([
-                    'message' => 'La caja no tiene saldo suficiente (disponible: ' . number_format($session->expectedBalance(), 2) . ').',
+                    'message' => 'La caja no tiene saldo suficiente (disponible: ' . number_format($available, 2) . ').',
                     'code'    => 'insufficient_balance',
                 ], 422);
             }
@@ -315,13 +311,11 @@ class PurchaseOrderController extends Controller
                     'reference' => $data['reference'] ?? 'CAJA', 'notes' => $data['notes'] ?? 'Pago desde caja (móvil)',
                     'user_id' => auth()->id(),
                 ]);
-                CashMovement::create([
-                    'company_id' => $cid, 'cash_register_id' => $session->cash_register_id,
-                    'cash_register_session_id' => $session->id, 'user_id' => auth()->id(),
-                    'type' => 'expense', 'category' => 'expense_supplier', 'amount' => $amount, 'method' => $method,
+                $session->recordOutflow([
+                    'company_id' => $cid, 'user_id' => auth()->id(), 'category' => 'expense_supplier',
                     'reference_type' => Purchase::class, 'reference_id' => $purchase->id,
                     'description' => $desc, 'movement_date' => now(),
-                ]);
+                ], $amount, $method);
                 $purchase->increment('paid_amount', $amount);
                 $purchase->refresh()->recalcPaymentStatus();
             });
