@@ -1,6 +1,6 @@
 @extends('layouts.auth')
 
-@section('title', 'Seleccionar Empresa - Sistema de Préstamos')
+@section('title', 'Seleccionar empresa - ' . config('brand.name'))
 
 @section('content')
 <div class="auth-container">

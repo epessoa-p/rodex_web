@@ -35,7 +35,7 @@
                                    class="form-control @error('name') is-invalid @enderror"
                                    value="{{ old('name', $documentTemplate->name ?? '') }}"
                                    required maxlength="255"
-                                   placeholder="Ej: Contrato estándar de préstamo">
+                                   placeholder="Ej: Contrato de alquiler de moto">
                             @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-4">

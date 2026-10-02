@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Empresas - Sistema de Préstamos')
+@section('title', 'Empresas - ' . config('brand.name'))
 
 @section('page')
 <div class="container-fluid">
@@ -18,6 +18,7 @@
                 <thead>
                     <tr>
                         <th>Nombre</th>
+                        <th>Creada</th>
                         <th>Plan</th>
                         <th>Última actividad</th>
                         <th>Estado</th>
@@ -34,6 +35,14 @@
                             <td>
                                 <a href="{{ route('companies.show', $company) }}" class="fw-semibold text-decoration-none text-dark">{{ $company->name }}</a>
                                 <div class="text-muted small">{{ $company->ruc ?? '' }}{{ $company->ruc && $company->phone ? ' · ' : '' }}{{ $company->phone ?? '' }}</div>
+                            </td>
+                            <td class="text-nowrap">
+                                @if($company->created_at)
+                                    <div class="small">{{ $company->created_at->format('d/m/Y') }}</div>
+                                    <span class="text-muted small">{{ $company->created_at->diffForHumans() }}</span>
+                                @else
+                                    <span class="text-muted small">—</span>
+                                @endif
                             </td>
                             <td>
                                 @if($company->subscription?->plan)
