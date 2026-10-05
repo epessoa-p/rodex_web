@@ -37,17 +37,13 @@
                     </li>
                 </ul>
             </div>
-            <a href="{{ route('inventory.stock.template') }}"
-               class="btn btn-sm btn-light border"
-               title="Descargar plantilla Excel">
-                <i class="bi bi-file-earmark-arrow-down me-1"></i>Descargar plantilla
-            </a>
             @php
                 $canEditPrices = auth()->user()->is_super_admin
                     || auth()->user()->hasPermissionInCompany('products.edit', auth()->user()->getCurrentCompany());
             @endphp
             @if($canEditPrices)
-            <button type="button" class="btn btn-sm btn-light border" data-bs-toggle="modal" data-bs-target="#bulkPriceModal"
+            {{-- Ámbar: acción masiva sobre precios, que se distinga de los demás botones. --}}
+            <button type="button" class="btn btn-sm btn-bulk-price" data-bs-toggle="modal" data-bs-target="#bulkPriceModal"
                     title="Subir o bajar un % a los precios que estás viendo">
                 <i class="bi bi-percent me-1"></i>Ajustar precios
             </button>
@@ -400,6 +396,8 @@
     color: #fff;
 }
 
+.btn-bulk-price { background:#fff7e6; color:#b45309; border:1px solid #f5c26b; font-weight:600; }
+.btn-bulk-price:hover, .btn-bulk-price:focus { background:#f59e0b; color:#fff; border-color:#f59e0b; }
 .bp-scope { background: rgba(13,110,253,.06); border: 1px solid rgba(13,110,253,.18); }
 .bp-diff-up { color: #198754; }
 .bp-diff-down { color: #dc3545; }
