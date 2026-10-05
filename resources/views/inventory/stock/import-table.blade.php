@@ -108,7 +108,6 @@
     <datalist id="dlBrand">@foreach($brands as $v)<option value="{{ $v }}"></option>@endforeach</datalist>
     <datalist id="dlUnit">@foreach($units as $v)<option value="{{ $v }}"></option>@endforeach</datalist>
     <datalist id="dlOrigin">@foreach($origins as $v)<option value="{{ $v }}"></option>@endforeach</datalist>
-    <datalist id="dlModels">@foreach($models as $v)<option value="{{ $v }}"></option>@endforeach</datalist>
 </div>
 
 {{-- Confirmación --}}
@@ -119,6 +118,10 @@
                 <div class="gt-ok gt-ok-soft mb-3"><i class="bi bi-box-seam"></i></div>
                 <h6 class="fw-bold mb-2" id="confTitle"></h6>
                 <p class="small text-muted mb-0" id="confText"></p>
+                <div class="alert alert-warning small mt-3 mb-0 text-start d-none" id="confWarn">
+                    <div class="d-flex gap-2"><i class="bi bi-exclamation-triangle-fill"></i><span id="confWarnText"></span></div>
+                    <button type="button" class="btn btn-sm btn-warning mt-2" id="confFix"><i class="bi bi-pencil me-1"></i>Completar ahora</button>
+                </div>
                 <div class="alert alert-danger small mt-3 mb-0 d-none" id="confError"></div>
             </div>
             <div class="modal-footer border-0 pt-0 justify-content-center">
@@ -157,6 +160,12 @@
 .gt tr.has-error td:not(.gt-num) { background:#fff7f7; }
 .gt tr:hover .gt-del button { opacity:1; }
 .gt .gt-del button { opacity:.25; border:0; background:none; color:#dc3545; padding:.2rem .4rem; }
+.gt td.miss-err  { box-shadow:inset 0 0 0 1.5px rgba(220,53,69,.55); background:#fff1f1 !important; }
+.gt td.miss-warn { box-shadow:inset 0 0 0 1.5px rgba(245,158,11,.6); background:#fffaf0 !important; }
+.gt-suggest { position:absolute; z-index:1060; background:#fff; border:1px solid #dee2e6; border-radius:.5rem; box-shadow:0 8px 24px rgba(0,0,0,.12); padding:.25rem; font-size:.82rem; max-height:260px; overflow:auto; }
+.gt-sug-item { padding:.35rem .6rem; border-radius:.35rem; cursor:pointer; }
+.gt-sug-item.active, .gt-sug-item:hover { background:#e7f1ff; color:#0b5ed7; }
+.gt-sug-hint { font-size:.68rem; color:#adb5bd; padding:.25rem .6rem 0; border-top:1px solid #f1f3f5; margin-top:.25rem; }
 .gt .extra { display:none; }
 .gt.show-extra .extra { display:table-cell; }
 .st-pill { display:inline-flex; align-items:center; gap:.25rem; font-size:.68rem; font-weight:600; padding:.15rem .5rem; border-radius:999px; }
@@ -180,6 +189,8 @@
     const CONFIRM_URL = @json(route('inventory.stock.import.confirm'));
     const CSRF        = @json(csrf_token());
     const EXISTING    = new Set(@json($existing));
+    const DEF_UNIT    = @json(mb_strtoupper(config('inventory.default_unit', 'Unidad')));
+    const MODELS      = @json($models);
     const DRAFT_KEY   = 'rodex.importTable.' + @json($companyId);
     const XTRA_KEY    = 'rodex.importTable.extra';
     const money = n => (window.money ? window.money(n, 2) : Number(n || 0).toFixed(2));
@@ -195,7 +206,7 @@
         { key: 'unit',     label: 'Unidad', upper: true, list: 'dlUnit', w: 90 },
         { key: 'code',     label: 'Código de referencia', upper: true, w: 130 },
         { key: 'origin',   label: 'Origen', upper: true, list: 'dlOrigin', w: 100, extra: true },
-        { key: 'models',   label: 'Modelos compatibles', upper: true, list: 'dlModels', w: 170, extra: true, hint: 'Separa con comas' },
+        { key: 'models',   label: 'Modelos compatibles', upper: true, multi: true, w: 190, extra: true, hint: 'Ej. CG 150, XR 190' },
         { key: 'notes',    label: 'Descripción', w: 180, extra: true },
     ];
     const KEYS = COLS.map(c => c.key);
@@ -206,8 +217,12 @@
     let rows = [];          // estado: [{name, price, ...}]
     let saveTimer = null;
 
-    const blank = () => Object.fromEntries(KEYS.map(k => [k, '']));
-    const isEmpty = r => KEYS.every(k => String(r[k] ?? '').trim() === '');
+    const blank = () => Object.assign(Object.fromEntries(KEYS.map(k => [k, ''])), { unit: DEF_UNIT });
+    // La unidad por defecto no cuenta: una fila solo con "UNIDAD" sigue vacía.
+    const isEmpty = r => KEYS.every(k => {
+        const v = String(r[k] ?? '').trim();
+        return v === '' || (k === 'unit' && v.toUpperCase() === DEF_UNIT);
+    });
 
     /** "1.234,50" / "1,234.50" / "Bs 12,5" → número (o null si está vacío). */
     function parseNum(v) {
@@ -265,8 +280,11 @@
         if (!name) return { cls: 'st-err', icon: 'x-circle', text: 'Falta el nombre', error: true };
         const key = name.toLowerCase();
         if (dupes.has(key)) return { cls: 'st-warn', icon: 'exclamation-triangle', text: 'Repetido', error: true };
+        // Ya existe: los vacíos no se tocan, así que no se exige nada más.
         if (EXISTING.has(key)) return { cls: 'st-upd', icon: 'arrow-repeat', text: 'Ya existe: se actualiza' };
-        if (parseNum(r.price) === null) return { cls: 'st-err', icon: 'x-circle', text: 'Falta el precio', error: true };
+        if (parseNum(r.price) === null) return { cls: 'st-err', icon: 'x-circle', text: 'Falta el precio', error: true, miss: ['price'] };
+        // Sin costo se puede guardar, pero la ganancia saldría mal: se avisa.
+        if (parseNum(r.cost) === null) return { cls: 'st-warn', icon: 'exclamation-circle', text: 'Sin precio de compra', miss: ['cost'], noCost: true };
         return { cls: 'st-new', icon: 'plus-circle', text: 'Nuevo' };
     }
 
@@ -275,17 +293,25 @@
         rows.forEach(r => { const k = String(r.name).trim().toLowerCase(); if (k) seen.set(k, (seen.get(k) || 0) + 1); });
         const dupes = new Set([...seen].filter(([, n]) => n > 1).map(([k]) => k));
 
-        let count = 0, errs = 0, units = 0, cost = 0, price = 0, nNew = 0, nUpd = 0;
+        let count = 0, errs = 0, units = 0, cost = 0, price = 0, nNew = 0, nUpd = 0, noCost = 0;
         rows.forEach((r, i) => {
             const st  = rowStatus(r, dupes);
             const tr  = body.querySelector('tr[data-r="' + i + '"]');
             if (!tr) return;
             tr.classList.toggle('has-error', !!(st && st.error));
+            // Resalta la celda que falta (rojo = obligatoria, ámbar = aviso).
+            ['price', 'cost'].forEach(function (k) {
+                const td = tr.querySelector('input[data-k="' + k + '"]').closest('td');
+                const miss = !!(st && st.miss && st.miss.includes(k));
+                td.classList.toggle('miss-err', miss && !!st.error);
+                td.classList.toggle('miss-warn', miss && !st.error);
+            });
             tr.querySelector('.gt-st').innerHTML = st
                 ? '<span class="st-pill ' + st.cls + '"><i class="bi bi-' + st.icon + '"></i>' + st.text + '</span>' : '';
             if (!st) return;
             if (st.error) { errs++; return; }
             count++;
+            if (st.noCost) noCost++;
             st.cls === 'st-upd' ? nUpd++ : nNew++;
             const q = parseNum(r.qty) || 0;
             units += q; cost += q * (parseNum(r.cost) || 0); price += q * (parseNum(r.price) || 0);
@@ -302,7 +328,7 @@
         btn.disabled = count === 0 || errs > 0;
         document.getElementById('btnSaveLabel').textContent =
             count ? 'Guardar ' + count + ' producto' + (count === 1 ? '' : 's') : 'Guardar';
-        btn.dataset.new = nNew; btn.dataset.upd = nUpd;
+        btn.dataset.new = nNew; btn.dataset.upd = nUpd; btn.dataset.nocost = noCost;
         scheduleDraft();
     }
 
@@ -316,6 +342,7 @@
         rows[+el.dataset.r][el.dataset.k] = el.value;
         ensureTail();
         refresh();
+        if (col && col.multi) showSuggest(el); else hideSuggest();
     });
 
     body.addEventListener('click', function (e) {
@@ -324,6 +351,72 @@
         if (rows.length === 0) rows.push(blank());
         render(); ensureTail(); refresh();
     });
+
+    // ── Modelos compatibles: una sugerencia por cada modelo ─────────────
+    // El <datalist> del navegador solo sugiere para todo el texto; aquí se
+    // sugiere el modelo que se está escribiendo después de la última coma.
+    const sug = document.createElement('div');
+    sug.className = 'gt-suggest d-none';
+    document.body.appendChild(sug);
+    let sugEl = null, sugIdx = 0, sugItems = [];
+
+    function currentToken(v) { return v.split(',').pop().trim().toUpperCase(); }
+
+    function showSuggest(el) {
+        const chosen = el.value.split(',').slice(0, -1).map(t => t.trim().toUpperCase()).filter(Boolean);
+        const tok = currentToken(el.value);
+        sugItems = MODELS.filter(m => !chosen.includes(m.toUpperCase()) && (!tok || m.toUpperCase().includes(tok))).slice(0, 8);
+        if (!sugItems.length) { hideSuggest(); return; }
+        sugEl = el; sugIdx = 0;
+        sug.innerHTML = sugItems.map((m, i) => '<div class="gt-sug-item' + (i === 0 ? ' active' : '') + '" data-i="' + i + '">' +
+            m.replace(/</g, '&lt;') + '</div>').join('') +
+            '<div class="gt-sug-hint">Enter elige · sigue con una coma</div>';
+        const r = el.getBoundingClientRect();
+        sug.style.left = (r.left + window.scrollX) + 'px';
+        sug.style.top = (r.bottom + window.scrollY + 2) + 'px';
+        sug.style.minWidth = r.width + 'px';
+        sug.classList.remove('d-none');
+    }
+
+    function hideSuggest() { sug.classList.add('d-none'); sugEl = null; }
+
+    function pickSuggest(i) {
+        if (!sugEl || !sugItems[i]) return;
+        const parts = sugEl.value.split(',').slice(0, -1).map(t => t.trim()).filter(Boolean);
+        parts.push(sugItems[i]);
+        sugEl.value = parts.join(', ') + ', ';
+        rows[+sugEl.dataset.r][sugEl.dataset.k] = sugEl.value;
+        const el = sugEl; hideSuggest(); refresh();
+        el.focus(); el.setSelectionRange(el.value.length, el.value.length);
+        showSuggest(el);   // listo para el siguiente modelo
+    }
+
+    function suggestKeydown(e) {
+        if (!sugEl || e.target !== sugEl || sug.classList.contains('d-none')) return false;
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            sugIdx = (sugIdx + (e.key === 'ArrowDown' ? 1 : sugItems.length - 1)) % sugItems.length;
+            sug.querySelectorAll('.gt-sug-item').forEach((d, i) => d.classList.toggle('active', i === sugIdx));
+            return true;
+        }
+        if (e.key === 'Enter' || e.key === 'Tab') {
+            if (!currentToken(sugEl.value) && e.key === 'Tab') { hideSuggest(); return false; }
+            e.preventDefault(); pickSuggest(sugIdx); return true;
+        }
+        if (e.key === 'Escape') { hideSuggest(); return true; }
+        return false;
+    }
+
+    sug.addEventListener('mousedown', function (e) {
+        const it = e.target.closest('.gt-sug-item'); if (!it) return;
+        e.preventDefault(); pickSuggest(+it.dataset.i);
+    });
+    body.addEventListener('focusin', function (e) {
+        const col = COLS.find(c => c.key === e.target.dataset?.k);
+        if (col && col.multi) showSuggest(e.target); else hideSuggest();
+    });
+    body.addEventListener('focusout', function () { setTimeout(() => { if (!sug.matches(':hover')) hideSuggest(); }, 120); });
+    document.querySelector('.gt-wrap').addEventListener('scroll', hideSuggest);
 
     /** Mueve el foco a la celda (fila r, misma columna k); crea filas si hace falta. */
     function focusCell(r, k) {
@@ -334,6 +427,7 @@
 
     body.addEventListener('keydown', function (e) {
         const el = e.target; if (!el.classList.contains('gt-in')) return;
+        if (suggestKeydown(e)) return;
         const r = +el.dataset.r, k = el.dataset.k;
         // Las flechas en columnas con autocompletar se dejan para elegir sugerencias.
         if (e.key === 'Enter' || (e.key === 'ArrowDown' && !el.list)) {
@@ -422,6 +516,12 @@
             (nNew && nUpd ? ' y ' : '') +
             (nUpd ? '<strong>' + nUpd + '</strong> que ya existe' + (nUpd === 1 ? '' : 'n') + ' (solo se cambia lo que escribiste; el stock, solo si pusiste cantidad)' : '') + '.';
         document.getElementById('confError').classList.add('d-none');
+        const noCost = +this.dataset.nocost;
+        const warn = document.getElementById('confWarn');
+        warn.classList.toggle('d-none', noCost === 0);
+        document.getElementById('confWarnText').textContent =
+            noCost + ' producto' + (noCost === 1 ? ' no tiene' : 's no tienen') +
+            ' precio de compra: se guardará' + (noCost === 1 ? '' : 'n') + ' con costo 0 y la ganancia saldrá mal.';
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
     });
 
@@ -431,7 +531,7 @@
         const payload = filled().filter(r => String(r.name).trim() !== '').map(r => ({
             name: String(r.name).trim(), price: parseNum(r.price), cost: parseNum(r.cost), qty: parseNum(r.qty),
             category: r.category.trim(), brand: r.brand.trim(), unit: r.unit.trim(), code: r.code.trim() || null,
-            origin: r.origin.trim(), models: r.models.trim(), notes: r.notes.trim(),
+            origin: r.origin.trim(), models: r.models.split(',').map(t => t.trim()).filter(Boolean).join(', '), notes: r.notes.trim(),
         }));
         fetch(CONFIRM_URL, {
             method: 'POST',
@@ -466,6 +566,12 @@
                 err.classList.remove('d-none');
             })
             .finally(function () { btn.disabled = false; btn.innerHTML = original; });
+    });
+
+    document.getElementById('confFix').addEventListener('click', function () {
+        bootstrap.Modal.getInstance(modalEl)?.hide();
+        const td = body.querySelector('td.miss-warn');
+        if (td) setTimeout(() => { td.scrollIntoView({ block: 'center' }); td.querySelector('input').focus(); }, 250);
     });
 
     // Inicio: 8 filas vacías, foco en la primera celda.
