@@ -52,7 +52,7 @@
                 <i class="bi bi-percent me-1"></i>Ajustar precios
             </button>
             @endif
-            <a href="{{ route('inventory.stock.import') }}"
+            <a href="{{ route('inventory.stock.import.table') }}"
                class="btn btn-sm btn-primary">
                 <i class="bi bi-upload me-1"></i>Importar productos
             </a>
@@ -341,7 +341,7 @@
                                 <i class="bi bi-clipboard-data fs-1 d-block mb-2 opacity-25"></i>
                                 <p class="mb-0">No hay productos en el inventario.</p>
                                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('products.create', auth()->user()->getCurrentCompany()))
-                                <a href="{{ route('inventory.stock.import') }}"
+                                <a href="{{ route('inventory.stock.import.table') }}"
                                    class="btn btn-sm btn-primary mt-3">
                                     <i class="bi bi-upload me-1"></i>Importar productos
                                 </a>

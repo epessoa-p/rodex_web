@@ -175,7 +175,24 @@ trait ParsesProductImport
             ->first();
 
         if ($product) {
-            $product->update($payload);
+            // Carga en tabla (`_partial`): en un producto que ya existe solo se
+            // cambia lo que el usuario escribió; los campos vacíos no se pisan.
+            // El Excel (sin la marca) sigue reemplazando todo, como antes.
+            if (! empty($d['_partial'])) {
+                $filled = fn ($k) => isset($d[$k]) && trim((string) $d[$k]) !== '';
+                $payload = array_filter([
+                    'category_id' => $catName !== '' ? $categoryId : null,
+                    'brand_id'    => $brandName !== '' ? $brandId : null,
+                    'origin_id'   => $originName !== '' ? $originId : null,
+                    'code'        => $filled('code') ? trim((string) $d['code']) : null,
+                    'cost'        => $filled('cost') ? (float) $d['cost'] : null,
+                    'price'       => $filled('price') ? (float) $d['price'] : null,
+                    'description' => $filled('notes') ? trim((string) $d['notes']) : null,
+                ], fn ($v) => $v !== null);
+            }
+            if ($payload) {
+                $product->update($payload);
+            }
             $counters['updated'] = ($counters['updated'] ?? 0) + 1;
         } else {
             $unit = trim((string) ($d['unit'] ?? '')) ?: config('inventory.default_unit', 'Unidad');

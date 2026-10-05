@@ -369,6 +369,30 @@ class StockController extends Controller
         return view('inventory.stock.import', compact('warehouses', 'origins'));
     }
 
+    /**
+     * Carga en tabla: la plantilla de importación dentro del sistema (sin Excel).
+     * Guarda por el mismo confirmImport() que el asistente de Excel.
+     */
+    public function importTable()
+    {
+        $cid = auth()->user()->getCurrentCompany()?->id;
+        $by  = fn ($q) => $q->when($cid, fn ($w) => $w->where('company_id', $cid));
+        $names = fn ($model) => $by($model::query())->where('active', true)->orderBy('name')->pluck('name');
+
+        $warehouses = $by(Warehouse::query())->where('active', true)->orderBy('name')->get(['id', 'name']);
+
+        return view('inventory.stock.import-table', [
+            'warehouses' => $warehouses,
+            'categories' => $names(ProductCategory::class),
+            'brands'     => $names(ProductBrand::class),
+            'origins'    => $names(\App\Models\Inventory\ProductOrigin::class),
+            'units'      => $names(\App\Models\Inventory\ProductUnit::class),
+            'models'     => $names(\App\Models\Motos\MotoModel::class),
+            // Para marcar "Ya existe: se actualizará" mientras escriben.
+            'existing'   => $by(Product::query())->pluck('name')->map(fn ($n) => mb_strtolower(trim($n)))->unique()->values(),
+        ]);
+    }
+
     /** Resuelve company + warehouse validando pertenencia (helper común). */
     private function resolveCompanyWarehouse(Request $request): array
     {
@@ -430,18 +454,22 @@ class StockController extends Controller
             'warehouse_id'   => 'required|exists:warehouses,id',
             'rows'           => 'required|array|min:1',
             'rows.*.name'    => 'nullable|string',
+            // 'table' = carga en tabla: en existentes solo se cambia lo escrito.
+            'mode'           => 'nullable|in:table',
         ]);
 
         [$companyId, $warehouse] = $this->resolveCompanyWarehouse($request);
 
         $counters = ['created' => 0, 'updated' => 0];
         $errors   = [];
+        $partial  = $request->input('mode') === 'table';
 
         try {
-            DB::transaction(function () use ($request, $companyId, $warehouse, &$counters, &$errors) {
+            DB::transaction(function () use ($request, $companyId, $warehouse, $partial, &$counters, &$errors) {
                 foreach ($request->input('rows', []) as $i => $d) {
                     $name = trim((string) ($d['name'] ?? ''));
                     if ($name === '') continue;
+                    $d['_partial'] = $partial;
                     try {
                         $this->persistRow($d, $companyId, $warehouse, $counters);
                     } catch (\Throwable $e) {
@@ -524,6 +552,13 @@ class StockController extends Controller
         }
 
         $product = $this->upsertProduct($d, $companyId, $counters);
+
+        // Carga en tabla: si no escribieron cantidad para un producto que ya
+        // existía, su stock se deja como está (el Excel siempre fija el stock).
+        $noQty = ! isset($d['qty']) || trim((string) $d['qty']) === '';
+        if (! empty($d['_partial']) && $noQty && ! $product->wasRecentlyCreated) {
+            return;
+        }
 
         $this->setWarehouseStock($product, $warehouse->id, (float) ($d['qty'] ?? 0), $warehouse->company_id);
     }

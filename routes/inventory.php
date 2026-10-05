@@ -28,6 +28,8 @@ Route::middleware(['auth', 'plan:inventory'])->group(function () {
         Route::get('/export/excel',       [StockController::class, 'exportExcel'])->name('.export.excel')->middleware('check-permission:products.view');
         Route::get('/export/pdf',         [StockController::class, 'exportPdf'])->name('.export.pdf')->middleware('check-permission:products.view');
         Route::get('/import',             [StockController::class, 'import'])->name('.import')->middleware('check-permission:products.create');
+        // Carga en tabla: la plantilla dentro del sistema (sin Excel). Guarda por import/confirm.
+        Route::get('/import/table',       [StockController::class, 'importTable'])->name('.import.table')->middleware('check-permission:products.create');
         Route::post('/import',            [StockController::class, 'processImport'])->name('.import.process')->middleware('check-permission:products.create');
         Route::post('/import/preview',    [StockController::class, 'previewImport'])->name('.import.preview')->middleware('check-permission:products.create');
         Route::post('/import/confirm',    [StockController::class, 'confirmImport'])->name('.import.confirm')->middleware('check-permission:products.create');

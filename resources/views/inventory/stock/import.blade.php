@@ -25,6 +25,8 @@
         </div>
     </div>
 
+    @include('inventory.stock._import-modes', ['active' => 'excel'])
+
     {{-- ── STEPPER ───────────────────────────────────────────────────── --}}
     <div class="wiz-steps mb-4">
         @foreach(['Cargar archivo', 'Verificar y ajustar', 'Confirmar'] as $i => $label)
