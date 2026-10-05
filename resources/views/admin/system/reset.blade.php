@@ -69,7 +69,7 @@
                         <li>Empresas, usuarios, roles y permisos</li>
                         <li>Personal, promotores, mecánicos y cargos</li>
                         <li>Sucursales, cajas y almacenes</li>
-                        <li>Catálogos: categorías, marcas, modelos de moto</li>
+                        <li>Catálogos: categorías, marcas, modelos de vehículo</li>
                         <li>Proveedores, servicios y servicios de gasto</li>
                         <li>Planes de pago y plantillas de documento</li>
                         <li>Cuentas de tesorería <span class="text-muted">(su saldo se pone en 0)</span></li>

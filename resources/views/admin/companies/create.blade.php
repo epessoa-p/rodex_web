@@ -57,6 +57,24 @@
 
             @include('admin.companies._theme')
 
+            {{-- Rubro de repuestos: qué marcas de vehículo precargar en el catálogo. --}}
+            <div class="border rounded-3 p-3 mb-3">
+                <div class="fw-semibold mb-2"><i class="bi bi-car-front me-1 text-primary"></i>Precargar marcas de vehículo</div>
+                @php $seed = old('seed_brands', 'moto'); @endphp
+                <div class="d-flex flex-wrap gap-3">
+                    @foreach(\App\Support\MotoBrandDefaults::OPTIONS as $val => $label)
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="seed_brands" id="seed_{{ $val }}" value="{{ $val }}" {{ $seed === $val ? 'checked' : '' }}>
+                        <label class="form-check-label" for="seed_{{ $val }}">{{ $label }}</label>
+                    </div>
+                    @endforeach
+                </div>
+                <div class="form-text">
+                    Motos: Honda, Yamaha, Bajaj… · Autos: Toyota, Nissan, Hyundai… Se pueden editar o agregar después en
+                    Inventario → Marcas de vehículo.
+                </div>
+            </div>
+
             @include('admin.companies._pos')
 
             {{-- ═══ Alta lista para usar: plan · sucursal · cargo · personal + acceso + caja ═══ --}}

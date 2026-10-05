@@ -162,7 +162,7 @@
                             @endphp
                             <select name="moto_models[]" id="moto_models" multiple
                                     class="form-select @error('moto_models') is-invalid @enderror"
-                                    data-placeholder="Selecciona los modelos de moto compatibles…">
+                                    data-placeholder="Selecciona los modelos de vehículo compatibles…">
                                 @foreach($motoModels as $m)
                                 <option value="{{ $m->id }}" {{ in_array((string) $m->id, $selectedModels, true) ? 'selected' : '' }}>
                                     {{ $m->display_name }}

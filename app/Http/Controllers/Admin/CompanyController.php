@@ -46,6 +46,9 @@ class CompanyController extends Controller
     {
         $data = $request->validated();
         unset($data['logo']);   // se guarda tras crear, para poder usar el id en la ruta
+        // Solo decide qué marcas precargar; no es un dato de la empresa.
+        $seedBrands = $data['seed_brands'] ?? 'moto';
+        unset($data['seed_brands']);
 
         $company = Company::create($data);
 
@@ -54,7 +57,7 @@ class CompanyController extends Controller
         }
 
         // Onboarding: catálogos base para arrancar de inmediato.
-        MotoBrandDefaults::seedFor($company->id);
+        MotoBrandDefaults::seedFor($company->id, $seedBrands);
         ProductOriginDefaults::seedFor($company->id);
 
         // Alta "lista para usar": plan, sucursal (+ almacén), cargo, personal

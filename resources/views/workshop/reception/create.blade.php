@@ -462,7 +462,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setVehicleMode(document.getElementById('vehicle_mode').value || 'existing');
 });
 
-// ── Modelo de moto: al elegir uno del catálogo, autocompleta marca y cilindrada ──
+// ── Modelo del vehículo: al elegir uno del catálogo, autocompleta marca y cilindrada ──
 const MOTO_MODELS = @json($motoModels->mapWithKeys(fn ($m) => [mb_strtolower($m->name) => ['brand' => $m->brand?->name, 'cc' => $m->engine_cc]]));
 (function () {
     const model = document.getElementById('veh_model');

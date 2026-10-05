@@ -1,11 +1,11 @@
 @extends('layouts.app')
-@section('title', 'Modelos de Motos')
+@section('title', 'Modelos de vehículos')
 @section('page')
 <div class="container-fluid">
 
     <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
         <div>
-            <h1 class="mb-1 fw-bold fs-4"><i class="bi bi-bicycle me-2 text-danger"></i>Modelos de Motos</h1>
+            <h1 class="mb-1 fw-bold fs-4"><i class="bi bi-car-front me-2 text-danger"></i>Modelos de vehículos</h1>
             <p class="text-muted mb-0 small">Catálogo de modelos por marca con datos técnicos y precio sugerido.</p>
         </div>
         @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('moto-models.create', auth()->user()->getCurrentCompany()))

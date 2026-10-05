@@ -150,7 +150,7 @@
                         </li>
                         <li class="d-flex gap-2">
                             <i class="bi bi-bicycle text-secondary flex-shrink-0 mt-1"></i>
-                            <span>«Modelos compatibles» son los <strong>modelos de moto</strong> con los que sirve el repuesto (se registran en el catálogo).</span>
+                            <span>«Modelos compatibles» son los <strong>modelos de vehículo</strong> con los que sirve el repuesto (se registran en el catálogo).</span>
                         </li>
                     </ul>
                 </div>

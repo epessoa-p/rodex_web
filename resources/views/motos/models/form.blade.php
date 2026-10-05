@@ -53,7 +53,7 @@
                                    class="form-control @error('name') is-invalid @enderror"
                                    value="{{ old('name', $isEdit ? $model->name : '') }}"
                                    required maxlength="150"
-                                   placeholder="Ej: CBF150, YBR125">
+                                   placeholder="Ej: CG 150, COROLLA">
                             @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 

@@ -1,12 +1,12 @@
 @extends('layouts.app')
-@section('title', 'Marcas de Motos')
+@section('title', 'Marcas de vehículos')
 @section('page')
 <div class="container-fluid">
 
     <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
         <div>
-            <h1 class="mb-1 fw-bold fs-4"><i class="bi bi-tag me-2 text-danger"></i>Marcas de Motos</h1>
-            <p class="text-muted mb-0 small">Catálogo de marcas para el inventario de motos.</p>
+            <h1 class="mb-1 fw-bold fs-4"><i class="bi bi-tag me-2 text-danger"></i>Marcas de vehículos</h1>
+            <p class="text-muted mb-0 small">Catálogo de marcas de vehículos (motos o autos) para repuestos y taller.</p>
         </div>
         @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('moto-brands.create', auth()->user()->getCurrentCompany()))
         <a href="{{ route('moto-brands.create') }}" class="btn btn-primary">

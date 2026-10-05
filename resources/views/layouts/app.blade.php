@@ -197,14 +197,14 @@
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('moto-brands.view', $currentCompany))
             <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('moto-brands.*') ? 'active' : '' }}" href="{{ route('moto-brands.index') }}">
-                    <i class="bi bi-tag"></i> Marcas de moto
+                    <i class="bi bi-tag"></i> Marcas de vehículo
                 </a>
             </li>
             @endif
             @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('moto-models.view', $currentCompany))
             <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('moto-models.*') ? 'active' : '' }}" href="{{ route('moto-models.index') }}">
-                    <i class="bi bi-bicycle"></i> Modelos de moto
+                    <i class="bi bi-car-front"></i> Modelos de vehículo
                 </a>
             </li>
             @endif
@@ -878,10 +878,10 @@
                 <li><a class="nav-link app-link {{ request()->routeIs('product-origins.*') ? 'active' : '' }}" href="{{ route('product-origins.index') }}"><i class="bi bi-globe-americas me-2"></i>Orígenes</a></li>
                 @endif
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('moto-brands.view', $currentCompany))
-                <li><a class="nav-link app-link {{ request()->routeIs('moto-brands.*') ? 'active' : '' }}" href="{{ route('moto-brands.index') }}"><i class="bi bi-tag me-2"></i>Marcas de moto</a></li>
+                <li><a class="nav-link app-link {{ request()->routeIs('moto-brands.*') ? 'active' : '' }}" href="{{ route('moto-brands.index') }}"><i class="bi bi-tag me-2"></i>Marcas de vehículo</a></li>
                 @endif
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('moto-models.view', $currentCompany))
-                <li><a class="nav-link app-link {{ request()->routeIs('moto-models.*') ? 'active' : '' }}" href="{{ route('moto-models.index') }}"><i class="bi bi-bicycle me-2"></i>Modelos de moto</a></li>
+                <li><a class="nav-link app-link {{ request()->routeIs('moto-models.*') ? 'active' : '' }}" href="{{ route('moto-models.index') }}"><i class="bi bi-car-front me-2"></i>Modelos de vehículo</a></li>
                 @endif
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('inventory.kardex', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('inventory.kardex') ? 'active' : '' }}" href="{{ route('inventory.kardex') }}"><i class="bi bi-journal-text me-2"></i>Kardex</a></li>

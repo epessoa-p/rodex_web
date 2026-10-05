@@ -76,7 +76,7 @@
                 <div class="kpi-body">
                     <div>
                         <div class="kpi-value">{{ $ws['vehicles_in_shop'] }}</div>
-                        <div class="kpi-label">Motos en taller</div>
+                        <div class="kpi-label">Vehículos en taller</div>
                         <div class="kpi-trend text-muted">con OT sin entregar</div>
                     </div>
                     <div class="kpi-icon" style="background:#4f46e5;"><i class="bi bi-bicycle"></i></div>

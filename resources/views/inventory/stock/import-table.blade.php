@@ -206,7 +206,7 @@
         { key: 'unit',     label: 'Unidad', upper: true, list: 'dlUnit', w: 90 },
         { key: 'code',     label: 'Código de referencia', upper: true, w: 130 },
         { key: 'origin',   label: 'Origen', upper: true, list: 'dlOrigin', w: 100, extra: true },
-        { key: 'models',   label: 'Modelos compatibles', upper: true, multi: true, w: 190, extra: true, hint: 'Ej. CG 150, XR 190' },
+        { key: 'models',   label: 'Modelos compatibles', upper: true, multi: true, w: 190, extra: true, hint: 'Ej. CG 150, COROLLA' },
         { key: 'notes',    label: 'Descripción', w: 180, extra: true },
     ];
     const KEYS = COLS.map(c => c.key);

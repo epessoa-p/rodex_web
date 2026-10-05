@@ -36,7 +36,7 @@
                                    class="form-control form-control-lg @error('name') is-invalid @enderror"
                                    value="{{ old('name', $isEdit ? $brand->name : '') }}"
                                    required maxlength="100"
-                                   placeholder="Ej: Honda, Yamaha, Suzuki">
+                                   placeholder="Ej: Honda, Yamaha, Toyota">
                             @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
