@@ -86,6 +86,9 @@ Route::middleware(['auth:sanctum', 'api.fresh'])->group(function () {
         Route::middleware('api.plan:inventory')->group(function () {
             Route::get('reports/inventory', [\App\Http\Controllers\Api\ReportsController::class, 'inventory'])
                 ->middleware('api.permission:products.view');
+            // Catálogo público por sucursal: enlace, QR y PDF.
+            Route::get('catalog/branches', [\App\Http\Controllers\Api\CatalogLinkController::class, 'index'])
+                ->middleware('api.permission:products.view');
         });
 
         // ── Módulo Ventas / POS (plan: sales) ──────────────────────
