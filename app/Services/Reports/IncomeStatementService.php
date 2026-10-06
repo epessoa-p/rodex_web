@@ -54,6 +54,10 @@ class IncomeStatementService
     {
         $income  = [];   // label => amount
         $expense = [];
+        // De dónde sale cada total (la pestaña Movimientos solo ve la caja).
+        $src = ['income_cash' => 0.0, 'income_treasury' => 0.0, 'expense_cash' => 0.0, 'expense_treasury' => 0.0];
+        // Aportes de capital: plata que pone el dueño. No es ganancia → fuera del resultado.
+        $capital = 0.0;
 
         $range = [$from->copy()->startOfDay(), $to->copy()->endOfDay()];
 
@@ -63,13 +67,15 @@ class IncomeStatementService
             ->selectRaw('category, type, reference_type, SUM(amount) as amt')
             ->groupBy('category', 'type', 'reference_type')
             ->get()
-            ->each(function ($r) use (&$income, &$expense) {
+            ->each(function ($r) use (&$income, &$expense, &$src) {
                 $label = $this->cashLabel($r->category, $r->reference_type);
                 $amt = (float) $r->amt;
                 if ($r->type === 'income') {
                     $income[$label] = ($income[$label] ?? 0) + $amt;
+                    $src['income_cash'] += $amt;
                 } else {
                     $expense[$label] = ($expense[$label] ?? 0) + $amt;
+                    $src['expense_cash'] += $amt;
                 }
             });
 
@@ -78,13 +84,19 @@ class IncomeStatementService
             ->selectRaw('category, type, SUM(amount) as amt')
             ->groupBy('category', 'type')
             ->get()
-            ->each(function ($r) use (&$income, &$expense) {
+            ->each(function ($r) use (&$income, &$expense, &$src, &$capital) {
                 $label = TreasuryMovement::CATEGORIES[$r->category]['label'] ?? $r->category;
                 $amt = (float) $r->amt;
+                if ($r->category === 'capital_injection') {
+                    $capital += $amt;
+                    return;
+                }
                 if ($r->type === 'in') {
+                    $src['income_treasury'] += $amt;
                     $income[$label] = ($income[$label] ?? 0) + $amt;
                 } else {
                     $expense[$label] = ($expense[$label] ?? 0) + $amt;
+                    $src['expense_treasury'] += $amt;
                 }
             });
 
@@ -107,6 +119,9 @@ class IncomeStatementService
             'total_income'  => $totalIncome,
             'total_expense' => $totalExpense,
             'net'           => round($totalIncome - $totalExpense, 2),
+            // Aportes de capital del período (aparte: no suman a la utilidad).
+            'capital'       => round($capital, 2),
+            'sources'       => array_map(fn ($v) => round($v, 2), $src),
         ];
     }
 

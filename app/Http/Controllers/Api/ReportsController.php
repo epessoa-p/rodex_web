@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\CashMovement;
 use App\Models\CashRegisterSession;
 use App\Models\Purchases\Purchase;
+use App\Models\Purchases\TreasuryMovement;
 use App\Models\Sales\Sale;
 use App\Models\Workshop\WorkOrder;
 use App\Models\Warehouse;
@@ -30,6 +31,8 @@ class ReportsController extends Controller
             'from'      => ['nullable', 'date'],
             'to'        => ['nullable', 'date'],
             'branch_id' => ['nullable', 'integer'],
+            // De dónde: caja (por defecto, como siempre), tesorería o ambas.
+            'source'    => ['nullable', 'in:cash,treasury,all'],
         ]);
 
         [$from, $to] = $this->range($data, $periods);
@@ -43,40 +46,84 @@ class ReportsController extends Controller
             ->whereBetween('movement_date', $range)
             ->when($branchId, fn ($q) => $q->whereHas('cashRegister', fn ($r) => $r->where('branch_id', $branchId)));
 
-        $income  = (float) (clone $movQuery)->where('type', 'income')->sum('amount');
-        $expense = (float) (clone $movQuery)->where('type', 'expense')->sum('amount');
+        // Fuente: caja (cierres y sucursales), tesorería (cuentas, sin sucursal) o
+        // ambas. Con una sucursal elegida la tesorería no aplica (no es por sucursal).
+        $source       = $data['source'] ?? 'cash';
+        $withCash     = $source !== 'treasury';
+        $withTreasury = $source !== 'cash' && ! $branchId;
 
-        $byCategory = (clone $movQuery)
-            ->selectRaw('category, type, SUM(amount) as amt')
-            ->groupBy('category', 'type')
-            ->orderByDesc('amt')
-            ->get()
-            ->map(fn ($r) => [
-                'category' => $r->category,
-                'label'    => CashMovement::CATEGORIES[$r->category]['label'] ?? $r->category,
-                'type'     => $r->type,
-                'amount'   => (float) $r->amt,
-            ])->values();
+        $treasuryQuery = TreasuryMovement::query()
+            ->where('company_id', $cid)
+            ->whereBetween('movement_date', $range);
+
+        $income = $expense = 0.0;
+        $cats   = [];   // "type|label" => fila
+        $addCat = function (string $type, string $label, float $amt) use (&$cats) {
+            $k = $type . '|' . $label;
+            $cats[$k] ??= ['category' => $label, 'label' => $label, 'type' => $type, 'amount' => 0.0];
+            $cats[$k]['amount'] += $amt;
+        };
+
+        if ($withCash) {
+            $income  += (float) (clone $movQuery)->where('type', 'income')->sum('amount');
+            $expense += (float) (clone $movQuery)->where('type', 'expense')->sum('amount');
+            (clone $movQuery)->selectRaw('category, type, SUM(amount) as amt')->groupBy('category', 'type')->get()
+                ->each(fn ($r) => $addCat($r->type, CashMovement::CATEGORIES[$r->category]['label'] ?? $r->category, (float) $r->amt));
+        }
+        if ($withTreasury) {
+            $income  += (float) (clone $treasuryQuery)->where('type', 'in')->sum('amount');
+            $expense += (float) (clone $treasuryQuery)->where('type', 'out')->sum('amount');
+            (clone $treasuryQuery)->selectRaw('category, type, SUM(amount) as amt')->groupBy('category', 'type')->get()
+                ->each(fn ($r) => $addCat($r->type === 'in' ? 'income' : 'expense', TreasuryMovement::CATEGORIES[$r->category]['label'] ?? $r->category, (float) $r->amt));
+        }
+        $byCategory = collect($cats)->sortByDesc('amount')->values();
 
         $limit = 300;
-        $total = (clone $movQuery)->count();
-        $movements = (clone $movQuery)
-            ->with(['cashRegister.branch', 'user'])
-            ->orderByDesc('movement_date')->orderByDesc('id')
-            ->limit($limit)
-            ->get()
-            ->map(fn (CashMovement $m) => [
-                'id'          => $m->id,
-                'date'        => $m->movement_date?->toIso8601String(),
-                'type'        => $m->type,
-                'category'    => CashMovement::CATEGORIES[$m->category]['label'] ?? $m->category,
-                'description' => $m->description,
-                'amount'      => (float) $m->amount,
-                'method'      => $m->method,
-                'register'    => $m->cashRegister?->name,
-                'branch'      => $m->cashRegister?->branch?->name,
-                'user'        => $m->user?->name,
-            ])->values();
+        $total = ($withCash ? (clone $movQuery)->count() : 0) + ($withTreasury ? (clone $treasuryQuery)->count() : 0);
+
+        $rows = collect();
+        if ($withCash) {
+            $rows = $rows->concat((clone $movQuery)
+                ->with(['cashRegister.branch', 'user'])
+                ->orderByDesc('movement_date')->orderByDesc('id')
+                ->limit($limit)
+                ->get()
+                ->map(fn (CashMovement $m) => [
+                    'id'          => $m->id,
+                    'source'      => 'cash',
+                    'date'        => $m->movement_date?->toIso8601String(),
+                    'type'        => $m->type,
+                    'category'    => CashMovement::CATEGORIES[$m->category]['label'] ?? $m->category,
+                    'description' => $m->description,
+                    'amount'      => (float) $m->amount,
+                    'method'      => $m->method,
+                    'register'    => $m->cashRegister?->name,
+                    'branch'      => $m->cashRegister?->branch?->name,
+                    'user'        => $m->user?->name,
+                ]));
+        }
+        if ($withTreasury) {
+            $rows = $rows->concat((clone $treasuryQuery)
+                ->with(['treasuryAccount', 'user'])
+                ->orderByDesc('movement_date')->orderByDesc('id')
+                ->limit($limit)
+                ->get()
+                ->map(fn (TreasuryMovement $m) => [
+                    'id'          => $m->id,
+                    'source'      => 'treasury',
+                    'date'        => $m->movement_date?->toIso8601String(),
+                    'type'        => $m->type === 'in' ? 'income' : 'expense',
+                    'category'    => TreasuryMovement::CATEGORIES[$m->category]['label'] ?? $m->category,
+                    'description' => $m->description,
+                    'amount'      => (float) $m->amount,
+                    'method'      => null,
+                    // La cuenta de tesorería ocupa el lugar de la caja.
+                    'register'    => $m->treasuryAccount?->name,
+                    'branch'      => null,
+                    'user'        => $m->user?->name,
+                ]));
+        }
+        $movements = $rows->sortByDesc('date')->take($limit)->values();
 
         // Cierres del período (cerradas en el rango) + las abiertas ahora mismo.
         $closures = CashRegisterSession::with(['cashRegister.branch', 'openedBy', 'closedBy'])
@@ -122,7 +169,10 @@ class ReportsController extends Controller
         return response()->json(['data' => [
             'from'        => $from->toDateString(),
             'to'          => $to->toDateString(),
-            'summary'     => ['income' => $income, 'expense' => $expense, 'balance' => round($income - $expense, 2)],
+            'summary'     => ['income' => round($income, 2), 'expense' => round($expense, 2), 'balance' => round($income - $expense, 2)],
+            'source'      => $source,
+            // Con sucursal elegida, la tesorería (que no es por sucursal) no se incluye.
+            'treasury_skipped_by_branch' => $source !== 'cash' && (bool) $branchId,
             'by_category' => $byCategory,
             'movements'   => $movements,
             'truncated'   => $total > $limit,

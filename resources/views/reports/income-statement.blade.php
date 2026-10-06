@@ -70,6 +70,7 @@
                         </tbody>
                         <tfoot class="table-light">
                             <tr class="fw-bold"><td class="ps-4">Total ingresos</td><td class="text-end pe-4 text-success">{{ money($report['total_income']) }}</td></tr>
+                            @include('reports._source-split', ['cash' => $report['sources']['income_cash'] ?? null, 'treasury' => $report['sources']['income_treasury'] ?? null])
                         </tfoot>
                     </table>
                 </div>
@@ -93,6 +94,7 @@
                         </tbody>
                         <tfoot class="table-light">
                             <tr class="fw-bold"><td class="ps-4">Total egresos</td><td class="text-end pe-4 text-danger">{{ money($report['total_expense']) }}</td></tr>
+                            @include('reports._source-split', ['cash' => $report['sources']['expense_cash'] ?? null, 'treasury' => $report['sources']['expense_treasury'] ?? null])
                         </tfoot>
                     </table>
                 </div>
@@ -113,5 +115,18 @@
             <div class="fs-3 fw-bold {{ $net >= 0 ? 'text-success' : 'text-danger' }}">{{ money($net) }}</div>
         </div>
     </div>
+
+    {{-- Aportes de capital: plata que pone el dueño, no es ganancia. --}}
+    @if(((float) ($report['capital'] ?? 0)) > 0)
+    <div class="card border-0 shadow-sm mt-3">
+        <div class="card-body px-4 py-3 d-flex justify-content-between align-items-center gap-3">
+            <div>
+                <div class="fw-semibold"><i class="bi bi-piggy-bank me-1 text-primary"></i>Aportes de capital</div>
+                <div class="small text-muted">Dinero que puso el dueño en el negocio. No es ganancia: no entra en la utilidad.</div>
+            </div>
+            <div class="fs-5 fw-bold text-primary text-nowrap">{{ money($report['capital']) }}</div>
+        </div>
+    </div>
+    @endif
 </div>
 @endsection
