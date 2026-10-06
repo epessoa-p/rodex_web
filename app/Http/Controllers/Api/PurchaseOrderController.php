@@ -18,6 +18,7 @@ use App\Models\Purchases\TreasuryAccount;
 use App\Models\Purchases\TreasuryMovement;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
+use App\Support\PurchaseDiscount;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -48,6 +49,7 @@ class PurchaseOrderController extends Controller
             // Origen del pago: 'cash' (caja abierta) o 'treasury' (cuenta).
             'payment_source'      => ['nullable', 'in:cash,treasury'],
             'treasury_account_id' => ['nullable', 'required_if:payment_source,treasury', Rule::exists('treasury_accounts', 'id')->where('company_id', $cid)],
+            'discount'           => ['nullable', 'numeric', 'min:0'],
             'items'              => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', Rule::exists('products', 'id')->where('company_id', $cid)],
             'items.*.quantity'   => ['required', 'integer', 'min:1'],
@@ -57,6 +59,9 @@ class PurchaseOrderController extends Controller
         $source = $data['payment_source'] ?? 'cash';
         $subtotal = collect($data['items'])
             ->sum(fn ($i) => (float) $i['quantity'] * (float) $i['unit_cost']);
+        // Descuento del proveedor: se paga el total con descuento.
+        $discount = PurchaseDiscount::clamp($subtotal, (float) ($data['discount'] ?? 0));
+        $total    = round($subtotal - $discount, 2);
 
         // Pago desde caja: requiere sesión abierta.
         $session = null;
@@ -74,7 +79,7 @@ class PurchaseOrderController extends Controller
         $account = null;
         if ($source === 'treasury') {
             $account = TreasuryAccount::find($data['treasury_account_id']);
-            if ($account && $subtotal > (float) $account->balance) {
+            if ($account && $total > (float) $account->balance) {
                 return response()->json([
                     'message' => 'El monto supera el saldo disponible de la cuenta.',
                     'code'    => 'insufficient_balance',
@@ -83,7 +88,7 @@ class PurchaseOrderController extends Controller
         }
 
         try {
-            $purchase = DB::transaction(function () use ($data, $cid, $session, $source, $account, $subtotal) {
+            $purchase = DB::transaction(function () use ($data, $cid, $session, $source, $account, $subtotal, $discount, $total) {
                 $method = $data['method'] ?? 'efectivo';
 
                 $purchase = Purchase::create([
@@ -93,14 +98,16 @@ class PurchaseOrderController extends Controller
                     'invoice_number' => $data['invoice_number'] ?? null,
                     'purchase_date'  => now()->toDateString(),
                     'subtotal'       => $subtotal,
+                    'discount'       => $discount,
                     'tax'            => 0,
-                    'total'          => $subtotal,
+                    'total'          => $total,
                     'paid_amount'    => 0,
                     'payment_status' => 'pending',
                     'notes'          => $data['notes'] ?? null,
                     'created_by'     => auth()->id(),
                 ]);
 
+                $factor = PurchaseDiscount::factor($subtotal, $discount);
                 foreach ($data['items'] as $item) {
                     PurchaseItem::create([
                         'purchase_id' => $purchase->id,
@@ -117,7 +124,8 @@ class PurchaseOrderController extends Controller
                         'user_id'       => auth()->id(),
                         'type'          => 'in',
                         'quantity'      => $item['quantity'],
-                        'unit_cost'     => $item['unit_cost'],
+                        // Costo real: el descuento del proveedor repartido en el producto.
+                        'unit_cost'     => PurchaseDiscount::netUnitCost((float) $item['unit_cost'], $factor),
                         'reference'     => $purchase->code,
                         'notes'         => 'Compra directa ' . $purchase->code,
                         'movement_date' => now(),
@@ -131,14 +139,14 @@ class PurchaseOrderController extends Controller
                     'company_id'          => $cid,
                     'purchase_id'         => $purchase->id,
                     'treasury_account_id' => $source === 'treasury' ? $account->id : null,
-                    'amount'              => $subtotal,
+                    'amount'              => $total,
                     'payment_date'        => now()->toDateString(),
                     'method'              => $method,
                     'reference'           => $source === 'treasury' ? 'TESORERIA' : 'CAJA',
                     'notes'               => 'Compra directa (móvil)',
                     'user_id'             => auth()->id(),
                 ]);
-                $purchase->increment('paid_amount', $subtotal);
+                $purchase->increment('paid_amount', $total);
                 $purchase->refresh()->recalcPaymentStatus();
 
                 if ($source === 'treasury') {
@@ -149,13 +157,13 @@ class PurchaseOrderController extends Controller
                         'user_id'             => auth()->id(),
                         'type'                => 'out',
                         'category'            => 'supplier_payment',
-                        'amount'              => $subtotal,
+                        'amount'              => $total,
                         'reference_type'      => Purchase::class,
                         'reference_id'        => $purchase->id,
                         'description'         => 'Compra ' . $purchase->code,
                         'movement_date'       => now(),
                     ]);
-                    $account->decrement('balance', $subtotal);
+                    $account->decrement('balance', $total);
                 } else {
                     // Gasto desde la caja abierta.
                     $session->recordOutflow([
@@ -166,7 +174,7 @@ class PurchaseOrderController extends Controller
                         'reference_id'   => $purchase->id,
                         'description'    => 'Compra ' . $purchase->code,
                         'movement_date'  => now(),
-                    ], $subtotal, $method);
+                    ], $total, $method);
                 }
 
                 return $purchase;
@@ -235,6 +243,7 @@ class PurchaseOrderController extends Controller
             'invoice_number' => $purchase->invoice_number,
             'notes'          => $purchase->notes,
             'subtotal'       => (float) $purchase->subtotal,
+            'discount'       => (float) $purchase->discount,
             'total'          => (float) $purchase->total,
             'paid_amount'    => (float) $purchase->paid_amount,
             'balance'        => round((float) $purchase->total - (float) $purchase->paid_amount, 2),
@@ -391,6 +400,7 @@ class PurchaseOrderController extends Controller
             'supplier_id'        => ['required', Rule::exists('suppliers', 'id')->where('company_id', $cid)],
             'branch_id'          => ['nullable', Rule::exists('branches', 'id')->where('company_id', $cid)],
             'expected_date'      => ['nullable', 'date'],
+            'discount'           => ['nullable', 'numeric', 'min:0'],
             'notes'              => ['nullable', 'string', 'max:1000'],
             'items'              => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', Rule::exists('products', 'id')->where('company_id', $cid)],
@@ -401,6 +411,7 @@ class PurchaseOrderController extends Controller
         $order = DB::transaction(function () use ($data, $cid) {
             $subtotal = collect($data['items'])
                 ->sum(fn ($i) => (float) $i['quantity'] * (float) $i['unit_cost']);
+            $discount = PurchaseDiscount::clamp($subtotal, (float) ($data['discount'] ?? 0));
 
             $order = PurchaseOrder::create([
                 'company_id'    => $cid,
@@ -411,8 +422,9 @@ class PurchaseOrderController extends Controller
                 'order_date'    => now()->toDateString(),
                 'expected_date' => $data['expected_date'] ?? null,
                 'subtotal'      => $subtotal,
+                'discount'      => $discount,
                 'tax'           => 0,
-                'total'         => $subtotal,
+                'total'         => $subtotal - $discount,
                 'notes'         => $data['notes'] ?? null,
                 'created_by'    => auth()->id(),
             ]);
@@ -457,6 +469,9 @@ class PurchaseOrderController extends Controller
             'supplier' => $purchaseOrder->supplier?->name,
             'status'   => $purchaseOrder->status,
             'date'     => optional($purchaseOrder->order_date)->toDateString(),
+            'subtotal' => (float) $purchaseOrder->subtotal,
+            'discount' => (float) $purchaseOrder->discount,
+            'total'    => (float) $purchaseOrder->total,
             'items'    => $purchaseOrder->items->map(fn (PurchaseOrderItem $it) => [
                 'po_item_id' => $it->id,
                 'product'    => $it->product?->name,
@@ -505,6 +520,7 @@ class PurchaseOrderController extends Controller
                 ]);
 
                 $purchaseItems = [];
+                $discountFactor = PurchaseDiscount::factor((float) $purchaseOrder->subtotal, (float) $purchaseOrder->discount);
 
                 foreach ($validated['items'] as $row) {
                     $qty = (float) ($row['quantity'] ?? 0);
@@ -538,7 +554,8 @@ class PurchaseOrderController extends Controller
                         'user_id'       => auth()->id(),
                         'type'          => 'in',
                         'quantity'      => $qty,
-                        'unit_cost'     => $poItem->unit_cost,
+                        // Costo real: el descuento del proveedor repartido en el producto.
+                        'unit_cost'     => PurchaseDiscount::netUnitCost((float) $poItem->unit_cost, $discountFactor),
                         'reference'     => $receipt->code,
                         'notes'         => 'Recepción OC ' . $purchaseOrder->code,
                         'movement_date' => now(),
@@ -559,6 +576,8 @@ class PurchaseOrderController extends Controller
                 $purchase = null;
                 if (! empty($purchaseItems)) {
                     $subtotal = collect($purchaseItems)->sum(fn ($i) => $i['quantity'] * $i['unit_cost']);
+                    // Parte del descuento de la OC que corresponde a lo recibido.
+                    $discount = PurchaseDiscount::forReceipt($purchaseOrder, $subtotal);
 
                     $purchase = Purchase::create([
                         'company_id'        => $companyId,
@@ -568,8 +587,9 @@ class PurchaseOrderController extends Controller
                         'invoice_number'    => $validated['invoice_number'] ?? null,
                         'purchase_date'     => now()->toDateString(),
                         'subtotal'          => $subtotal,
+                        'discount'          => $discount,
                         'tax'               => 0,
-                        'total'             => $subtotal,
+                        'total'             => $subtotal - $discount,
                         'paid_amount'       => 0,
                         'payment_status'    => 'pending',
                         'notes'             => $validated['notes'] ?? null,

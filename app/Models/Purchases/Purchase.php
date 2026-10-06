@@ -26,13 +26,14 @@ class Purchase extends Model
 
     protected $fillable = [
         'company_id', 'supplier_id', 'purchase_order_id', 'code', 'invoice_number',
-        'purchase_date', 'subtotal', 'tax', 'total', 'paid_amount',
+        'purchase_date', 'subtotal', 'discount', 'tax', 'total', 'paid_amount',
         'payment_status', 'notes', 'created_by',
     ];
 
     protected $casts = [
         'purchase_date' => 'date',
         'subtotal'      => 'decimal:2',
+        'discount'      => 'decimal:2',
         'tax'           => 'decimal:2',
         'total'         => 'decimal:2',
         'paid_amount'   => 'decimal:2',

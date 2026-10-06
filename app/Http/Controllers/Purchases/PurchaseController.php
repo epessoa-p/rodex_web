@@ -11,6 +11,7 @@ use App\Models\Purchases\PurchaseItem;
 use App\Models\Purchases\PurchaseOrder;
 use App\Models\Purchases\Supplier;
 use App\Models\Purchases\TreasuryAccount;
+use App\Support\PurchaseDiscount;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -80,6 +81,7 @@ class PurchaseController extends Controller
             'invoice_number'     => 'nullable|string|max:100',
             'purchase_date'      => 'required|date',
             'tax'                => 'nullable|numeric|min:0',
+            'discount'           => 'nullable|numeric|min:0',
             'notes'              => 'nullable|string',
             'items'              => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
@@ -91,6 +93,8 @@ class PurchaseController extends Controller
             $purchase = DB::transaction(function () use ($validated, $companyId) {
                 $subtotal = collect($validated['items'])->sum(fn ($i) => (float) $i['quantity'] * (float) $i['unit_cost']);
                 $tax      = (float) ($validated['tax'] ?? 0);
+                // Descuento del proveedor sobre el subtotal.
+                $discount = PurchaseDiscount::clamp($subtotal, (float) ($validated['discount'] ?? 0));
 
                 $purchase = Purchase::create([
                     'company_id'        => $companyId,
@@ -100,8 +104,9 @@ class PurchaseController extends Controller
                     'invoice_number'    => $validated['invoice_number'] ?? null,
                     'purchase_date'     => $validated['purchase_date'],
                     'subtotal'          => $subtotal,
+                    'discount'          => $discount,
                     'tax'               => $tax,
-                    'total'             => $subtotal + $tax,
+                    'total'             => $subtotal - $discount + $tax,
                     'paid_amount'       => 0,
                     'payment_status'    => 'pending',
                     'notes'             => $validated['notes'] ?? null,

@@ -107,6 +107,12 @@
                                 <span>Subtotal</span>
                                 <span>{{ money($subtotal, null, 2) }}</span>
                             </div>
+                            @if((float) $purchase->discount > 0)
+                            <div class="d-flex justify-content-between mb-1 small text-success">
+                                <span><i class="bi bi-tag me-1"></i>Descuento del proveedor @if((float) $purchase->subtotal > 0)({{ rtrim(rtrim(number_format($purchase->discount / $purchase->subtotal * 100, 2), '0'), '.') }}%)@endif</span>
+                                <span>− {{ money($purchase->discount, null, 2) }}</span>
+                            </div>
+                            @endif
                             @if($purchase->tax)
                             <div class="d-flex justify-content-between mb-1 small text-muted">
                                 <span>Impuesto</span>

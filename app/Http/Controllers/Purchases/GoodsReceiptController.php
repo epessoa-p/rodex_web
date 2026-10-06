@@ -13,6 +13,7 @@ use App\Models\Purchases\PurchaseOrder;
 use App\Models\Purchases\PurchaseOrderItem;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
+use App\Support\PurchaseDiscount;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -100,6 +101,7 @@ class GoodsReceiptController extends Controller
                 ]);
 
                 $purchaseItems = [];
+                $discountFactor = PurchaseDiscount::factor((float) $purchaseOrder->subtotal, (float) $purchaseOrder->discount);
 
                 foreach ($validated['items'] as $row) {
                     $qty = (float) ($row['quantity'] ?? 0);
@@ -136,7 +138,8 @@ class GoodsReceiptController extends Controller
                         'user_id'       => auth()->id(),
                         'type'          => 'in',
                         'quantity'      => $qty,
-                        'unit_cost'     => $poItem->unit_cost,
+                        // Costo real: el descuento del proveedor repartido en el producto.
+                        'unit_cost'     => PurchaseDiscount::netUnitCost((float) $poItem->unit_cost, $discountFactor),
                         'reference'     => $receipt->code,
                         'notes'         => 'Recepción OC ' . $purchaseOrder->code,
                         'movement_date' => $validated['receipt_date'],
@@ -164,6 +167,8 @@ class GoodsReceiptController extends Controller
                 if (!empty($purchaseItems)) {
                     $subtotal = collect($purchaseItems)->sum(fn ($i) => $i['quantity'] * $i['unit_cost']);
                     $tax      = (float) ($validated['tax'] ?? 0);
+                    // Parte del descuento de la OC que corresponde a lo recibido.
+                    $discount = PurchaseDiscount::forReceipt($purchaseOrder, $subtotal);
 
                     $purchase = Purchase::create([
                         'company_id'        => $purchaseOrder->company_id,
@@ -173,8 +178,9 @@ class GoodsReceiptController extends Controller
                         'invoice_number'    => $validated['invoice_number'] ?? null,
                         'purchase_date'     => $validated['receipt_date'],
                         'subtotal'          => $subtotal,
+                        'discount'          => $discount,
                         'tax'               => $tax,
-                        'total'             => $subtotal + $tax,
+                        'total'             => $subtotal - $discount + $tax,
                         'paid_amount'       => 0,
                         'payment_status'    => 'pending',
                         'notes'             => $validated['notes'] ?? null,

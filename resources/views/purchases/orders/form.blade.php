@@ -125,7 +125,7 @@
                 </div>
                 <div class="card-footer bg-white border-top px-4 py-3">
                     <div class="row justify-content-end">
-                        <div class="col-md-4">
+                        <div class="col-md-7 col-xl-6">
                             <div class="d-flex justify-content-between mb-2 small text-muted">
                                 <span>Subtotal</span>
                                 <span id="displaySubtotal">{{ currency_symbol() }} 0.00</span>
@@ -141,10 +141,7 @@
                                            oninput="recalcTotals()">
                                 </div>
                             </div>
-                            <div class="d-flex justify-content-between fw-bold border-top pt-2">
-                                <span>Total</span>
-                                <span id="displayTotal" class="text-dark">{{ currency_symbol() }} 0.00</span>
-                            </div>
+                            @include('purchases._discount', ['discount' => old('discount', $isEdit ? $order->discount : 0)])
                         </div>
                     </div>
                 </div>
@@ -167,9 +164,13 @@
                         <span class="text-muted">Subtotal</span>
                         <span class="fw-semibold" id="summarySubtotal">{{ currency_symbol() }} 0.00</span>
                     </div>
-                    <div class="d-flex justify-content-between mb-3 small">
+                    <div class="d-flex justify-content-between mb-2 small">
                         <span class="text-muted">Impuesto</span>
                         <span class="fw-semibold" id="summaryTax">{{ currency_symbol() }} 0.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3 small text-success d-none" id="summaryDiscountRow">
+                        <span><i class="bi bi-tag me-1"></i>Descuento</span>
+                        <span class="fw-semibold" id="summaryDiscount">{{ currency_symbol() }} 0.00</span>
                     </div>
                     <div class="d-flex justify-content-between fw-bold border-top pt-3">
                         <span>Total</span>
@@ -299,12 +300,13 @@ function recalcTotals() {
         subtotal += parseMoney(cell.textContent) || 0;
     });
     const tax   = parseFloat(document.getElementById('tax').value) || 0;
-    const total = subtotal + tax;
+    // Descuento del proveedor (también pinta el total y su línea en el resumen).
+    const disc  = PurchaseDiscountUI.update(subtotal, tax);
+    const total = subtotal - disc + tax;
     const rows  = document.querySelectorAll('.item-row').length;
 
     const fmt = v => money(v, 2);
     document.getElementById('displaySubtotal').textContent = fmt(subtotal);
-    document.getElementById('displayTotal').textContent    = fmt(total);
     document.getElementById('summaryItems').textContent    = rows;
     document.getElementById('summarySubtotal').textContent = fmt(subtotal);
     document.getElementById('summaryTax').textContent      = fmt(tax);

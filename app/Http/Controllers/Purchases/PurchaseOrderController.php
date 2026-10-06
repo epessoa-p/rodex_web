@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Purchases\PurchaseOrder;
 use App\Models\Purchases\PurchaseOrderItem;
 use App\Models\Purchases\Supplier;
+use App\Support\PurchaseDiscount;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -46,7 +47,7 @@ class PurchaseOrderController extends Controller
 
         try {
             $order = DB::transaction(function () use ($validated, $companyId) {
-                $totals = $this->calcTotals($validated['items'], $validated['tax'] ?? 0);
+                $totals = $this->calcTotals($validated['items'], $validated['tax'] ?? 0, $validated['discount'] ?? 0);
 
                 $order = PurchaseOrder::create([
                     'company_id'    => $companyId,
@@ -57,6 +58,7 @@ class PurchaseOrderController extends Controller
                     'order_date'    => $validated['order_date'],
                     'expected_date' => $validated['expected_date'] ?? null,
                     'subtotal'      => $totals['subtotal'],
+                    'discount'      => $totals['discount'],
                     'tax'           => $totals['tax'],
                     'total'         => $totals['total'],
                     'notes'         => $validated['notes'] ?? null,
@@ -105,7 +107,7 @@ class PurchaseOrderController extends Controller
 
         try {
             DB::transaction(function () use ($purchaseOrder, $validated) {
-                $totals = $this->calcTotals($validated['items'], $validated['tax'] ?? 0);
+                $totals = $this->calcTotals($validated['items'], $validated['tax'] ?? 0, $validated['discount'] ?? 0);
 
                 $purchaseOrder->update([
                     'supplier_id'   => $validated['supplier_id'],
@@ -114,6 +116,7 @@ class PurchaseOrderController extends Controller
                     'order_date'    => $validated['order_date'],
                     'expected_date' => $validated['expected_date'] ?? null,
                     'subtotal'      => $totals['subtotal'],
+                    'discount'      => $totals['discount'],
                     'tax'           => $totals['tax'],
                     'total'         => $totals['total'],
                     'notes'         => $validated['notes'] ?? null,
@@ -166,6 +169,7 @@ class PurchaseOrderController extends Controller
             'order_date'       => 'required|date',
             'expected_date'    => 'nullable|date',
             'tax'              => 'nullable|numeric|min:0',
+            'discount'         => 'nullable|numeric|min:0',
             'notes'            => 'nullable|string',
             'items'            => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
@@ -174,11 +178,13 @@ class PurchaseOrderController extends Controller
         ]);
     }
 
-    private function calcTotals(array $items, $tax): array
+    private function calcTotals(array $items, $tax, $discount = 0): array
     {
         $subtotal = collect($items)->sum(fn ($i) => (float) $i['quantity'] * (float) $i['unit_cost']);
         $tax      = (float) $tax;
-        return ['subtotal' => $subtotal, 'tax' => $tax, 'total' => $subtotal + $tax];
+        // Descuento del proveedor sobre el subtotal (nunca más que el subtotal).
+        $discount = PurchaseDiscount::clamp($subtotal, (float) $discount);
+        return ['subtotal' => $subtotal, 'discount' => $discount, 'tax' => $tax, 'total' => $subtotal - $discount + $tax];
     }
 
     private function syncItems(PurchaseOrder $order, array $items): void
