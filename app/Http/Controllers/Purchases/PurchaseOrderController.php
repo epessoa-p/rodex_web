@@ -87,8 +87,8 @@ class PurchaseOrderController extends Controller
     {
         $this->authorizeOrder($purchaseOrder);
 
-        if (in_array($purchaseOrder->status, ['received', 'cancelled'])) {
-            return back()->withErrors(['error' => 'No se puede editar una orden recibida o anulada.']);
+        if (! $purchaseOrder->isEditable()) {
+            return back()->withErrors(['error' => 'Solo se pueden editar órdenes en borrador o enviadas.']);
         }
 
         $purchaseOrder->load('items.product');
@@ -99,8 +99,8 @@ class PurchaseOrderController extends Controller
     {
         $this->authorizeOrder($purchaseOrder);
 
-        if (in_array($purchaseOrder->status, ['received', 'cancelled'])) {
-            return back()->withErrors(['error' => 'No se puede editar una orden recibida o anulada.']);
+        if (! $purchaseOrder->isEditable()) {
+            return back()->withErrors(['error' => 'Solo se pueden editar órdenes en borrador o enviadas.']);
         }
 
         $validated = $this->validateOrder();

@@ -370,9 +370,7 @@ class PurchaseOrderController extends Controller
         $all = $request->query('scope') === 'all';
 
         $orders = PurchaseOrder::with('supplier:id,name')
-            ->when($all,
-                fn ($q) => $q->where('status', '!=', 'draft'),
-                fn ($q) => $q->whereIn('status', ['sent', 'partial']))
+            ->when(! $all, fn ($q) => $q->whereIn('status', ['sent', 'partial']))
             ->latest('order_date')->latest('id')
             ->get()
             ->map(fn (PurchaseOrder $po) => [
@@ -400,6 +398,7 @@ class PurchaseOrderController extends Controller
             'supplier_id'        => ['required', Rule::exists('suppliers', 'id')->where('company_id', $cid)],
             'branch_id'          => ['nullable', Rule::exists('branches', 'id')->where('company_id', $cid)],
             'expected_date'      => ['nullable', 'date'],
+            'status'             => ['nullable', 'in:draft,sent'],
             'discount'           => ['nullable', 'numeric', 'min:0'],
             'notes'              => ['nullable', 'string', 'max:1000'],
             'items'              => ['required', 'array', 'min:1'],
@@ -418,7 +417,7 @@ class PurchaseOrderController extends Controller
                 'supplier_id'   => $data['supplier_id'],
                 'branch_id'     => $data['branch_id'] ?? null,
                 'code'          => 'OC-' . str_pad((string) (PurchaseOrder::withTrashed()->where('company_id', $cid)->count() + 1), 5, '0', STR_PAD_LEFT),
-                'status'        => 'sent',
+                'status'        => $data['status'] ?? 'sent',
                 'order_date'    => now()->toDateString(),
                 'expected_date' => $data['expected_date'] ?? null,
                 'subtotal'      => $subtotal,
@@ -454,10 +453,80 @@ class PurchaseOrderController extends Controller
         ]], 201);
     }
 
+    /**
+     * Edita una OC desde el móvil. Igual que la web: solo borrador o enviada
+     * (todavía sin recepciones), así que se pueden recrear las líneas.
+     */
+    public function update(Request $request, PurchaseOrder $purchaseOrder)
+    {
+        if (! $purchaseOrder->isEditable()) {
+            return response()->json([
+                'message' => 'Solo se pueden editar órdenes en borrador o enviadas.',
+                'code'    => 'po_not_editable',
+            ], 422);
+        }
+
+        $cid = $request->attributes->get('tenant_company')?->id;
+
+        $data = $request->validate([
+            'supplier_id'        => ['required', Rule::exists('suppliers', 'id')->where('company_id', $cid)],
+            'branch_id'          => ['nullable', Rule::exists('branches', 'id')->where('company_id', $cid)],
+            'status'             => ['nullable', 'in:draft,sent'],
+            'expected_date'      => ['nullable', 'date'],
+            'discount'           => ['nullable', 'numeric', 'min:0'],
+            'notes'              => ['nullable', 'string', 'max:1000'],
+            'items'              => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', Rule::exists('products', 'id')->where('company_id', $cid)],
+            'items.*.quantity'   => ['required', 'integer', 'min:1'],
+            'items.*.unit_cost'  => ['required', 'numeric', 'min:0'],
+        ]);
+
+        DB::transaction(function () use ($purchaseOrder, $data) {
+            $subtotal = collect($data['items'])
+                ->sum(fn ($i) => (float) $i['quantity'] * (float) $i['unit_cost']);
+            $discount = PurchaseDiscount::clamp($subtotal, (float) ($data['discount'] ?? 0));
+
+            $purchaseOrder->update([
+                'supplier_id'   => $data['supplier_id'],
+                'branch_id'     => array_key_exists('branch_id', $data) ? $data['branch_id'] : $purchaseOrder->branch_id,
+                'status'        => $data['status'] ?? $purchaseOrder->status,
+                'expected_date' => $data['expected_date'] ?? null,
+                'subtotal'      => $subtotal,
+                'discount'      => $discount,
+                'total'         => $subtotal - $discount + (float) $purchaseOrder->tax,
+                'notes'         => $data['notes'] ?? null,
+            ]);
+
+            // Sin recepciones (borrador/enviada): se recrean las líneas.
+            $purchaseOrder->items()->delete();
+            foreach ($data['items'] as $item) {
+                PurchaseOrderItem::create([
+                    'purchase_order_id' => $purchaseOrder->id,
+                    'product_id'        => $item['product_id'],
+                    'quantity'          => $item['quantity'],
+                    'unit_cost'         => $item['unit_cost'],
+                    'subtotal'          => (float) $item['quantity'] * (float) $item['unit_cost'],
+                    'received_quantity' => 0,
+                ]);
+            }
+        });
+
+        $purchaseOrder->refresh()->load('supplier:id,name');
+
+        return response()->json(['data' => [
+            'id'       => $purchaseOrder->id,
+            'code'     => $purchaseOrder->code,
+            'supplier' => $purchaseOrder->supplier?->name,
+            'status'   => $purchaseOrder->status,
+            'total'    => (float) $purchaseOrder->total,
+        ]]);
+    }
+
     /** Detalle de una OC con items (pendiente por recibir) + almacenes. */
-    public function show(PurchaseOrder $purchaseOrder)
+    public function show(Request $request, PurchaseOrder $purchaseOrder)
     {
         $purchaseOrder->load('items.product:id,name,unit', 'supplier:id,name');
+        $user = $request->user();
 
         $warehouses = Warehouse::where('company_id', $purchaseOrder->company_id)
             ->where('active', true)->orderBy('name')->get(['id', 'name'])
@@ -467,13 +536,21 @@ class PurchaseOrderController extends Controller
             'id'       => $purchaseOrder->id,
             'code'     => $purchaseOrder->code,
             'supplier' => $purchaseOrder->supplier?->name,
+            'supplier_id'   => $purchaseOrder->supplier_id,
             'status'   => $purchaseOrder->status,
+            'status_label'  => PurchaseOrder::STATUSES[$purchaseOrder->status]['label'] ?? $purchaseOrder->status,
             'date'     => optional($purchaseOrder->order_date)->toDateString(),
+            'expected_date' => optional($purchaseOrder->expected_date)->toDateString(),
+            'notes'    => $purchaseOrder->notes,
+            // Editable como en la web: borrador o enviada + permiso.
+            'editable' => $purchaseOrder->isEditable()
+                && ($user?->is_super_admin || $user?->hasPermissionInCompany('purchase-orders.edit', $request->attributes->get('tenant_company'))),
             'subtotal' => (float) $purchaseOrder->subtotal,
             'discount' => (float) $purchaseOrder->discount,
             'total'    => (float) $purchaseOrder->total,
             'items'    => $purchaseOrder->items->map(fn (PurchaseOrderItem $it) => [
                 'po_item_id' => $it->id,
+                'product_id' => $it->product_id,
                 'product'    => $it->product?->name,
                 'unit'       => $it->product?->unit,
                 'ordered'    => (float) $it->quantity,

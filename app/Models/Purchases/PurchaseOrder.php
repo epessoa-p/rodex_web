@@ -100,6 +100,12 @@ class PurchaseOrder extends Model
     }
 
     /** Recalcula el status según las recepciones */
+    /** Solo borrador o enviada (aún sin recepciones) se pueden editar. */
+    public function isEditable(): bool
+    {
+        return in_array($this->status, ['draft', 'sent'], true);
+    }
+
     public function refreshReceiptStatus(): void
     {
         if ($this->status === 'cancelled') {
