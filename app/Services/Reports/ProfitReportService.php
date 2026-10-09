@@ -2,6 +2,7 @@
 
 namespace App\Services\Reports;
 
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -25,6 +26,9 @@ class ProfitReportService
     private bool $hasSaleCost;
     private bool $hasPartCost;
 
+    /** Máximo de filas del listado de ventas / OTs. */
+    public const LIST_LIMIT = 300;
+
     public function __construct()
     {
         // Antes de correr el SQL nuevo no existen las columnas: todo es estimado.
@@ -35,8 +39,10 @@ class ProfitReportService
     /**
      * @param  string  $scope  sales | workshop | all
      */
-    public function build(int $companyId, Carbon $from, Carbon $to, ?int $branchId = null, string $scope = 'all', bool $mergeQuick = false): array
+    public function build(int $companyId, CarbonInterface $from, CarbonInterface $to, ?int $branchId = null, string $scope = 'all', bool $mergeQuick = false): array
     {
+        $from  = Carbon::instance($from);
+        $to    = Carbon::instance($to);
         $range = [$from->copy()->startOfDay(), $to->copy()->endOfDay()];
         $withSales    = $scope !== 'workshop';
         $withWorkshop = $scope !== 'sales';
@@ -44,6 +50,7 @@ class ProfitReportService
         $days = [];      // Y-m-d => [revenue, cost]
         $products = [];  // product_id => [name, qty, revenue, cost]
         $estimated = 0;
+        $list = [];     // ventas y OTs con su ganancia
 
         $sales = ['revenue' => 0.0, 'cost' => 0.0, 'count' => 0, 'returns_revenue' => 0.0, 'returns_cost' => 0.0];
         $quick = ['revenue' => 0.0, 'count' => 0, 'merged' => $mergeQuick];
@@ -54,9 +61,10 @@ class ProfitReportService
 
         if ($withSales) {
             $this->collectSales($companyId, $range, $branchId, $mergeQuick, $sales, $quick, $days, $products, $estimated);
+            $list = $this->salesList($companyId, $range, $branchId, $mergeQuick);
         }
         if ($withWorkshop) {
-            $this->collectWorkshop($companyId, $range, $branchId, $workshop, $days, $products, $estimated);
+            $this->collectWorkshop($companyId, $range, $branchId, $workshop, $days, $products, $estimated, $list);
         }
 
         $salesProfit = $sales['revenue'] - $sales['cost'];
@@ -127,6 +135,9 @@ class ProfitReportService
             'top_products'    => $rows->sortByDesc('profit')->take(10)->values()->all(),
             'low_margin'      => $rows->filter(fn ($p) => $p['margin'] < 15)->sortBy('margin')->take(10)->values()->all(),
             'estimated_lines' => $estimated,
+            // Ventas y OTs del período con su ganancia (las más recientes primero).
+            'transactions'       => collect($list)->sortByDesc('date')->take(self::LIST_LIMIT)->values()->all(),
+            'transactions_total' => $sales['count'] + $workshop['count'],
         ];
     }
 
@@ -217,19 +228,68 @@ class ProfitReportService
         }
     }
 
+    /** Ganancia de cada venta del período (las más recientes primero). */
+    private function salesList(int $cid, array $range, ?int $branchId, bool $mergeQuick): array
+    {
+        $factor   = '(1 - COALESCE(s.discount, 0) * 1.0 / NULLIF(s.subtotal, 0))';
+        $unitCost = $this->hasSaleCost ? 'COALESCE(si.unit_cost, p.cost, 0)' : 'COALESCE(p.cost, 0)';
+        $isEstimated = $this->hasSaleCost ? 'si.unit_cost IS NULL' : '1 = 1';
+
+        $rows = DB::table('sale_items as si')
+            ->join('sales as s', 's.id', '=', 'si.sale_id')
+            ->leftJoin('products as p', 'p.id', '=', 'si.product_id')
+            ->leftJoin('clients as c', 'c.id', '=', 's.client_id')
+            ->where('s.company_id', $cid)
+            ->where('s.status', 'completed')
+            ->where(fn ($q) => $q->whereNull('s.sale_category')->orWhere('s.sale_category', '!=', 'moto'))
+            ->whereNull('s.deleted_at')
+            ->when($branchId, fn ($q) => $q->where('s.branch_id', $branchId))
+            ->whereBetween('s.sale_date', $range)
+            ->groupBy('s.id', 's.code', 's.sale_date', 'c.full_name')
+            ->orderByDesc('s.sale_date')->orderByDesc('s.id')
+            ->limit(self::LIST_LIMIT)
+            ->selectRaw("s.id, s.code, s.sale_date d, c.full_name client,
+                SUM(CASE WHEN si.product_id IS NOT NULL THEN si.subtotal * COALESCE($factor, 1) ELSE 0 END) revenue,
+                SUM(CASE WHEN si.product_id IS NULL THEN si.subtotal * COALESCE($factor, 1) ELSE 0 END) quick,
+                SUM(CASE WHEN si.product_id IS NOT NULL THEN si.quantity * $unitCost ELSE 0 END) cost,
+                SUM(CASE WHEN si.product_id IS NOT NULL AND $isEstimated THEN 1 ELSE 0 END) est")
+            ->get();
+
+        return $rows->map(function ($r) use ($mergeQuick) {
+            $revenue = (float) $r->revenue + ($mergeQuick ? (float) $r->quick : 0);
+            $profit  = $revenue - (float) $r->cost;
+
+            return [
+                'type'      => 'sale',
+                'id'        => (int) $r->id,
+                'code'      => $r->code,
+                'date'      => Carbon::parse($r->d)->format('Y-m-d H:i'),
+                'client'    => $r->client,
+                'revenue'   => $this->r($revenue),
+                'cost'      => $this->r((float) $r->cost),
+                'profit'    => $this->r($profit),
+                'margin'    => $this->margin($profit, $revenue),
+                // Venta rápida que no se suma (sin costo conocido).
+                'quick'     => $mergeQuick ? 0.0 : $this->r((float) $r->quick),
+                'estimated' => (int) $r->est > 0,
+            ];
+        })->all();
+    }
+
     // ── Taller ────────────────────────────────────────────────────────────
 
-    private function collectWorkshop(int $cid, array $range, ?int $branchId, array &$shop, array &$days, array &$products, int &$estimated): void
+    private function collectWorkshop(int $cid, array $range, ?int $branchId, array &$shop, array &$days, array &$products, int &$estimated, array &$list): void
     {
         $orders = DB::table('work_orders as o')
             ->leftJoin('mechanics as m', 'm.id', '=', 'o.mechanic_id')
+            ->leftJoin('clients as c', 'c.id', '=', 'o.client_id')
             ->where('o.company_id', $cid)
             ->where('o.status', 'entregada')
             ->whereNull('o.deleted_at')
             ->when($branchId, fn ($q) => $q->where('o.branch_id', $branchId))
             ->whereBetween('o.delivered_at', $range)
             ->get([
-                'o.id', 'o.delivered_at', 'o.subtotal_services', 'o.subtotal_parts', 'o.discount',
+                'o.id', 'o.code', 'c.full_name as client', 'o.delivered_at', 'o.subtotal_services', 'o.subtotal_parts', 'o.discount',
                 'o.mechanic_id', 'o.mechanic_payment_id', 'o.commission_amount', 'm.commission_rate',
             ]);
         if ($orders->isEmpty()) {
@@ -280,6 +340,21 @@ class ProfitReportService
             }
 
             $shop['count']++;
+            $otRevenue = $labor + $partsNet;
+            $otProfit  = $otRevenue - $partsCost - $commission;
+            $list[] = [
+                'type'      => 'ot',
+                'id'        => (int) $o->id,
+                'code'      => $o->code,
+                'date'      => Carbon::parse($o->delivered_at)->format('Y-m-d H:i'),
+                'client'    => $o->client,
+                'revenue'   => $this->r($otRevenue),
+                'cost'      => $this->r($partsCost + $commission),
+                'profit'    => $this->r($otProfit),
+                'margin'    => $this->margin($otProfit, $otRevenue),
+                'quick'     => 0.0,
+                'estimated' => false,
+            ];
             $shop['labor']      += $labor;
             $shop['parts']      += $partsNet;
             $shop['parts_cost'] += $partsCost;

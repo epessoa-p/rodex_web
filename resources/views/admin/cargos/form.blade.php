@@ -78,56 +78,6 @@
             </div>
         </div>
 
-        {{-- ── Rol asociado: solo en EDICIÓN (al crear siempre es un rol nuevo) ── --}}
-        @if($cargo)
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-4">
-                    <h6 class="fw-bold mb-3"><i class="bi bi-shield-lock"></i> Rol asociado</h6>
-
-                    <div class="btn-group mb-3" role="group">
-                        <input type="radio" class="btn-check" name="role_mode" id="mode_existing" value="existing"
-                            {{ old('role_mode', 'existing') === 'existing' ? 'checked' : '' }} autocomplete="off">
-                        <label class="btn btn-outline-primary" for="mode_existing">
-                            <i class="bi bi-list-check me-1"></i> Rol existente
-                        </label>
-
-                        <input type="radio" class="btn-check" name="role_mode" id="mode_new" value="new"
-                            {{ old('role_mode') === 'new' ? 'checked' : '' }} autocomplete="off">
-                        <label class="btn btn-outline-primary" for="mode_new">
-                            <i class="bi bi-plus-circle me-1"></i> Crear nuevo rol
-                        </label>
-                    </div>
-
-                    <div class="row g-3">
-                        {{-- Existing role --}}
-                        <div id="existing-role-section" class="col-md-6">
-                            <label class="form-label">Seleccionar rol</label>
-                            <select name="role_id" id="role_id" class="form-select @error('role_id') is-invalid @enderror">
-                                <option value="">Seleccionar rol...</option>
-                                @foreach($roles as $role)
-                                    <option value="{{ $role->id }}" {{ (string) old('role_id', $cargo?->role_id) === (string) $role->id ? 'selected' : '' }}>
-                                        {{ $role->name }} ({{ $role->slug }})
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('role_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            <small class="text-muted">Los permisos del rol serán heredados por el personal con este cargo.</small>
-                        </div>
-
-                        {{-- New role --}}
-                        <div id="new-role-section" class="col-md-6 d-none">
-                            <label class="form-label">Nombre del nuevo rol <span class="text-danger">*</span></label>
-                            <input type="text" name="new_role_name" id="new_role_name" class="form-control @error('new_role_name') is-invalid @enderror"
-                                value="{{ old('new_role_name') }}" placeholder="Ej: Supervisor">
-                            @error('new_role_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            <small class="text-muted">El slug se generará automáticamente.</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        @endif
 
         {{-- ── Permisos del rol: ancho completo, 3 columnas ─────────────── --}}
         <div class="col-12">
@@ -146,7 +96,7 @@
                     </div>
                     <div class="alert alert-info small py-2 mb-3">
                         <i class="bi bi-info-circle me-1"></i>
-                        <span id="permissions-info">{{ $cargo ? 'Selecciona un rol o crea uno nuevo para configurar permisos.' : 'Marca los permisos que tendrá el nuevo rol de este cargo.' }}</span>
+                        <span id="permissions-info">{{ $cargo ? 'Estos son los permisos del rol de este cargo: lo que cambies aquí se aplica a todo el personal con este cargo.' : 'Marca los permisos que tendrá este cargo. Se crea un rol nuevo con el mismo nombre.' }}</span>
                     </div>
 
                     @php
@@ -326,51 +276,6 @@ $(function () {
         if ($companySelect.val()) $companySelect.trigger('change');
     }
 
-    // ── Selección/creación de rol: solo existe en el formulario de EDICIÓN ──
-    const $existingSection = $('#existing-role-section');
-    if ($existingSection.length) {
-        const $roleSelect = $('#role_id');
-        const $newSection = $('#new-role-section');
-        const $modeNew    = $('#mode_new');
-        const permissionsUrl = '{{ route("cargos.role-permissions", ":id") }}';
-
-        function toggleMode() {
-            const isNew = $modeNew.is(':checked');
-            if (isNew) {
-                $existingSection.addClass('d-none');
-                $newSection.removeClass('d-none');
-                $permInfo.text('Configura los permisos para el nuevo rol.');
-            } else {
-                $existingSection.removeClass('d-none');
-                $newSection.addClass('d-none');
-                const roleId = $roleSelect.val();
-                $permInfo.text(roleId ? 'Permisos del rol seleccionado (puedes modificarlos).' : 'Selecciona un rol para ver sus permisos.');
-            }
-        }
-
-        $('input[name="role_mode"]').on('change', toggleMode);
-        toggleMode();
-
-        $roleSelect.on('change', function () {
-            const roleId = $(this).val();
-            if (!roleId) {
-                $permInfo.text('Selecciona un rol para ver sus permisos.');
-                return;
-            }
-            $permInfo.text('Cargando permisos...');
-            $.getJSON(permissionsUrl.replace(':id', roleId))
-                .done(function (permIds) {
-                    $permChecks.not(':disabled').prop('checked', false);
-                    permIds.forEach(function (id) { $('#perm_' + id).not(':disabled').prop('checked', true); });
-                    updateCount();
-                    syncAllModuleHeaders();
-                    $permInfo.text('Permisos del rol seleccionado (puedes modificarlos).');
-                })
-                .fail(function () {
-                    $permInfo.text('Error al cargar permisos.');
-                });
-        });
-    }
 });
 </script>
 @endpush

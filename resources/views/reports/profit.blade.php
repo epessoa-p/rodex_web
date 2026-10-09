@@ -261,6 +261,75 @@
                 </div>
             </div>
         </div>
+
+        {{-- Ganancia por venta / OT (con scroll si es largo) --}}
+        @php
+            $tx      = $report['transactions'] ?? [];
+            $txTotal = $report['transactions_total'] ?? count($tx);
+            $txTitle = $scope === 'workshop' ? 'OTs entregadas' : ($scope === 'sales' ? 'Ventas' : 'Ventas y OTs');
+        @endphp
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h6 class="mb-0 fw-semibold"><i class="bi bi-receipt me-2 text-muted"></i>{{ $txTitle }} del período</h6>
+                    <span class="text-muted small">
+                        @if($txTotal > count($tx))
+                            Las {{ count($tx) }} más recientes de {{ $txTotal }}
+                        @else
+                            {{ $txTotal }} {{ $txTotal === 1 ? 'registro' : 'registros' }}
+                        @endif
+                    </span>
+                </div>
+                <div class="card-body p-0">
+                    @if(empty($tx))
+                        <div class="text-center text-muted small py-4">Sin ventas ni OTs en el período.</div>
+                    @else
+                    <div class="table-responsive" style="max-height:460px; overflow-y:auto">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead class="table-light" style="position:sticky; top:0; z-index:1">
+                                <tr>
+                                    <th class="ps-4">Fecha</th>
+                                    <th>Código</th>
+                                    <th>Cliente</th>
+                                    <th class="text-end">Ingreso</th>
+                                    <th class="text-end">Costo</th>
+                                    <th class="text-end">Ganancia</th>
+                                    <th class="text-end pe-4">Margen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach($tx as $row)
+                                @php
+                                    $url = $row['type'] === 'ot'
+                                        ? (Route::has('workshop.orders.show') ? route('workshop.orders.show', $row['id']) : null)
+                                        : (Route::has('sales.show') ? route('sales.show', $row['id']) : null);
+                                @endphp
+                                <tr>
+                                    <td class="ps-4 small text-nowrap">{{ \Illuminate\Support\Carbon::parse($row['date'])->format('d/m H:i') }}</td>
+                                    <td class="small text-nowrap">
+                                        @if($url)<a href="{{ $url }}" class="text-decoration-none fw-semibold">{{ $row['code'] }}</a>@else<span class="fw-semibold">{{ $row['code'] }}</span>@endif
+                                        @if($row['type'] === 'ot')<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1">OT</span>@endif
+                                        @if($row['estimated'])<span class="badge bg-light text-muted border ms-1" title="Usa el costo actual del producto">estimada</span>@endif
+                                    </td>
+                                    <td class="small text-truncate" style="max-width:220px">{{ $row['client'] ?: 'Sin cliente' }}</td>
+                                    <td class="text-end small text-nowrap">
+                                        {{ money($row['revenue']) }}
+                                        @if(($row['quick'] ?? 0) > 0)
+                                            <div class="text-muted" style="font-size:.72rem" title="Venta rápida sin costo conocido: no se suma">+ {{ money($row['quick']) }} rápida</div>
+                                        @endif
+                                    </td>
+                                    <td class="text-end small text-muted text-nowrap">{{ money($row['cost']) }}</td>
+                                    <td class="text-end small fw-semibold text-nowrap {{ $row['profit'] < 0 ? 'text-danger' : 'text-success' }}">{{ money($row['profit']) }}</td>
+                                    <td class="text-end small pe-4 {{ $marginClass($row['margin']) }}">{{ $row['revenue'] > 0 ? number_format($row['margin'], 1) . '%' : '—' }}</td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @endif
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 @endsection

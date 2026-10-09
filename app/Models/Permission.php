@@ -18,12 +18,26 @@ class Permission extends Model
      */
     public const PLATFORM_ONLY_MODULES = ['users', 'document_templates'];
 
+    /**
+     * Módulos de la sección "Sistema" (empresas, roles, suscripciones, planes):
+     * solo los administra el super admin, así que en el formulario de cargos
+     * solo él los ve y solo él puede asignarlos.
+     */
+    public const SYSTEM_MODULES = ['companies', 'roles', 'subscriptions', 'plans', 'system'];
+
     protected $fillable = ['name', 'slug', 'module', 'description'];
 
     /** Permisos que una empresa puede asignar a sus cargos/roles (sin los de plataforma). */
     public function scopeForCompanies($query)
     {
         return $query->whereNotIn('module', self::PLATFORM_ONLY_MODULES);
+    }
+
+    /** Permisos que puede ver/asignar en un cargo: sin "Sistema" salvo el super admin. */
+    public function scopeAssignableInCargo($query, bool $isSuperAdmin)
+    {
+        return $query->forCompanies()
+            ->when(! $isSuperAdmin, fn ($q) => $q->whereNotIn('module', self::SYSTEM_MODULES));
     }
 
     protected $casts = [

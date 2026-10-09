@@ -35,8 +35,7 @@ class CargoController extends Controller
         $authUser = auth()->user();
 
         return view('admin.cargos.create', [
-            'roles' => Role::orderBy('name')->get(),
-            'permissions' => Permission::forCompanies()->get()->groupBy('module'),
+            'permissions' => Permission::assignableInCargo((bool) $authUser->is_super_admin)->get()->groupBy('module'),
             'companies' => $authUser->is_super_admin
                 ? Company::orderBy('name')->get()
                 : collect([$authUser->getCurrentCompany()])->filter(),
@@ -102,9 +101,7 @@ class CargoController extends Controller
                     'slug' => $this->uniqueRoleSlug($validated['name']),
                 ]);
 
-                if ($request->has('permissions')) {
-                    $role->permissions()->sync($validated['permissions'] ?? []);
-                }
+                $role->permissions()->sync($this->assignable($validated['permissions'] ?? []));
 
                 Cargo::create([
                     'company_id' => $companyId,
@@ -122,6 +119,50 @@ class CargoController extends Controller
             Log::error('Error al crear cargo', ['message' => $exception->getMessage()]);
             return back()->withInput()->withErrors(['error' => 'No fue posible crear el cargo.']);
         }
+    }
+
+    /** Filtra los ids a los permisos que el usuario puede asignar en un cargo. */
+    private function assignable(array $ids): array
+    {
+        if (empty($ids)) {
+            return [];
+        }
+
+        return Permission::assignableInCargo((bool) auth()->user()->is_super_admin)
+            ->whereIn('id', $ids)->pluck('id')->all();
+    }
+
+    /**
+     * Rol propio del cargo. Si no tiene, o lo comparte con otro cargo u otra
+     * empresa, se crea uno nuevo (copiando sus permisos) y se reasigna al
+     * personal de este cargo, para no tocar a los demás.
+     */
+    private function ownRole(Cargo $cargo, string $name): Role
+    {
+        $role = $cargo->role;
+        $shared = ! $role
+            || Cargo::where('role_id', $role->id)->where('id', '!=', $cargo->id)->exists()
+            || DB::table('company_user')->where('role_id', $role->id)->where('company_id', '!=', $cargo->company_id)->exists();
+
+        if (! $shared) {
+            return $role;
+        }
+
+        $new = Role::create(['name' => $name, 'slug' => $this->uniqueRoleSlug($name)]);
+        if ($role) {
+            $new->permissions()->sync($role->permissions()->pluck('permissions.id')->all());
+        }
+
+        // El personal de este cargo pasa al rol nuevo.
+        $userIds = $cargo->personals()->whereNotNull('user_id')->pluck('user_id');
+        if ($userIds->isNotEmpty()) {
+            DB::table('company_user')
+                ->where('company_id', $cargo->company_id)
+                ->whereIn('user_id', $userIds)
+                ->update(['role_id' => $new->id]);
+        }
+
+        return $new;
     }
 
     /** Genera un slug único para un rol a partir de un nombre. */
@@ -148,8 +189,7 @@ class CargoController extends Controller
 
         return view('admin.cargos.edit', [
             'cargo' => $cargo,
-            'roles' => Role::orderBy('name')->get(),
-            'permissions' => Permission::forCompanies()->get()->groupBy('module'),
+            'permissions' => Permission::assignableInCargo((bool) $authUser->is_super_admin)->get()->groupBy('module'),
             'companies' => $authUser->is_super_admin
                 ? Company::orderBy('name')->get()
                 : collect([$authUser->getCurrentCompany()])->filter(),
@@ -170,9 +210,6 @@ class CargoController extends Controller
         try {
             $validated = $request->validate([
                 'company_id' => ['nullable', 'exists:companies,id'],
-                'role_mode' => ['required', 'in:existing,new'],
-                'role_id' => ['required_if:role_mode,existing', 'nullable', 'exists:roles,id'],
-                'new_role_name' => ['required_if:role_mode,new', 'nullable', 'string', 'max:255'],
                 'name' => [
                     'required',
                     'string',
@@ -188,19 +225,17 @@ class CargoController extends Controller
             ]);
 
             DB::transaction(function () use ($validated, $cargo, $companyId, $request) {
-                if ($validated['role_mode'] === 'new') {
-                    $role = Role::create([
-                        'name' => trim($validated['new_role_name']),
-                        'slug' => $this->uniqueRoleSlug($validated['new_role_name']),
-                    ]);
-                } else {
-                    $role = Role::findOrFail($validated['role_id']);
-                }
+                // Cada cargo tiene su propio rol: editar el cargo edita su rol
+                // (nombre y permisos). Si el rol lo comparte con otros cargos o
+                // empresas (cargos viejos), se le crea uno propio primero.
+                $role = $this->ownRole($cargo, trim($validated['name']));
+                $role->update(['name' => trim($validated['name'])]);
 
-                // Sync permissions to the role
-                if ($request->has('permissions')) {
-                    $role->permissions()->sync($validated['permissions'] ?? []);
-                }
+                // Los permisos que este usuario no ve (Sistema) se conservan.
+                $hidden = $role->permissions()
+                    ->whereNotIn('permissions.id', Permission::assignableInCargo((bool) auth()->user()->is_super_admin)->pluck('id'))
+                    ->pluck('permissions.id')->all();
+                $role->permissions()->sync(array_merge($hidden, $this->assignable($validated['permissions'] ?? [])));
 
                 $cargo->update([
                     'company_id' => $companyId,
