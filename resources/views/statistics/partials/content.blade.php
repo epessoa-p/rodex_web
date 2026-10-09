@@ -27,7 +27,12 @@
         </div>
         <div class="col-md-6">
             <div class="card border-0 shadow-sm h-100"><div class="card-body p-3">
-                <div class="text-muted small mb-1">Ganancia de las ventas</div>
+                <div class="text-muted small mb-1 d-flex justify-content-between">
+                    <span>Ganancia de las ventas</span>
+                    @if(Route::has('profit-report.index'))
+                    <a href="{{ route('profit-report.index', ['preset' => 'this_month', 'scope' => 'sales']) }}" class="text-decoration-none">Ver detalle <i class="bi bi-arrow-right"></i></a>
+                    @endif
+                </div>
                 <div class="d-flex align-items-baseline gap-2 flex-wrap">
                     <span class="fw-bold fs-5">{{ money($cmp['profitCur']) }}</span>
                     <span class="badge {{ $cmp['profitPct'] >= 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle' }}" style="font-size:.7rem;">

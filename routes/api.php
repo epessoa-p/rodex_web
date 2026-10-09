@@ -83,6 +83,9 @@ Route::middleware(['auth:sanctum', 'api.fresh'])->group(function () {
             ->middleware('api.permission:cash-registers.view,sales.view,workshop.view');
         Route::get('reports/payables', [\App\Http\Controllers\Api\ReportsController::class, 'payables'])
             ->middleware('api.permission:accounts-payable.view,purchases.view,cash-registers.view');
+        // Ganancias (precio − costo) de ventas y taller.
+        Route::get('reports/profit', [\App\Http\Controllers\Api\ReportsController::class, 'profit'])
+            ->middleware('api.permission:income-statement.view');
         Route::middleware('api.plan:inventory')->group(function () {
             Route::get('reports/inventory', [\App\Http\Controllers\Api\ReportsController::class, 'inventory'])
                 ->middleware('api.permission:products.view');

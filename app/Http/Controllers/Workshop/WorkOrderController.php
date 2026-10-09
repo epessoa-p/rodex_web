@@ -560,6 +560,7 @@ class WorkOrderController extends Controller
                     'product_id'    => $product->id,
                     'quantity'      => $qty,
                     'unit_price'    => (float) $validated['unit_price'],
+                    'unit_cost'     => $cost,
                     'subtotal'      => (float) $qty * (float) $validated['unit_price'],
                 ]);
             });

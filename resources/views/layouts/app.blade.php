@@ -680,6 +680,11 @@
                     <i class="bi bi-clipboard-data"></i> Estado de resultados
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link app-link {{ request()->routeIs('profit-report.*') ? 'active' : '' }}" href="{{ route('profit-report.index') }}">
+                    <i class="bi bi-graph-up-arrow"></i> Ganancias
+                </a>
+            </li>
             @endif
             @if($canStatistics)
             <li class="nav-item">
@@ -1100,6 +1105,7 @@
             <ul class="nav flex-column gap-1 mb-3">
                 @if($canIncomeStatement)
                 <li><a class="nav-link app-link {{ request()->routeIs('income-statement.*') ? 'active' : '' }}" href="{{ route('income-statement.index') }}"><i class="bi bi-clipboard-data me-2"></i>Estado de resultados</a></li>
+                <li><a class="nav-link app-link {{ request()->routeIs('profit-report.*') ? 'active' : '' }}" href="{{ route('profit-report.index') }}"><i class="bi bi-graph-up-arrow me-2"></i>Ganancias</a></li>
                 @endif
                 @if($canStatistics)
                 <li><a class="nav-link app-link {{ request()->routeIs('statistics.*') ? 'active' : '' }}" href="{{ route('statistics.index') }}"><i class="bi bi-bar-chart-line me-2"></i>Estadísticas</a></li>

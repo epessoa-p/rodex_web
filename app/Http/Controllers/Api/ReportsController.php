@@ -13,6 +13,7 @@ use App\Models\Workshop\WorkOrder;
 use App\Models\Warehouse;
 use App\Services\Inventory\StockValuationService;
 use App\Services\Reports\IncomeStatementService;
+use App\Services\Reports\ProfitReportService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -27,7 +28,7 @@ class ReportsController extends Controller
     {
         $cid  = $request->attributes->get('tenant_company')?->id;
         $data = $request->validate([
-            'preset'    => ['nullable', 'in:this_week,last_week,this_month,last_month,all'],
+            'preset'    => ['nullable', 'in:today,this_week,last_week,this_month,last_month,all'],
             'from'      => ['nullable', 'date'],
             'to'        => ['nullable', 'date'],
             'branch_id' => ['nullable', 'integer'],
@@ -208,7 +209,7 @@ class ReportsController extends Controller
     {
         $cid  = $request->attributes->get('tenant_company')?->id;
         $data = $request->validate([
-            'preset' => ['nullable', 'in:this_week,last_week,this_month,last_month,all'],
+            'preset' => ['nullable', 'in:today,this_week,last_week,this_month,last_month,all'],
             'from'   => ['nullable', 'date'],
             'to'     => ['nullable', 'date'],
         ]);
@@ -277,7 +278,7 @@ class ReportsController extends Controller
     {
         $cid  = $request->attributes->get('tenant_company')?->id;
         $data = $request->validate([
-            'preset' => ['nullable', 'in:this_week,last_week,this_month,last_month,all'],
+            'preset' => ['nullable', 'in:today,this_week,last_week,this_month,last_month,all'],
             'from'   => ['nullable', 'date'],
             'to'     => ['nullable', 'date'],
         ]);
@@ -341,6 +342,39 @@ class ReportsController extends Controller
     }
 
     /** Rango por preset (mismos que el estado de resultados) o from/to; por defecto este mes. */
+    /**
+     * Ganancias (precio − costo) de ventas y/o taller. `scope`: sales |
+     * workshop | all; `merge_quick`: suma las ventas rápidas (sin costo
+     * conocido) a las ventas en vez de mostrarlas aparte.
+     */
+    public function profit(Request $request, IncomeStatementService $periods, ProfitReportService $profit)
+    {
+        $cid  = $request->attributes->get('tenant_company')?->id;
+        $data = $request->validate([
+            'preset'      => ['nullable', 'in:today,this_week,last_week,this_month,last_month,all'],
+            'from'        => ['nullable', 'date'],
+            'to'          => ['nullable', 'date'],
+            'branch_id'   => ['nullable', 'integer'],
+            'scope'       => ['nullable', 'in:sales,workshop,all'],
+            'merge_quick' => ['nullable', 'boolean'],
+        ]);
+
+        [$from, $to] = $this->range($data, $periods);
+        $branchId = ! empty($data['branch_id'])
+            ? Branch::where('company_id', $cid)->whereKey($data['branch_id'])->value('id')
+            : null;
+
+        $report = $profit->build(
+            (int) $cid, $from, $to, $branchId,
+            $data['scope'] ?? 'all',
+            (bool) ($data['merge_quick'] ?? false),
+        );
+        $report['branches'] = Branch::where('company_id', $cid)->where('active', true)
+            ->orderBy('name')->get(['id', 'name']);
+
+        return response()->json(['data' => $report]);
+    }
+
     private function range(array $data, IncomeStatementService $periods): array
     {
         if (! empty($data['preset'])) {

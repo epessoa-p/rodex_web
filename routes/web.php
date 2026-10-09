@@ -39,6 +39,8 @@ Route::middleware('auth')->group(function () {
 
     // ── Estado de resultados ──────────────────────────────────────
     Route::get('/estado-resultados', [\App\Http\Controllers\Reports\IncomeStatementController::class, 'index'])->name('income-statement.index')->middleware('check-permission:income-statement.view');
+    // Ganancias (precio − costo) de ventas y taller.
+    Route::get('/ganancias', [\App\Http\Controllers\Reports\ProfitReportController::class, 'index'])->name('profit-report.index')->middleware('check-permission:income-statement.view');
 
     // ── Mi empresa (la empresa activa edita sus datos) ────────────
     Route::get('/mi-empresa', [\App\Http\Controllers\CompanyProfileController::class, 'edit'])->name('company-profile.edit')->middleware('check-permission:company-profile.view');

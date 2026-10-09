@@ -225,9 +225,18 @@ class StatisticsController extends Controller
             ->where('status', 'completed');
     }
 
-    /** Ganancia (ingreso − costo) de las ventas completadas en un rango. */
+    /**
+     * Ganancia (ingreso − costo) de las ventas completadas en un rango. Con una
+     * empresa usa el mismo cálculo que el reporte de Ganancias (costo guardado al
+     * vender, descuento general y devoluciones; sin ventas rápidas).
+     */
     private function salesProfit(?int $cid, array $range): float
     {
+        if ($cid) {
+            return (float) app(\App\Services\Reports\ProfitReportService::class)
+                ->build($cid, \Illuminate\Support\Carbon::parse($range[0]), \Illuminate\Support\Carbon::parse($range[1]), $this->branchId, 'sales')['totals']['profit'];
+        }
+
         $row = SaleItem::query()
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
             ->join('products', 'products.id', '=', 'sale_items.product_id')
