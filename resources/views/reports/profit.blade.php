@@ -130,6 +130,17 @@
         para {{ $report['estimated_lines'] === 1 ? 'ella' : 'ellas' }} se usa el costo actual del producto (ganancia estimada).
     </div>
     @endif
+    @if(($t['credit_profit'] ?? 0) > 0)
+    <div class="alert alert-info border-0 small py-2">
+        <i class="bi bi-credit-card me-1"></i>
+        {{ money($t['credit_profit']) }} de la ganancia {{ ($t['credit_count'] ?? 0) === 1 ? 'viene de 1 venta u OT' : 'viene de ' . ($t['credit_count'] ?? 0) . ' ventas u OTs' }} a crédito: se cuenta el día de la venta.
+        @if(($t['credit_pending'] ?? 0) > 0)
+            Todavía quedan <b>{{ money($t['credit_pending']) }}</b> por cobrar de esas ventas.
+        @else
+            Ya están cobradas.
+        @endif
+    </div>
+    @endif
     @if($scope !== 'workshop' && $q['count'] > 0)
     <div class="alert {{ $merge ? 'alert-warning' : 'alert-light border' }} small py-2">
         <i class="bi bi-lightning-charge me-1"></i>
@@ -152,6 +163,9 @@
                 </div>
                 <div class="card-body px-4">
                     <div class="d-flex justify-content-between small mb-1"><span>Ingresos</span><span>{{ money($s['revenue']) }}</span></div>
+                    @if(($s['interest'] ?? 0) > 0)
+                    <div class="d-flex justify-content-between small mb-1"><span>Incluye intereses de crédito</span><span class="text-success">+ {{ money($s['interest']) }}</span></div>
+                    @endif
                     <div class="d-flex justify-content-between small mb-1 text-muted"><span>Costo de productos</span><span>− {{ money($s['cost']) }}</span></div>
                     @if($s['returns_revenue'] > 0)
                     <div class="d-flex justify-content-between small mb-1 text-muted"><span>Devoluciones (ya restadas)</span><span>{{ money($s['returns_revenue']) }}</span></div>
@@ -309,11 +323,18 @@
                                     <td class="small text-nowrap">
                                         @if($url)<a href="{{ $url }}" class="text-decoration-none fw-semibold">{{ $row['code'] }}</a>@else<span class="fw-semibold">{{ $row['code'] }}</span>@endif
                                         @if($row['type'] === 'ot')<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1">OT</span>@endif
+                                        @if($row['credit'] ?? false)<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-1">Crédito</span>@endif
                                         @if($row['estimated'])<span class="badge bg-light text-muted border ms-1" title="Usa el costo actual del producto">estimada</span>@endif
                                     </td>
                                     <td class="small text-truncate" style="max-width:220px">{{ $row['client'] ?: 'Sin cliente' }}</td>
                                     <td class="text-end small text-nowrap">
                                         {{ money($row['revenue']) }}
+                                        @if(($row['interest'] ?? 0) > 0)
+                                            <div class="text-muted" style="font-size:.72rem">incluye {{ money($row['interest']) }} interés</div>
+                                        @endif
+                                        @if(($row['balance'] ?? 0) > 0)
+                                            <div class="text-danger" style="font-size:.72rem">debe {{ money($row['balance']) }}</div>
+                                        @endif
                                         @if(($row['quick'] ?? 0) > 0)
                                             <div class="text-muted" style="font-size:.72rem" title="Venta rápida sin costo conocido: no se suma">+ {{ money($row['quick']) }} rápida</div>
                                         @endif

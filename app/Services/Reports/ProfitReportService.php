@@ -52,11 +52,15 @@ class ProfitReportService
         $estimated = 0;
         $list = [];     // ventas y OTs con su ganancia
 
-        $sales = ['revenue' => 0.0, 'cost' => 0.0, 'count' => 0, 'returns_revenue' => 0.0, 'returns_cost' => 0.0];
+        $sales = [
+            'revenue' => 0.0, 'cost' => 0.0, 'count' => 0, 'returns_revenue' => 0.0, 'returns_cost' => 0.0,
+            'interest' => 0.0, 'credit_count' => 0, 'credit_profit' => 0.0, 'credit_pending' => 0.0,
+        ];
         $quick = ['revenue' => 0.0, 'count' => 0, 'merged' => $mergeQuick];
         $workshop = [
             'revenue' => 0.0, 'labor' => 0.0, 'parts' => 0.0, 'parts_cost' => 0.0,
             'commission_paid' => 0.0, 'commission_pending' => 0.0, 'count' => 0,
+            'credit_count' => 0, 'credit_profit' => 0.0, 'credit_pending' => 0.0,
         ];
 
         if ($withSales) {
@@ -103,6 +107,11 @@ class ProfitReportService
                 'commission' => $this->r($commission),
                 'profit'     => $this->r($profit),
                 'margin'     => $this->margin($profit, $revenue),
+                'interest'   => $this->r($sales['interest']),
+                // Parte de la ganancia que viene de ventas/OTs a crédito y saldo por cobrar.
+                'credit_count'   => $sales['credit_count'] + $workshop['credit_count'],
+                'credit_profit'  => $this->r($sales['credit_profit'] + $workshop['credit_profit']),
+                'credit_pending' => $this->r($sales['credit_pending'] + $workshop['credit_pending']),
             ],
             'sales' => [
                 'revenue'         => $this->r($sales['revenue']),
@@ -112,6 +121,10 @@ class ProfitReportService
                 'count'           => $sales['count'],
                 'returns_revenue' => $this->r($sales['returns_revenue']),
                 'returns_cost'    => $this->r($sales['returns_cost']),
+                'interest'        => $this->r($sales['interest']),
+                'credit_count'    => $sales['credit_count'],
+                'credit_profit'   => $this->r($sales['credit_profit']),
+                'credit_pending'  => $this->r($sales['credit_pending']),
                 'enabled'         => $withSales,
             ],
             'workshop' => [
@@ -124,6 +137,9 @@ class ProfitReportService
                 'profit'             => $this->r($shopProfit),
                 'margin'             => $this->margin($shopProfit, $workshop['revenue']),
                 'count'              => $workshop['count'],
+                'credit_count'       => $workshop['credit_count'],
+                'credit_profit'      => $this->r($workshop['credit_profit']),
+                'credit_pending'     => $this->r($workshop['credit_pending']),
                 'enabled'            => $withWorkshop,
             ],
             'quick' => [
@@ -193,6 +209,43 @@ class ProfitReportService
             }
         }
 
+        // Intereses de crédito: ingreso sin costo, una vez por venta, en su fecha.
+        $salesBase = fn () => DB::table('sales as s')
+            ->where('s.company_id', $cid)
+            ->where('s.status', 'completed')
+            ->where(fn ($q) => $q->whereNull('s.sale_category')->orWhere('s.sale_category', '!=', 'moto'))
+            ->whereNull('s.deleted_at')
+            ->when($branchId, fn ($q) => $q->where('s.branch_id', $branchId))
+            ->whereBetween('s.sale_date', $range);
+
+        $interestRows = $salesBase()->where('s.interest', '>', 0)
+            ->groupBy(DB::raw('DATE(s.sale_date)'))
+            ->selectRaw('DATE(s.sale_date) d, SUM(s.interest) i')
+            ->get();
+        foreach ($interestRows as $i) {
+            $sales['interest'] += (float) $i->i;
+            $sales['revenue']  += (float) $i->i;
+            $days[$i->d][0] = ($days[$i->d][0] ?? 0) + (float) $i->i;
+            $days[$i->d][1] = ($days[$i->d][1] ?? 0);
+        }
+
+        // Ventas a crédito: su ganancia ya se contó al vender; aquí se mide
+        // cuánto de ella es a crédito y cuánto falta cobrar (saldo a hoy).
+        $credit = $salesBase()->where('s.sale_type', 'credit')
+            ->selectRaw('COUNT(*) n,
+                SUM(CASE WHEN s.total - COALESCE(s.paid_amount, 0) > 0 THEN s.total - COALESCE(s.paid_amount, 0) ELSE 0 END) pending,
+                SUM(COALESCE(s.interest, 0)) interest')
+            ->first();
+        $quickPart = $mergeQuick ? "si.subtotal * COALESCE($factor, 1)" : '0';
+        $creditItems = (float) $base()->where('s.sale_type', 'credit')
+            ->selectRaw("SUM(CASE WHEN si.product_id IS NOT NULL
+                THEN si.subtotal * COALESCE($factor, 1) - si.quantity * $unitCost
+                ELSE $quickPart END) p")
+            ->value('p');
+        $sales['credit_count']   = (int) ($credit->n ?? 0);
+        $sales['credit_pending'] = (float) ($credit->pending ?? 0);
+        $sales['credit_profit']  = $creditItems + (float) ($credit->interest ?? 0);
+
         // Devoluciones del período: restan ingreso y costo de lo devuelto.
         if (! Schema::hasTable('sale_return_items')) {
             return;
@@ -245,10 +298,10 @@ class ProfitReportService
             ->whereNull('s.deleted_at')
             ->when($branchId, fn ($q) => $q->where('s.branch_id', $branchId))
             ->whereBetween('s.sale_date', $range)
-            ->groupBy('s.id', 's.code', 's.sale_date', 'c.full_name')
+            ->groupBy('s.id', 's.code', 's.sale_date', 'c.full_name', 's.sale_type', 's.interest', 's.total', 's.paid_amount')
             ->orderByDesc('s.sale_date')->orderByDesc('s.id')
             ->limit(self::LIST_LIMIT)
-            ->selectRaw("s.id, s.code, s.sale_date d, c.full_name client,
+            ->selectRaw("s.id, s.code, s.sale_date d, c.full_name client, s.sale_type, s.interest, s.total, s.paid_amount,
                 SUM(CASE WHEN si.product_id IS NOT NULL THEN si.subtotal * COALESCE($factor, 1) ELSE 0 END) revenue,
                 SUM(CASE WHEN si.product_id IS NULL THEN si.subtotal * COALESCE($factor, 1) ELSE 0 END) quick,
                 SUM(CASE WHEN si.product_id IS NOT NULL THEN si.quantity * $unitCost ELSE 0 END) cost,
@@ -256,8 +309,10 @@ class ProfitReportService
             ->get();
 
         return $rows->map(function ($r) use ($mergeQuick) {
-            $revenue = (float) $r->revenue + ($mergeQuick ? (float) $r->quick : 0);
-            $profit  = $revenue - (float) $r->cost;
+            $interest = (float) $r->interest;
+            $revenue  = (float) $r->revenue + ($mergeQuick ? (float) $r->quick : 0) + $interest;
+            $profit   = $revenue - (float) $r->cost;
+            $isCredit = $r->sale_type === 'credit';
 
             return [
                 'type'      => 'sale',
@@ -272,6 +327,10 @@ class ProfitReportService
                 // Venta rápida que no se suma (sin costo conocido).
                 'quick'     => $mergeQuick ? 0.0 : $this->r((float) $r->quick),
                 'estimated' => (int) $r->est > 0,
+                'credit'    => $isCredit,
+                // Lo que el cliente todavía debe de esta venta (a hoy).
+                'balance'   => $isCredit ? $this->r(max(0, (float) $r->total - (float) $r->paid_amount)) : 0.0,
+                'interest'  => $this->r($interest),
             ];
         })->all();
     }
@@ -291,6 +350,7 @@ class ProfitReportService
             ->get([
                 'o.id', 'o.code', 'c.full_name as client', 'o.delivered_at', 'o.subtotal_services', 'o.subtotal_parts', 'o.discount',
                 'o.mechanic_id', 'o.mechanic_payment_id', 'o.commission_amount', 'm.commission_rate',
+                'o.payment_type', 'o.total', 'o.paid_amount',
             ]);
         if ($orders->isEmpty()) {
             return;
@@ -342,6 +402,13 @@ class ProfitReportService
             $shop['count']++;
             $otRevenue = $labor + $partsNet;
             $otProfit  = $otRevenue - $partsCost - $commission;
+            $isCredit  = $o->payment_type === 'credito';
+            $balance   = $isCredit ? max(0, (float) $o->total - (float) $o->paid_amount) : 0.0;
+            if ($isCredit) {
+                $shop['credit_count']++;
+                $shop['credit_profit']  += $otProfit;
+                $shop['credit_pending'] += $balance;
+            }
             $list[] = [
                 'type'      => 'ot',
                 'id'        => (int) $o->id,
@@ -354,6 +421,9 @@ class ProfitReportService
                 'margin'    => $this->margin($otProfit, $otRevenue),
                 'quick'     => 0.0,
                 'estimated' => false,
+                'credit'    => $isCredit,
+                'balance'   => $this->r($balance),
+                'interest'  => 0.0,
             ];
             $shop['labor']      += $labor;
             $shop['parts']      += $partsNet;
