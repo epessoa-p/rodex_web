@@ -44,6 +44,7 @@ Route::middleware(['auth', 'plan:workshop'])->group(function () {
     Route::prefix('workshop/agenda')->name('workshop.agenda.')->group(function () {
         Route::get('/',                    [AppointmentController::class, 'index'])->name('index')->middleware('check-permission:appointments.view');
         Route::post('/',                   [AppointmentController::class, 'store'])->name('store')->middleware('check-permission:appointments.create');
+        Route::get('/client-by-phone',     [AppointmentController::class, 'clientByPhone'])->name('client-by-phone')->middleware('check-permission:appointments.create,appointments.edit');
         Route::put('/{appointment}',       [AppointmentController::class, 'update'])->name('update')->middleware('check-permission:appointments.edit');
         Route::post('/{appointment}/status',[AppointmentController::class, 'changeStatus'])->name('status')->middleware('check-permission:appointments.edit');
         Route::post('/{appointment}/convert',[AppointmentController::class, 'convertToWorkOrder'])->name('convert')->middleware('check-permission:workshop.create');

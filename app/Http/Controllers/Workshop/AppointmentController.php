@@ -10,6 +10,7 @@ use App\Models\Workshop\Appointment;
 use App\Models\Workshop\Mechanic;
 use App\Models\Workshop\Service;
 use App\Models\Workshop\WorkOrder;
+use App\Services\Workshop\QuickClientResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -240,12 +241,30 @@ class AppointmentController extends Controller
     }
 
     /** Reglas compartidas de validación de una cita. */
+    /**
+     * ¿El teléfono ya es de un cliente? La web/app lo consultan antes de guardar
+     * una cita con cliente rápido, para preguntar si usarlo o registrar uno nuevo.
+     */
+    public function clientByPhone(Request $request, QuickClientResolver $resolver)
+    {
+        $companyId = auth()->user()->getCurrentCompany()?->id;
+        $phone = trim((string) $request->query('phone', ''));
+        $client = ($companyId && $phone !== '') ? $resolver->findByPhone((int) $companyId, $phone) : null;
+
+        return response()->json(['data' => $client ? [
+            'id'        => $client->id,
+            'full_name' => $client->full_name,
+            'phone'     => $client->phone,
+        ] : null]);
+    }
     private function validateData(Request $request, ?int $companyId): array
     {
         $data = $request->validate([
             'client_id'        => ['nullable', Rule::exists('clients', 'id')->where('company_id', $companyId)],
             'customer_name'    => ['nullable', 'required_without:client_id', 'string', 'max:255'],
-            'customer_phone'   => ['nullable', 'string', 'max:30'],
+            // Cliente rápido: el teléfono es obligatorio (con él se registra el cliente).
+            'customer_phone'   => ['nullable', 'required_without:client_id', 'string', 'max:30'],
+            'new_client'       => ['nullable', 'boolean'],
             'vehicle_id'       => ['nullable', Rule::exists('vehicles', 'id')->where('company_id', $companyId)],
             'service_id'       => ['nullable', Rule::exists('services', 'id')->where('company_id', $companyId)],
             'service_ids'      => ['nullable', 'array', 'max:20'],
@@ -253,10 +272,12 @@ class AppointmentController extends Controller
             'mechanic_id'      => ['nullable', Rule::exists('mechanics', 'id')->where('company_id', $companyId)],
             'title'            => ['nullable', 'string', 'max:255'],
             'scheduled_at'     => ['required', 'date'],
-            'duration_minutes' => ['required', 'integer', 'min:15', 'max:1440'],
+            // Hasta 5 días (trabajos largos de taller).
+            'duration_minutes' => ['required', 'integer', 'min:15', 'max:' . Appointment::MAX_DURATION],
             'notes'            => ['nullable', 'string', 'max:1000'],
         ], [
-            'customer_name.required_without' => 'Indica un cliente o al menos un nombre.',
+            'customer_name.required_without'  => 'Indica un cliente o al menos un nombre.',
+            'customer_phone.required_without' => 'Escribe el teléfono del cliente.',
         ]);
 
         // Varios servicios (service_ids[]) o el legado service_id (uno).
@@ -264,6 +285,13 @@ class AppointmentController extends Controller
             ? array_values(array_unique(array_map('intval', $data['service_ids'] ?? [])))
             : (empty($data['service_id']) ? [] : [(int) $data['service_id']]);
         unset($data['service_ids'], $data['service_id']);
+
+        // Cliente rápido (nombre + teléfono) → cliente registrado, igual que en la app.
+        $forceNew = (bool) ($data['new_client'] ?? false);
+        unset($data['new_client']);
+        if ($companyId) {
+            $data = app(QuickClientResolver::class)->apply((int) $companyId, $data, $forceNew);
+        }
 
         // Si eligió servicios y no puso título, usa sus nombres.
         if (empty($data['title']) && $serviceIds) {

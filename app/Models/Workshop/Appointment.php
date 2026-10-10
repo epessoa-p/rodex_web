@@ -69,6 +69,35 @@ class Appointment extends Model
         return $this->belongsTo(Vehicle::class);
     }
 
+    /** Duración máxima de una cita: 5 días (trabajos largos de taller). */
+    public const MAX_DURATION = 7200;
+
+    /** Duraciones que se ofrecen al agendar (minutos => etiqueta). */
+    public const DURATIONS = [
+        30 => '30 min', 60 => '1 hora', 90 => '1 h 30 min', 120 => '2 horas', 180 => '3 horas',
+        240 => '4 horas', 300 => '5 horas', 360 => '6 horas', 480 => '8 horas (jornada)',
+        1440 => '1 día', 2880 => '2 días', 4320 => '3 días', 5760 => '4 días', 7200 => '5 días',
+    ];
+
+    /** "45 min", "1 h 30 min", "2 días", "1 día 4 h". */
+    public static function formatDuration(int $minutes): string
+    {
+        $days  = intdiv($minutes, 1440);
+        $hours = intdiv($minutes % 1440, 60);
+        $mins  = $minutes % 60;
+        $parts = [];
+        if ($days)  $parts[] = $days . ($days === 1 ? ' día' : ' días');
+        if ($hours) $parts[] = $hours . ' h';
+        if ($mins)  $parts[] = $mins . ' min';
+
+        return $parts ? implode(' ', $parts) : '0 min';
+    }
+
+    public function getDurationLabelAttribute(): string
+    {
+        return self::formatDuration((int) $this->duration_minutes);
+    }
+
     /** Primer servicio (legado). La lista completa está en services(). */
     public function service(): BelongsTo
     {

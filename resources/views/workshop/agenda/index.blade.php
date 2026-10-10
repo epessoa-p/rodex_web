@@ -155,7 +155,7 @@
                                         @if($appt->vehicle)<span class="me-2"><i class="bi bi-bicycle me-1"></i>{{ trim($appt->vehicle->brand.' '.$appt->vehicle->model) }}{{ $appt->vehicle->plate ? ' · '.$appt->vehicle->plate : '' }}</span>@endif
                                         @if($appt->mechanic)<span class="me-2"><i class="bi bi-person-gear me-1"></i>{{ $appt->mechanic->name }}</span>@endif
                                         @if($appt->display_phone)<span class="me-2"><i class="bi bi-telephone me-1"></i>{{ $appt->display_phone }}</span>@endif
-                                        <span><i class="bi bi-hourglass-split me-1"></i>{{ $appt->duration_minutes }} min</span>
+                                        <span><i class="bi bi-hourglass-split me-1"></i>{{ $appt->duration_label }}@if($appt->duration_minutes >= 1440 && $appt->ends_at) · hasta {{ $appt->ends_at->translatedFormat('D d/m H:i') }}@endif</span>
                                     </div>
                                     @if($appt->notes)<div class="small text-body-secondary mt-1 fst-italic">{{ $appt->notes }}</div>@endif
                                 </div>
@@ -273,12 +273,14 @@
                     <div id="paneQuick" class="d-none">
                         <div class="row g-3">
                             <div class="col-md-7">
-                                <label class="form-label small fw-semibold">Nombre</label>
+                                <label class="form-label small fw-semibold" for="f_cname">Nombre <span class="text-danger">*</span></label>
                                 <input type="text" name="customer_name" id="f_cname" class="form-control" maxlength="255" placeholder="Nombre del cliente">
+                                <div class="invalid-feedback">Escribe el nombre del cliente.</div>
                             </div>
                             <div class="col-md-5">
-                                <label class="form-label small fw-semibold">Teléfono</label>
-                                <input type="text" name="customer_phone" id="f_cphone" class="form-control" maxlength="30" placeholder="Opcional">
+                                <label class="form-label small fw-semibold" for="f_cphone">Teléfono <span class="text-danger">*</span></label>
+                                <input type="tel" name="customer_phone" id="f_cphone" class="form-control" maxlength="30" placeholder="Ej: 70012345">
+                                <div class="invalid-feedback">Escribe el teléfono del cliente.</div>
                             </div>
                         </div>
                     </div>
@@ -314,12 +316,9 @@
                         <div class="col-md-4">
                             <label class="form-label small fw-semibold">Duración</label>
                             <select name="duration_minutes" id="f_duration" class="form-select">
-                                <option value="30">30 min</option>
-                                <option value="60" selected>1 hora</option>
-                                <option value="90">1 h 30 min</option>
-                                <option value="120">2 horas</option>
-                                <option value="180">3 horas</option>
-                                <option value="240">4 horas</option>
+                                @foreach(\App\Models\Workshop\Appointment::DURATIONS as $mins => $label)
+                                    <option value="{{ $mins }}" @selected($mins === 60)>{{ $label }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <input type="hidden" name="scheduled_at" id="f_scheduled">
@@ -327,6 +326,17 @@
                             <label class="form-label small fw-semibold">Notas</label>
                             <textarea name="notes" id="f_notes" class="form-control" rows="2" maxlength="1000" placeholder="Observaciones (opcional)"></textarea>
                         </div>
+                    {{-- El teléfono del cliente rápido ya es de otro cliente: preguntar antes de guardar --}}
+                    <div id="phoneConflict" class="alert alert-warning border-0 mt-3 mb-0 d-none" role="alert">
+                        <div class="fw-semibold mb-1"><i class="bi bi-telephone-x me-1"></i>Este teléfono ya es de <span id="pcName"></span>.</div>
+                        <div class="small mb-2">¿La cita es para ese cliente, o <span id="pcNew"></span> es otra persona?</div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-sm btn-primary" id="pcUseExisting"><i class="bi bi-person-check me-1"></i>Usar <span id="pcName2"></span></button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="pcCreateNew"><i class="bi bi-person-plus me-1"></i>Registrar a <span id="pcNew2"></span> como nuevo</button>
+                            <button type="button" class="btn btn-sm btn-light border" id="pcCancel">Cambiar teléfono</button>
+                        </div>
+                    </div>
+                    <input type="hidden" name="new_client" id="f_newclient" value="0">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -398,6 +408,61 @@
                 .forEach(o => { o.selected = set.has(o.value); });
         }
 
+        // Select2 no se entera de los .value puestos por código: refrescar su vista
+        // (solo 'change.select2', para no disparar los change propios del formulario).
+        function refreshSelects() {
+            if (window.jQuery && jQuery.fn.select2) jQuery('#apptForm select').trigger('change.select2');
+        }
+        // Una duración guardada que no está en la lista se agrega para no perderla.
+        function setDuration(mins) {
+            const sel = document.getElementById('f_duration');
+            const v = String(mins || 60);
+            if (!Array.from(sel.options).some(o => o.value === v)) {
+                const m = parseInt(v, 10), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), r = m % 60;
+                const label = [d ? d + (d === 1 ? ' día' : ' días') : '', h ? h + ' h' : '', r ? r + ' min' : ''].filter(Boolean).join(' ');
+                sel.appendChild(new Option(label || v + ' min', v));
+            }
+            sel.value = v;
+        }
+
+        // ── Cliente rápido: el teléfono es obligatorio y, si ya es de otro cliente,
+        // se pregunta antes de guardar (usar ese cliente o registrar uno nuevo).
+        const lookupUrl = "{{ route('workshop.agenda.client-by-phone') }}";
+        const pc = document.getElementById('phoneConflict');
+        const norm = s => (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
+        let pcClient = null;
+        function hideConflict() { pc.classList.add('d-none'); pcClient = null; }
+        function submitNow() {
+            document.getElementById('f_scheduled').value =
+                document.getElementById('f_date').value + ' ' + document.getElementById('f_time').value + ':00';
+            form.dataset.checked = '1';
+            form.submit();
+        }
+        document.getElementById('pcCancel').addEventListener('click', function () {
+            hideConflict();
+            document.getElementById('f_cphone').focus();
+        });
+        document.getElementById('pcCreateNew').addEventListener('click', function () {
+            document.getElementById('f_newclient').value = '1';
+            submitNow();
+        });
+        document.getElementById('pcUseExisting').addEventListener('click', function () {
+            const c = pcClient;
+            if (!c) return;
+            setClientMode('registered');
+            const sel = document.getElementById('f_client');
+            if (!Array.from(sel.options).some(o => o.value === String(c.id))) {
+                sel.appendChild(new Option(c.full_name, c.id));
+            }
+            sel.value = String(c.id);
+            filterVehicles();
+            refreshSelects();
+            submitNow();
+        });
+        ['f_cphone', 'f_cname'].forEach(id => document.getElementById(id).addEventListener('input', function () {
+            hideConflict();
+            this.classList.remove('is-invalid');
+        }));
         function openNew() {
             form.reset();
             form.action = storeUrl;
@@ -405,9 +470,13 @@
             document.getElementById('apptModalTitle').innerHTML = '<i class="bi bi-calendar2-plus me-2 text-primary"></i>Nueva cita';
             document.getElementById('f_date').value = "{{ $date->toDateString() }}";
             document.getElementById('f_time').value = '09:00';
-            document.getElementById('f_duration').value = '60';
+            setDuration(60);
             setClientMode('registered');
             filterVehicles();
+            document.getElementById('f_newclient').value = '0';
+            delete form.dataset.checked;
+            hideConflict();
+            refreshSelects();
             apptModal.show();
         }
         document.getElementById('btnNewAppt')?.addEventListener('click', openNew);
@@ -433,15 +502,47 @@
             document.getElementById('f_title').value = a.title || '';
             document.getElementById('f_date').value = a.date;
             document.getElementById('f_time').value = a.time;
-            document.getElementById('f_duration').value = a.duration_minutes;
+            setDuration(a.duration_minutes);
             document.getElementById('f_notes').value = a.notes || '';
+            document.getElementById('f_newclient').value = '0';
+            delete form.dataset.checked;
+            hideConflict();
+            refreshSelects();
             apptModal.show();
         }));
 
         // Combina fecha + hora en scheduled_at antes de enviar
-        form.addEventListener('submit', function () {
+        form.addEventListener('submit', function (e) {
             document.getElementById('f_scheduled').value =
                 document.getElementById('f_date').value + ' ' + document.getElementById('f_time').value + ':00';
+
+            const quick = document.getElementById('cmodeQuick').checked;
+            if (!quick || form.dataset.checked === '1') return;
+            e.preventDefault();
+
+            const nameEl = document.getElementById('f_cname');
+            const phoneEl = document.getElementById('f_cphone');
+            const name = nameEl.value.trim(), phone = phoneEl.value.trim();
+            nameEl.classList.toggle('is-invalid', !name);
+            phoneEl.classList.toggle('is-invalid', !phone);
+            if (!name || !phone) { (name ? phoneEl : nameEl).focus(); return; }
+
+            fetch(lookupUrl + '?phone=' + encodeURIComponent(phone), { headers: { 'Accept': 'application/json' } })
+                .then(r => r.ok ? r.json() : { data: null })
+                .then(res => {
+                    const c = res && res.data;
+                    if (c && norm(c.full_name) !== norm(name)) {
+                        pcClient = c;
+                        ['pcName', 'pcName2'].forEach(id => document.getElementById(id).textContent = c.full_name);
+                        ['pcNew', 'pcNew2'].forEach(id => document.getElementById(id).textContent = name);
+                        pc.classList.remove('d-none');
+                        pc.scrollIntoView({ block: 'nearest' });
+                        return;
+                    }
+                    submitNow();
+                })
+                // Sin respuesta de la consulta: se guarda igual (el servidor decide).
+                .catch(submitNow);
         });
     }
 </script>

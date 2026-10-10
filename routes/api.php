@@ -225,6 +225,8 @@ Route::middleware(['auth:sanctum', 'api.fresh'])->group(function () {
                 ->middleware('api.permission:appointments.view');
             Route::get('appointments/range', [AppointmentController::class, 'range'])
                 ->middleware('api.permission:appointments.view');
+            Route::get('appointments/client-by-phone', [AppointmentController::class, 'clientByPhone'])
+                ->middleware('api.permission:appointments.create,appointments.edit');
             Route::get('appointments', [AppointmentController::class, 'index'])
                 ->middleware('api.permission:appointments.view');
             Route::post('appointments', [AppointmentController::class, 'store'])

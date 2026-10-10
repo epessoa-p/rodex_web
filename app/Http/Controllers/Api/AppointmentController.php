@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Client;
 use App\Models\Workshop\Appointment;
 use App\Models\Workshop\Mechanic;
 use App\Models\Workshop\Service;
 use App\Models\Workshop\WorkOrder;
+use App\Services\Workshop\QuickClientResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -205,7 +205,9 @@ class AppointmentController extends Controller
         $data = $request->validate([
             'client_id'        => ['nullable', Rule::exists('clients', 'id')->where('company_id', $companyId)],
             'customer_name'    => ['nullable', 'required_without:client_id', 'string', 'max:255'],
-            'customer_phone'   => ['nullable', 'string', 'max:30'],
+            // Cliente rápido: el teléfono es obligatorio (con él se registra el cliente).
+            'customer_phone'   => ['nullable', 'required_without:client_id', 'string', 'max:30'],
+            'new_client'       => ['nullable', 'boolean'],
             'vehicle_id'       => ['nullable', Rule::exists('vehicles', 'id')->where('company_id', $companyId)],
             'service_id'       => ['nullable', Rule::exists('services', 'id')->where('company_id', $companyId)],
             'service_ids'      => ['nullable', 'array', 'max:20'],
@@ -213,10 +215,12 @@ class AppointmentController extends Controller
             'mechanic_id'      => ['nullable', Rule::exists('mechanics', 'id')->where('company_id', $companyId)],
             'title'            => ['nullable', 'string', 'max:255'],
             'scheduled_at'     => ['required', 'date'],
-            'duration_minutes' => ['required', 'integer', 'min:15', 'max:1440'],
+            // Hasta 5 días (trabajos largos de taller).
+            'duration_minutes' => ['required', 'integer', 'min:15', 'max:' . Appointment::MAX_DURATION],
             'notes'            => ['nullable', 'string', 'max:1000'],
         ], [
-            'customer_name.required_without' => 'Indica un cliente o al menos un nombre.',
+            'customer_name.required_without'  => 'Indica un cliente o al menos un nombre.',
+            'customer_phone.required_without' => 'Escribe el teléfono del cliente.',
         ]);
 
         $serviceIds = array_key_exists('service_ids', $data)
@@ -225,17 +229,10 @@ class AppointmentController extends Controller
         unset($data['service_ids'], $data['service_id']);
 
         // Cliente rápido con nombre + teléfono → se registra (o se reutiliza
-        // por teléfono) para que la cita quede con cliente real.
-        if (empty($data['client_id'])
-            && ! empty($data['customer_name'])
-            && ! empty($data['customer_phone'])) {
-            $client = $this->findOrCreateClient(
-                $companyId, trim($data['customer_name']), trim($data['customer_phone'])
-            );
-            $data['client_id']      = $client->id;
-            $data['customer_name']  = null;
-            $data['customer_phone'] = null;
-        }
+        // por teléfono, salvo que pidan uno nuevo) para que la cita quede con cliente real.
+        $forceNew = (bool) ($data['new_client'] ?? false);
+        unset($data['new_client']);
+        $data = app(QuickClientResolver::class)->apply($companyId, $data, $forceNew);
 
         if (empty($data['title']) && $serviceIds) {
             $data['title'] = Service::whereIn('id', $serviceIds)->orderBy('name')
@@ -245,28 +242,21 @@ class AppointmentController extends Controller
         return [$data, $serviceIds];
     }
 
-    /** Busca el cliente de la empresa por teléfono (solo dígitos) o lo crea. */
-    private function findOrCreateClient(int $companyId, string $name, string $phone): Client
+    /**
+     * ¿El teléfono ya es de un cliente? La web/app lo consultan antes de guardar
+     * una cita con cliente rápido, para preguntar si usarlo o registrar uno nuevo.
+     */
+    public function clientByPhone(Request $request, QuickClientResolver $resolver)
     {
-        $digits = preg_replace('/\D+/', '', $phone);
+        $companyId = $request->attributes->get('tenant_company')?->id;
+        $phone = trim((string) $request->query('phone', ''));
+        $client = ($companyId && $phone !== '') ? $resolver->findByPhone((int) $companyId, $phone) : null;
 
-        // Candidatos por los últimos dígitos (portable, sin REGEXP_REPLACE) y
-        // comparación exacta de dígitos en PHP.
-        $existing = null;
-        if ($digits !== '') {
-            $existing = Client::where('company_id', $companyId)
-                ->where('phone', 'like', '%' . substr($digits, -6) . '%')
-                ->get()
-                ->first(fn (Client $c) => preg_replace('/\D+/', '', (string) $c->phone) === $digits);
-        }
-
-        return $existing ?? Client::create([
-            'company_id' => $companyId,
-            'full_name'  => $name,
-            'phone'      => $phone,
-            'active'     => true,
-            'created_by' => auth()->id(),
-        ]);
+        return response()->json(['data' => $client ? [
+            'id'        => $client->id,
+            'full_name' => $client->full_name,
+            'phone'     => $client->phone,
+        ] : null]);
     }
 
     private function nextWorkOrderCode(int $companyId, ?int $branchId): string
