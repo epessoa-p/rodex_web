@@ -155,6 +155,10 @@
     width:100%; border:0; outline:none; background:transparent;
     padding:.5rem .55rem; font-size:.84rem; min-width:var(--w,90px);
 }
+/* Puntero de celda (tipo Excel): grueso y visible en cualquier fondo. */
+.gt td, .gt input.gt-in { cursor: cell; }
+.gt td.gt-num, .gt td.gt-st { cursor: default; }
+.gt td.gt-del, .gt td.gt-del button { cursor: pointer; }
 .gt input.gt-in.num { text-align:right; font-variant-numeric:tabular-nums; }
 .gt td:focus-within { box-shadow:inset 0 0 0 2px var(--bs-primary,#0d6efd); background:#f5f9ff; }
 .gt tr.has-error td:not(.gt-num) { background:#fff7f7; }

@@ -358,6 +358,26 @@
         }
         .form-select-sm + .select2-container--bootstrap-5 .select2-selection,
         .select2-sm + .select2-container--bootstrap-5 .select2-selection { min-height: 31px; font-size: .82rem; }
+
+        /* ── Puntero del mouse siempre visible ──────────────────────────
+           En algunos Windows la "I" de texto del sistema es muy delgada y se
+           dibuja invirtiendo el fondo: en ciertas pantallas desaparece.
+           · Texto común (ayudas, tarjetas, títulos): flecha, no "I".
+           · Campos de texto: "I" propia de alto contraste (negra con borde blanco).
+           · Listas, casillas y sus etiquetas: mano. */
+        body { cursor: default; }
+        input:not([type]),
+        input[type="text"], input[type="search"], input[type="email"], input[type="number"],
+        input[type="tel"], input[type="password"], input[type="url"], input[type="date"],
+        input[type="time"], input[type="datetime-local"], input[type="month"],
+        textarea, [contenteditable="true"], .select2-search__field {
+            cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='24' viewBox='0 0 16 24'%3E%3Cpath d='M4 2.5h2.5L8 4l1.5-1.5H12M8 4v16M4 21.5h2.5L8 20l1.5 1.5H12' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M4 2.5h2.5L8 4l1.5-1.5H12M8 4v16M4 21.5h2.5L8 20l1.5 1.5H12' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 8 12, text;
+        }
+        select, .form-select, .select2-selection, .select2-results__option,
+        input[type="checkbox"], input[type="radio"], .form-check-label, label[for] {
+            cursor: pointer;
+        }
+        input:disabled, textarea:disabled, select:disabled, .form-select:disabled { cursor: not-allowed; }
     </style>
 
     {{-- Select2 (búsqueda en selects) --}}
@@ -579,6 +599,17 @@
         if (form.hasAttribute('data-no-spinner')) return;
         if (typeof form.checkValidity === 'function' && !form.checkValidity()) return; // HTML5 inválido
 
+        // Se decide después de los demás listeners: si alguno canceló el envío
+        // (preventDefault: validación propia, una pregunta antes de guardar…),
+        // el botón no debe quedar en "Procesando…".
+        setTimeout(function () {
+            if (e.defaultPrevented) return;
+            window.markFormProcessing(form);
+        }, 0);
+    }, true);
+
+    /** Pone los botones de envío del form en "Procesando…" (también para form.submit() por código). */
+    window.markFormProcessing = function (form) {
         form.querySelectorAll('button[type="submit"], button:not([type])').forEach(function (btn) {
             if (btn.dataset.spinnerBound) return;
             btn.dataset.spinnerBound = '1';
@@ -586,7 +617,7 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Procesando…';
         });
-    }, true);
+    };
 
     // Restaurar botones si se vuelve atrás (bfcache)
     window.addEventListener('pageshow', function (ev) {

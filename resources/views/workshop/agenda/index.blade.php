@@ -436,6 +436,8 @@
             document.getElementById('f_scheduled').value =
                 document.getElementById('f_date').value + ' ' + document.getElementById('f_time').value + ':00';
             form.dataset.checked = '1';
+            // form.submit() no dispara 'submit': el "Procesando…" se pone aquí.
+            if (window.markFormProcessing) window.markFormProcessing(form);
             form.submit();
         }
         document.getElementById('pcCancel').addEventListener('click', function () {
