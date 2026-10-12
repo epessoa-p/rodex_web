@@ -104,7 +104,10 @@
                     </thead>
                     <tbody>
                         @forelse($movements as $mov)
-                        @php $typeInfo = \App\Models\InventoryMovement::TYPES[$mov->type] ?? ['label' => $mov->type, 'color' => 'secondary']; @endphp
+                        @php
+                            $typeInfo = \App\Models\InventoryMovement::TYPES[$mov->type] ?? ['label' => $mov->type, 'color' => 'secondary'];
+                            $delta = \App\Services\Inventory\KardexMath::delta($mov, $warehouseId ?? null);
+                        @endphp
                         <tr>
                             <td>
                                 <div class="fw-semibold" style="font-size:.85rem;">{{ $mov->movement_date->format('d/m/Y') }}</div>
@@ -126,10 +129,10 @@
                                 </span>
                             </td>
                             <td class="text-end text-success fw-semibold">
-                                {{ in_array($mov->type, ['in','adjustment']) ? number_format($mov->quantity, 0) : '—' }}
+                                {{ $delta > 0 ? \App\Services\Inventory\KardexMath::qty($delta) : '—' }}
                             </td>
                             <td class="text-end text-danger fw-semibold">
-                                {{ in_array($mov->type, ['out','transfer']) ? number_format($mov->quantity, 0) : '—' }}
+                                @if($delta < 0){{ \App\Services\Inventory\KardexMath::qty(-$delta) }}@elseif($mov->type === 'transfer')<span class="text-muted fw-normal" title="Transferencia entre almacenes: no cambia el total"><i class="bi bi-arrow-left-right"></i> {{ \App\Services\Inventory\KardexMath::qty((float) $mov->quantity) }}</span>@else—@endif
                             </td>
                             <td class="text-muted" style="font-size:.82rem;">{{ $mov->reference ?: '—' }}</td>
                             <td style="font-size:.82rem;">{{ $mov->user?->name ?: '—' }}</td>
@@ -152,6 +155,33 @@
                         </tr>
                         @endforelse
                     </tbody>
+                    @if($totals['count'] > 0)
+                    @php $K = \App\Services\Inventory\KardexMath::class; @endphp
+                    {{-- Totales de TODO lo filtrado (todas las páginas) --}}
+                    <tfoot class="table-light">
+                        <tr class="fw-semibold">
+                            <td colspan="4">
+                                Totales del filtro
+                                <div class="text-muted fw-normal small">
+                                    {{ $totals['count'] }} {{ $totals['count'] === 1 ? 'movimiento' : 'movimientos' }}{{ $movements->lastPage() > 1 ? ' · todas las páginas' : '' }}
+                                </div>
+                            </td>
+                            <td class="text-end text-success">{{ $K::qty($totals['entries']) }}</td>
+                            <td class="text-end text-danger">{{ $K::qty($totals['exits']) }}</td>
+                            <td colspan="4">
+                                @if($totals['single_product'])
+                                    Neto: <span class="{{ $totals['net'] < 0 ? 'text-danger' : 'text-success' }}">{{ $totals['net'] > 0 ? '+' : '' }}{{ $K::qty($totals['net']) }}</span>
+                                    <span class="text-muted fw-normal small">(entradas − salidas)</span>
+                                @else
+                                    <span class="text-muted fw-normal small"><i class="bi bi-info-circle me-1"></i>Unidades de varios productos: elige un producto para ver el neto.</span>
+                                @endif
+                                @if($totals['transfers'] > 0)
+                                    <div class="text-muted fw-normal small"><i class="bi bi-arrow-left-right me-1"></i>{{ $K::qty($totals['transfers']) }} transferidas entre almacenes (no cambian el total; elige un almacén para verlas como entrada o salida).</div>
+                                @endif
+                            </td>
+                        </tr>
+                    </tfoot>
+                    @endif
                 </table>
             </div>
         </div>

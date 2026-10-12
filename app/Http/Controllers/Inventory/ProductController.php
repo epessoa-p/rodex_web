@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Inventory;
 
+use App\Services\Inventory\KardexMath;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Inventory\Concerns\ParsesProductImport;
 use App\Models\Company;
@@ -164,15 +165,22 @@ class ProductController extends Controller
         $query = \App\Models\InventoryMovement::with(['product', 'warehouse', 'destinationWarehouse', 'user'])
             ->when($companyId, fn($q) => $q->where('company_id', $companyId));
 
+        $warehouseId = $request->warehouse_id ? (int) $request->warehouse_id : null;
+
         if ($request->product_id)   $query->where('product_id',   $request->product_id);
-        if ($request->warehouse_id) $query->where('warehouse_id', $request->warehouse_id);
+        // Con almacén: también las transferencias que llegan a él (son entradas).
+        KardexMath::whereWarehouse($query, $warehouseId);
         if ($request->type)         $query->where('type',         $request->type);
         if ($request->date_from)    $query->whereDate('movement_date', '>=', $request->date_from);
         if ($request->date_to)      $query->whereDate('movement_date', '<=', $request->date_to);
 
-        $movements = $query->orderByDesc('movement_date')->orderByDesc('id')->paginate(50);
+        // Totales de todo lo filtrado (no solo de la página de 50).
+        $totals = KardexMath::totals($query, $warehouseId);
+        $totals['single_product'] = (bool) $request->product_id;
 
-        return view('inventory.kardex', compact('movements', 'warehouses', 'products'));
+        $movements = $query->orderByDesc('movement_date')->orderByDesc('id')->paginate(50)->withQueryString();
+
+        return view('inventory.kardex', compact('movements', 'warehouses', 'products', 'totals', 'warehouseId'));
     }
 
     public function kardex(Product $product, Request $request)
@@ -185,12 +193,18 @@ class ProductController extends Controller
             ->orderBy('name')
             ->get();
 
-        $query = $product->inventoryMovements()->with(['warehouse', 'destinationWarehouse', 'user']);
+        $warehouseId = $request->warehouse_id ? (int) $request->warehouse_id : null;
 
-        if ($request->warehouse_id) {
-            $query->where('warehouse_id', $request->warehouse_id);
-        }
+        $query = $product->inventoryMovements()->getQuery()->with(['warehouse', 'destinationWarehouse', 'user']);
+        // Con almacén: también las transferencias que llegan a él (son entradas).
+        KardexMath::whereWarehouse($query, $warehouseId);
+
+        // Saldo inicial: todo lo anterior a "desde" (antes el saldo arrancaba en 0
+        // aunque hubiera stock previo).
+        $opening = 0.0;
         if ($request->date_from) {
+            $before = (clone $query)->whereDate('movement_date', '<', $request->date_from);
+            $opening = KardexMath::totals($before, $warehouseId)['net'];
             $query->whereDate('movement_date', '>=', $request->date_from);
         }
         if ($request->date_to) {
@@ -199,22 +213,27 @@ class ProductController extends Controller
 
         $movements = $query->orderBy('movement_date')->orderBy('id')->get();
 
-        $balance   = 0;
-        $movements = $movements->map(function ($mov) use (&$balance) {
-            if (in_array($mov->type, ['in', 'adjustment'])) {
-                $balance    += $mov->quantity;
-                $mov->entry  = $mov->quantity;
-                $mov->exit   = null;
-            } else {
-                $balance   -= $mov->quantity;
-                $mov->entry = null;
-                $mov->exit  = $mov->quantity;
-            }
+        $balance   = $opening;
+        $movements = $movements->map(function ($mov) use (&$balance, $warehouseId) {
+            $delta = KardexMath::delta($mov, $warehouseId);
+            $balance += $delta;
+            $mov->entry = $delta > 0 ? $delta : null;
+            $mov->exit  = $delta < 0 ? -$delta : null;
+            // Transferencia sin almacén elegido: no cambia el total.
+            $mov->neutral = $delta == 0 && $mov->type === 'transfer' ? (float) $mov->quantity : null;
             $mov->balance = $balance;
             return $mov;
         });
 
-        return view('inventory.products.kardex', compact('product', 'movements', 'warehouses'));
+        $totals = [
+            'opening' => $opening,
+            'entries' => (float) $movements->sum(fn ($m) => $m->entry ?? 0),
+            'exits'   => (float) $movements->sum(fn ($m) => $m->exit ?? 0),
+            'closing' => $balance,
+            'from'    => $request->date_from,
+        ];
+
+        return view('inventory.products.kardex', compact('product', 'movements', 'warehouses', 'totals', 'warehouseId'));
     }
 
     public function edit(Product $product)

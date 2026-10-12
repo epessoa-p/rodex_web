@@ -82,6 +82,17 @@
                         </tr>
                     </thead>
                     <tbody>
+                        @if($totals['from'])
+                        {{-- Saldo que había antes de "desde": el saldo de las filas parte de aquí --}}
+                        <tr class="table-light">
+                            <td class="ps-4 py-2 text-muted" style="font-size:.8rem">—</td>
+                            <td class="py-2 small text-muted" colspan="6">
+                                <i class="bi bi-skip-start me-1"></i>Saldo inicial al {{ \Illuminate\Support\Carbon::parse($totals['from'])->format('d/m/Y') }} (movimientos anteriores)
+                            </td>
+                            <td class="py-2 text-end fw-bold {{ $totals['opening'] < 0 ? 'text-danger' : '' }}">{{ number_format($totals['opening'], 2) }}</td>
+                            <td colspan="2"></td>
+                        </tr>
+                        @endif
                         @forelse($movements as $i => $mov)
                         @php
                             $typeInfo = \App\Models\InventoryMovement::TYPES[$mov->type] ?? ['label' => $mov->type, 'color' => 'secondary'];
@@ -110,7 +121,7 @@
                                 {{ $mov->entry !== null ? number_format($mov->entry, 2) : '—' }}
                             </td>
                             <td class="py-3 text-end fw-semibold text-danger">
-                                {{ $mov->exit !== null ? number_format($mov->exit, 2) : '—' }}
+                                @if($mov->exit !== null){{ number_format($mov->exit, 2) }}@elseif($mov->neutral !== null)<span class="text-muted fw-normal" title="Transferencia entre almacenes: no cambia el total"><i class="bi bi-arrow-left-right"></i> {{ number_format($mov->neutral, 2) }}</span>@else—@endif
                             </td>
                             <td class="py-3 text-end fw-bold {{ $mov->balance < 0 ? 'text-danger' : '' }}">
                                 {{ number_format($mov->balance, 2) }}
@@ -129,6 +140,21 @@
                         </tr>
                         @endforelse
                     </tbody>
+                    @if($movements->isNotEmpty() || $totals['opening'] != 0)
+                    @php $K = \App\Services\Inventory\KardexMath::class; @endphp
+                    <tfoot class="table-light">
+                        <tr class="fw-semibold">
+                            <td colspan="5" class="ps-4">
+                                Totales del período
+                                @if($totals['from'])<div class="text-muted fw-normal small">Saldo inicial al {{ \Illuminate\Support\Carbon::parse($totals['from'])->format('d/m/Y') }}: {{ $K::qty($totals['opening']) }}</div>@endif
+                            </td>
+                            <td class="text-end text-success">{{ $K::qty($totals['entries']) }}</td>
+                            <td class="text-end text-danger">{{ $K::qty($totals['exits']) }}</td>
+                            <td class="text-end {{ $totals['closing'] < 0 ? 'text-danger' : '' }}" title="Saldo final">{{ $K::qty($totals['closing']) }}</td>
+                            <td colspan="2" class="pe-4 text-muted fw-normal small">Saldo final</td>
+                        </tr>
+                    </tfoot>
+                    @endif
                 </table>
             </div>
         </div>
