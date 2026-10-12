@@ -92,6 +92,8 @@ Route::middleware(['auth:sanctum', 'api.fresh'])->group(function () {
             // Catálogo público por sucursal: enlace, QR y PDF.
             Route::get('catalog/branches', [\App\Http\Controllers\Api\CatalogLinkController::class, 'index'])
                 ->middleware('api.permission:products.view');
+            Route::get('catalog/branches/{branch}/count', [\App\Http\Controllers\Api\CatalogLinkController::class, 'count'])
+                ->middleware('api.permission:products.view');
         });
 
         // ── Módulo Ventas / POS (plan: sales) ──────────────────────

@@ -61,7 +61,7 @@
 </head>
 <body>
     <div class="toolbar">
-        <a class="btn-pdf" href="{{ route('catalog.public.pdf', $branch->public_token) }}">
+        <a class="btn-pdf" href="{{ route('catalog.public.pdf', array_merge(['token' => $branch->public_token], $filterQuery ?? [])) }}">
             <i class="bi bi-download"></i> Descargar PDF
         </a>
     </div>
@@ -73,12 +73,16 @@
                 <h1>{{ $company?->name ?? config('brand.name') }}</h1>
                 <div class="sub">Catálogo de productos y precios</div>
                 <span class="branch"><i class="bi bi-shop"></i> {{ $branch->name }}</span>
+                @if(!empty($filterLabel))
+                <div class="sub mt-1"><i class="bi bi-funnel"></i> {{ $filterLabel }}</div>
+                @endif
             </div>
         </div>
 
         <div class="searchbar">
             {{-- Búsqueda en el servidor (recorre todo el catálogo, no solo la página). --}}
             <form method="GET" action="{{ route('catalog.public', $branch->public_token) }}" id="catForm">
+                @foreach(($filterQuery ?? []) as $fk => $fv)<input type="hidden" name="{{ $fk }}" value="{{ $fv }}">@endforeach
                 <div class="input-group">
                     <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
                     <input type="search" name="q" id="catSearch" class="form-control" value="{{ $q ?? '' }}"
@@ -92,7 +96,7 @@
             @if($products->isEmpty())
                 @if(($q ?? '') !== '')
                     <div class="empty"><i class="bi bi-search d-block fs-1 mb-2 opacity-25"></i>Sin resultados para «{{ $q }}».
-                        <div class="mt-2"><a href="{{ route('catalog.public', $branch->public_token) }}" class="btn btn-sm btn-outline-dark">Ver todo el catálogo</a></div>
+                        <div class="mt-2"><a href="{{ route('catalog.public', array_merge(['token' => $branch->public_token], $filterQuery ?? [])) }}" class="btn btn-sm btn-outline-dark">Ver todo el catálogo</a></div>
                     </div>
                 @else
                     <div class="empty"><i class="bi bi-box2 d-block fs-1 mb-2 opacity-25"></i>Aún no hay productos en el catálogo.</div>

@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Catalog;
 
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
-use App\Models\InventoryMovement;
 use App\Models\Product;
+use App\Services\Catalog\CatalogFilter;
 use App\Support\Tenancy;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -29,32 +29,43 @@ class PublicCatalogController extends Controller
     public function show(Request $request, string $token)
     {
         $q = trim((string) $request->query('q', ''));
+        $filter = CatalogFilter::fromRequest($request);
 
-        return $this->withCatalog($token, fn ($data) => view('catalog.branch', $data + ['q' => $q]), $q, true);
+        return $this->withCatalog($token, fn ($data) => view('catalog.branch', $data + ['q' => $q]), $q, true, $filter);
     }
 
-    /** Descarga del catálogo en PDF (dompdf). */
-    public function pdf(string $token)
+    /**
+     * Descarga del catálogo en PDF (dompdf). Acepta los mismos filtros que la
+     * página (?cat=&mar=&mod=&stock=) para mandar solo una parte del catálogo.
+     */
+    public function pdf(Request $request, string $token)
     {
-        return $this->withCatalog($token, function ($data) {
+        $filter = CatalogFilter::fromRequest($request);
+
+        return $this->withCatalog($token, function ($data) use ($filter) {
             $data['logoData'] = $this->logoBase64($data['company']);
 
             $pdf = Pdf::loadView('catalog.branch-pdf', $data)
                 ->setPaper('a4', 'portrait')
-                ->setOption(['isRemoteEnabled' => true]);
+                // Recorte de fuente: solo se incrustan las letras usadas (sin esto
+                // el PDF pesa ~900 KB aunque tenga pocos productos).
+                ->setOption(['isRemoteEnabled' => true, 'isFontSubsettingEnabled' => true]);
 
-            $name = 'catalogo_' . \Illuminate\Support\Str::slug($data['branch']->name) . '_' . now()->format('Ymd') . '.pdf';
+            $slug = $filter->slug();
+            $name = 'catalogo_' . \Illuminate\Support\Str::slug($data['branch']->name)
+                . ($slug !== '' ? '_' . $slug : '') . '_' . now()->format('Ymd') . '.pdf';
 
             return $pdf->download($name);
-        });
+        }, '', false, $filter);
     }
 
     /**
      * Resuelve la sucursal por token y arma los datos del catálogo, ejecutando
      * $render dentro del contexto de la empresa dueña.
      */
-    private function withCatalog(string $token, callable $render, string $q = '', bool $paginate = false)
+    private function withCatalog(string $token, callable $render, string $q = '', bool $paginate = false, ?CatalogFilter $filter = null)
     {
+        $filter ??= new CatalogFilter();
         $tenancy = app(Tenancy::class);
 
         // El token es único global: se busca sin filtro de empresa.
@@ -64,10 +75,13 @@ class PublicCatalogController extends Controller
 
         abort_if(! $branch || ! $branch->active || ! $branch->company?->active, 404);
 
-        return $tenancy->runAs($branch->company_id, function () use ($branch, $render, $q, $paginate) {
+        return $tenancy->runAs($branch->company_id, function () use ($branch, $render, $q, $paginate, $filter) {
             $query = Product::where('active', true)
                 ->with(['category', 'brand', 'photos'])
                 ->orderBy('name');
+
+            // Parte del catálogo elegida (categorías, marcas, modelos, solo disponibles).
+            $filter->apply($query, $branch);
 
             if ($q !== '') {
                 $query->where(function ($w) use ($q) {
@@ -94,6 +108,8 @@ class PublicCatalogController extends Controller
                 'products'     => $products,
                 'availability' => $availability,
                 'generatedAt'  => now()->format('d/m/Y H:i'),
+                'filterLabel'  => $filter->labels(),
+                'filterQuery'  => $filter->query(),
             ]);
         });
     }
@@ -109,7 +125,7 @@ class PublicCatalogController extends Controller
         // Stock por almacén: [warehouse_id => [product_id => qty]]
         $stock = [];
         foreach ($warehouseIds as $whId) {
-            $stock[$whId] = $this->warehouseStockMap($branch->company_id, (int) $whId, $productIds);
+            $stock[$whId] = CatalogFilter::stockMap($branch->company_id, (int) $whId, $productIds);
         }
 
         $currentWh = $branch->warehouse_id;
@@ -132,46 +148,6 @@ class PublicCatalogController extends Controller
         }
 
         return $result;
-    }
-
-    /**
-     * Stock neto por producto en un almacén (derivado de inventory_movements).
-     * Replica la lógica de StockController::warehouseStockMap.
-     */
-    private function warehouseStockMap(int $companyId, int $warehouseId, ?array $productIds = null): array
-    {
-        // Si hay una página de productos, no se agrega el inventario completo.
-        if ($productIds !== null && $productIds === []) {
-            return [];
-        }
-
-        $in = InventoryMovement::where('company_id', $companyId)
-            ->when($productIds !== null, fn ($q) => $q->whereIn('product_id', $productIds))
-            ->where(function ($q) use ($warehouseId) {
-                $q->where(fn ($w) => $w->where('warehouse_id', $warehouseId)->whereIn('type', ['in', 'adjustment']))
-                  ->orWhere(fn ($w) => $w->where('destination_warehouse_id', $warehouseId)->where('type', 'transfer'));
-            })
-            ->groupBy('product_id')
-            ->selectRaw('product_id, SUM(quantity) as q')
-            ->pluck('q', 'product_id');
-
-        $out = InventoryMovement::where('company_id', $companyId)
-            ->when($productIds !== null, fn ($q) => $q->whereIn('product_id', $productIds))
-            ->where('warehouse_id', $warehouseId)
-            ->whereIn('type', ['out', 'transfer'])
-            ->groupBy('product_id')
-            ->selectRaw('product_id, SUM(quantity) as q')
-            ->pluck('q', 'product_id');
-
-        $map = [];
-        foreach ($in as $pid => $q) {
-            $map[$pid] = ($map[$pid] ?? 0) + (float) $q;
-        }
-        foreach ($out as $pid => $q) {
-            $map[$pid] = ($map[$pid] ?? 0) - (float) $q;
-        }
-
-        return $map;
     }
 
     /** IDs de los productos a mostrar (colección o paginador). */

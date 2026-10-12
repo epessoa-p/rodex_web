@@ -20,6 +20,8 @@ Route::middleware(['auth', 'plan:inventory'])->group(function () {
     // Administración del catálogo (QR y enlaces por sucursal)
     Route::get('inventory/catalog', [CatalogController::class, 'index'])
         ->name('catalog.index')->middleware('check-permission:products.view');
+    Route::get('inventory/catalog/count', [CatalogController::class, 'count'])
+        ->name('catalog.count')->middleware('check-permission:products.view');
 
     // ── Inventario (listado editable + migración) ─────────────────────────────
     Route::prefix('inventory/stock')->name('inventory.stock')->group(function () {

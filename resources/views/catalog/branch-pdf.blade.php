@@ -38,6 +38,9 @@
                 <div class="meta">
                     Catálogo de productos y precios · Sucursal: <strong>{{ $branch->name }}</strong> · Generado: {{ $generatedAt }}
                 </div>
+                @if(!empty($filterLabel))
+                <div class="meta">Selección: <strong>{{ $filterLabel }}</strong> · {{ $products->count() }} {{ $products->count() === 1 ? 'producto' : 'productos' }}</div>
+                @endif
             </td>
         </tr>
     </table>
