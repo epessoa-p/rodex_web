@@ -146,8 +146,15 @@ class ProductController extends Controller
             ->limit(10)
             ->get();
 
+        // Historial de precios: solo para quien ve la información del dueño.
+        $user = auth()->user();
+        $priceChanges = (\Illuminate\Support\Facades\Schema::hasTable('product_price_changes')
+            && ($user->is_super_admin || $user->hasPermissionInCompany('income-statement.view', $user->getCurrentCompany())))
+            ? $product->priceChanges()->with('user:id,name')->limit(10)->get()
+            : null;
+
         return view('inventory.products.show', compact(
-            'product', 'stockByWarehouse', 'globalStock', 'recentMovements'
+            'product', 'stockByWarehouse', 'globalStock', 'recentMovements', 'priceChanges'
         ));
     }
 
@@ -281,6 +288,16 @@ class ProductController extends Controller
 
         if (empty($validated['sku'])) {
             $validated['sku'] = $this->generateProductCode((int) $companyId);
+        }
+
+        // Sin permiso de precios: se guarda todo lo demás y el precio/costo no cambian.
+        if (! \App\Support\PricePermission::allowed()) {
+            $changed = abs((float) $validated['price'] - (float) $product->price) >= 0.005
+                || abs((float) $validated['cost'] - (float) $product->cost) >= 0.005;
+            if ($changed) {
+                return back()->withInput()->withErrors(['price' => \App\Support\PricePermission::DENIED]);
+            }
+            unset($validated['price'], $validated['cost']);
         }
 
         try {

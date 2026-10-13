@@ -277,14 +277,29 @@ class ProductController extends Controller
         unset($data['moto_models']);
 
         // Las columnas NOT NULL no admiten null aunque el campo venga vacío.
-        $product->update([
+        $attrs = [
             ...$data,
             'name'      => trim($data['name']),
             'min_stock' => (int) ($data['min_stock'] ?? 0),
             'cost'      => (float) ($data['cost'] ?? 0),
             'unit'      => trim((string) ($data['unit'] ?? '')) ?: config('inventory.default_unit', 'Unidad'),
             'active'    => $request->boolean('active', true),
-        ]);
+        ];
+
+        // Sin permiso de precios: si intenta cambiarlos se avisa; si no, se conservan.
+        if (! \App\Support\PricePermission::allowed($request->user(), $request->attributes->get('tenant_company'))) {
+            $changed = (array_key_exists('price', $attrs) && abs((float) $attrs['price'] - (float) $product->price) >= 0.005)
+                || abs((float) $attrs['cost'] - (float) $product->cost) >= 0.005;
+            if ($changed) {
+                return response()->json([
+                    'message' => \App\Support\PricePermission::DENIED,
+                    'code'    => 'price_forbidden',
+                ], 403);
+            }
+            unset($attrs['price'], $attrs['cost']);
+        }
+
+        $product->update($attrs);
 
         // Solo si la app los manda: una versión vieja que no conoce el campo no
         // debe borrar los modelos cargados desde la web. Lista vacía = quitar todos.

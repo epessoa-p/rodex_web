@@ -30,11 +30,18 @@ class WorkOrderPart extends Model
     protected static function booted(): void
     {
         static::creating(function (self $line) {
+            // Sin el SQL de ganancias aún no existe la columna: no se envía.
+            if (! (self::$hasCost ??= \Illuminate\Support\Facades\Schema::hasColumn('work_order_parts', 'unit_cost'))) {
+                unset($line->unit_cost);
+                return;
+            }
             if ($line->unit_cost === null && $line->product_id) {
                 $line->unit_cost = Product::withoutGlobalScopes()->whereKey($line->product_id)->value('cost');
             }
         });
     }
+
+    private static ?bool $hasCost = null;
     public function workOrder(): BelongsTo
     {
         return $this->belongsTo(WorkOrder::class);

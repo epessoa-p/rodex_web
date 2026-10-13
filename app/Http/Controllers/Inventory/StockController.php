@@ -156,6 +156,10 @@ class StockController extends Controller
             'value' => 'required|numeric|min:0',
         ]);
 
+        if (! \App\Support\PricePermission::allowed()) {
+            return response()->json(['ok' => false, 'message' => \App\Support\PricePermission::DENIED], 403);
+        }
+
         $product->update([$validated['field'] => $validated['value']]);
 
         $cost  = (float) $product->cost;

@@ -61,7 +61,8 @@ class BulkPriceUpdateService
                 if ($withCost) {
                     $data['cost'] = $row['new_cost'];
                 }
-                Product::whereKey($row['id'])->update($data);
+                // Por el modelo (no update() masivo) para que quede en el historial de precios.
+                Product::whereKey($row['id'])->first()?->update($data);
                 $map[$row['id']] = [
                     'price' => $row['new_price'],
                     'cost'  => $withCost ? $row['new_cost'] : $row['cost'],

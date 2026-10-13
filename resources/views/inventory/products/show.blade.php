@@ -257,6 +257,49 @@
                 </div>
             </div>
 
+            {{-- ── Historial de precios (auditoría del dueño) ───────── --}}
+            @if($priceChanges !== null)
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 fw-semibold"><i class="bi bi-tags me-2 text-muted"></i>Historial de precios</h6>
+                    <a href="{{ route('price-history.index', ['product_id' => $product->id, 'from' => now()->subYear()->toDateString()]) }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-clock-history me-1"></i>Ver todo
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    @if($priceChanges->isEmpty())
+                        <div class="text-center py-4 text-muted small">Sin cambios de precio ni costo registrados.</div>
+                    @else
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light"><tr>
+                                <th class="ps-4 py-2 small fw-semibold text-muted">Fecha</th>
+                                <th class="py-2 small fw-semibold text-muted">Qué</th>
+                                <th class="py-2 small fw-semibold text-muted text-end">Antes → Después</th>
+                                <th class="py-2 small fw-semibold text-muted">Quién</th>
+                                <th class="py-2 small fw-semibold text-muted pe-4">Desde</th>
+                            </tr></thead>
+                            <tbody>
+                            @foreach($priceChanges as $c)
+                                <tr>
+                                    <td class="ps-4 py-2 small text-nowrap">{{ $c->created_at->format('d/m/Y H:i') }}</td>
+                                    <td class="py-2 small">{{ $c->field === 'price' ? 'Precio' : 'Costo' }}</td>
+                                    <td class="py-2 small text-end text-nowrap">
+                                        <span class="text-muted">{{ money((float) $c->old_value) }}</span> →
+                                        <strong class="{{ (float) $c->new_value < (float) $c->old_value ? 'text-danger' : 'text-success' }}">{{ money((float) $c->new_value) }}</strong>
+                                    </td>
+                                    <td class="py-2 small">{{ $c->user?->name ?? 'Sistema' }}</td>
+                                    <td class="py-2 small text-muted pe-4">{{ $c->source_label }}</td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @endif
+                </div>
+            </div>
+            @endif
+
         </div>
         <div class="col-lg-4">
 

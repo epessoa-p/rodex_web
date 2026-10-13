@@ -48,6 +48,42 @@ class Product extends Model
         'deleted_at'    => 'datetime',
     ];
 
+    /**
+     * Historial de precios: cada cambio de precio o costo queda registrado con
+     * quién, cuándo y desde dónde (edición, tabla, ajuste masivo, importación,
+     * app). Al hacerse en el modelo no se escapa ningún camino; por eso los
+     * cambios de precio deben pasar por el modelo (no por update() masivo).
+     */
+    protected static function booted(): void
+    {
+        static::updated(function (self $product) {
+            foreach (['price', 'cost'] as $field) {
+                if (! $product->wasChanged($field)) {
+                    continue;
+                }
+                $old = $product->getOriginal($field);
+                $new = $product->getAttribute($field);
+                if (abs((float) $old - (float) $new) < 0.005) {
+                    continue; // 10 → 10.00: no es un cambio
+                }
+                \App\Models\Inventory\ProductPriceChange::create([
+                    'company_id' => $product->company_id,
+                    'product_id' => $product->id,
+                    'user_id'    => auth()->id(),
+                    'field'      => $field,
+                    'old_value'  => $old,
+                    'new_value'  => $new,
+                    'source'     => \App\Models\Inventory\ProductPriceChange::currentSource(),
+                ]);
+            }
+        });
+    }
+
+    public function priceChanges(): HasMany
+    {
+        return $this->hasMany(\App\Models\Inventory\ProductPriceChange::class)->latest('created_at')->latest('id');
+    }
+
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);

@@ -212,6 +212,7 @@
                                        class="form-control border-start-0 @error('cost') is-invalid @enderror"
                                        value="{{ old('cost', $isEdit ? $product->cost : '') }}"
                                        required placeholder="0.00"
+                                       @if($isEdit && ! \App\Support\PricePermission::allowed()) readonly title="Sin permiso para cambiar precios" @endif
                                        oninput="calcMargin()">
                                 @error('cost')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
@@ -227,6 +228,7 @@
                                        class="form-control border-start-0 @error('price') is-invalid @enderror"
                                        value="{{ old('price', $isEdit ? $product->price : '') }}"
                                        required placeholder="0.00"
+                                       @if($isEdit && ! \App\Support\PricePermission::allowed()) readonly title="Sin permiso para cambiar precios" @endif
                                        oninput="calcMargin()">
                                 @error('price')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>

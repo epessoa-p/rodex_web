@@ -124,7 +124,13 @@
                                         @endif
                                     </td>
                                     <td class="py-3 text-end small">{{ number_format($item->quantity, 0) }}</td>
-                                    <td class="py-3 text-end small">{{ money($item->unit_price, null, 2) }}</td>
+                                    <td class="py-3 text-end small">
+                                        {{ money($item->unit_price, null, 2) }}
+                                        {{-- Precio de lista al vender: muestra si se vendió por debajo --}}
+                                        @if($item->list_price !== null && (float) $item->unit_price < (float) $item->list_price - 0.005)
+                                            <div class="text-muted" style="font-size:.72rem" title="Precio del producto al momento de la venta">lista {{ money($item->list_price, null, 2) }}</div>
+                                        @endif
+                                    </td>
                                     <td class="py-3 text-end small text-muted">
                                         @if($item->discount > 0) {{ money($item->discount, null, 2) }} @else — @endif
                                     </td>

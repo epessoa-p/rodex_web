@@ -190,6 +190,11 @@ trait ParsesProductImport
                     'description' => $filled('notes') ? trim((string) $d['notes']) : null,
                 ], fn ($v) => $v !== null);
             }
+            // Sin permiso de precios: un producto que ya existe conserva su
+            // precio y costo (lo demás sí se actualiza). Los nuevos se crean con el suyo.
+            if (! \App\Support\PricePermission::allowed()) {
+                unset($payload['price'], $payload['cost']);
+            }
             if ($payload) {
                 $product->update($payload);
             }

@@ -38,8 +38,8 @@
                 </ul>
             </div>
             @php
-                $canEditPrices = auth()->user()->is_super_admin
-                    || auth()->user()->hasPermissionInCompany('products.edit', auth()->user()->getCurrentCompany());
+                // Cambiar precios/costos de productos existentes: permiso propio (Cargos).
+                $canEditPrices = \App\Support\PricePermission::allowed();
             @endphp
             @if($canEditPrices)
             {{-- Ámbar: acción masiva sobre precios, que se distinga de los demás botones. --}}
@@ -287,6 +287,7 @@
                                            data-id="{{ $product->id }}"
                                            value="{{ number_format($product->price, 2, '.', '') }}"
                                            min="0" step="0.01"
+                                           @unless(\App\Support\PricePermission::allowed()) readonly title="Sin permiso para cambiar precios" tabindex="-1" @endunless
                                            style="max-width:80px;">
                                 </div>
                             </td>
@@ -302,6 +303,7 @@
                                            data-id="{{ $product->id }}"
                                            value="{{ number_format($product->cost, 2, '.', '') }}"
                                            min="0" step="0.01"
+                                           @unless(\App\Support\PricePermission::allowed()) readonly title="Sin permiso para cambiar precios" tabindex="-1" @endunless
                                            style="max-width:80px;">
                                 </div>
                             </td>
