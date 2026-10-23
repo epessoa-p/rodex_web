@@ -44,11 +44,31 @@ class WorkOrderController extends Controller
             $query->where('created_by', $user->id);
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->query('status'));
+        // Filtros del listado de la app:
+        //   status = un estado, o "activas" (sin entregadas) / "por_cobrar" (con saldo).
+        //   q      = código, cliente, teléfono, placa / marca / modelo del vehículo.
+        $status = (string) $request->query('status', '');
+        if ($status === 'activas') {
+            $query->where('status', '!=', 'entregada');
+        } elseif ($status === 'por_cobrar') {
+            $query->whereIn('payment_status', ['pendiente', 'parcial'])->where('total', '>', 0);
+        } elseif ($status !== '') {
+            $query->where('status', $status);
         }
 
-        $orders = $query->limit(50)->get()->map(fn ($e) => $this->summary($e));
+        $q = trim((string) $request->query('q', ''));
+        if ($q !== '') {
+            $like = '%' . $q . '%';
+            $query->where(function ($w) use ($like) {
+                $w->where('code', 'like', $like)
+                  ->orWhere('quick_vehicle', 'like', $like)
+                  ->orWhereHas('client', fn ($c) => $c->where('full_name', 'like', $like)->orWhere('phone', 'like', $like))
+                  ->orWhereHas('vehicle', fn ($v) => $v->where('plate', 'like', $like)
+                      ->orWhere('brand', 'like', $like)->orWhere('model', 'like', $like));
+            });
+        }
+
+        $orders = $query->limit(100)->get()->map(fn ($e) => $this->summary($e));
 
         return response()->json(['data' => $orders]);
     }
@@ -462,6 +482,8 @@ class WorkOrderController extends Controller
             'balance'              => (float) $o->balance,
             // Servicio rápido: sin cliente → "Cliente de paso"; vehículo en texto libre.
             'client'               => $o->client_display,
+            // Para abrir la ficha del cliente desde la OT (null = cliente de paso).
+            'client_id'            => $o->client_id,
             'client_phone'         => $o->client?->phone,
             'vehicle'              => $o->vehicle_display,
             'is_quick'             => (bool) $o->is_quick,

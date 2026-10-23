@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 // ── Catálogo público por sucursal (SIN autenticación) ──────────────
 Route::get('/catalogo/sucursal/{token}',     [PublicCatalogController::class, 'show'])->name('catalog.public');
 Route::get('/catalogo/sucursal/{token}/pdf', [PublicCatalogController::class, 'pdf'])->name('catalog.public.pdf');
+Route::get('/catalogo/sucursal/{token}/count', [PublicCatalogController::class, 'count'])->name('catalog.public.count')->middleware('throttle:120,1');
 
 Route::middleware(['auth', 'plan:inventory'])->group(function () {
 

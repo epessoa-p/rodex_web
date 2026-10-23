@@ -57,13 +57,90 @@
         .btn-pdf { background:var(--brand); color:#fff; }
         @media (max-width: 760px) { .grid { grid-template-columns: repeat(2, 1fr); } .cat-hero { padding:20px; } }
         @media (max-width: 460px) { .grid { grid-template-columns: 1fr; } }
+        .toolbar button { border:0; border-radius:8px; padding:8px 16px; font-size:.9rem; }
+        /* Armador del PDF */
+        .pdfb-group { margin-bottom:14px; }
+        .pdfb-group h6 { font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#555; margin-bottom:6px; }
+        .pdfb-chips { display:flex; flex-wrap:wrap; gap:6px; max-height:150px; overflow:auto; padding:2px; }
+        .pdfb-chip input { display:none; }
+        .pdfb-chip span { display:inline-block; border:1px solid #d6d9de; border-radius:999px; padding:4px 11px; font-size:.82rem; cursor:pointer; background:#fff; user-select:none; }
+        .pdfb-chip input:checked + span { background:#111; color:#fff; border-color:#111; }
+        .pdfb-chip input:focus-visible + span { outline:2px solid var(--brand); outline-offset:2px; }
+        .pdfb-search { font-size:.82rem; margin-bottom:6px; }
+        .pdfb-count { background:#f4f5f7; border-radius:10px; padding:10px 12px; font-weight:600; }
+        .pdfb-count.warn { background:#fff4e5; color:#9a4d00; }
+        .pdfb-count.bad { background:#fdecec; color:#b42318; }
+        .pdfb-photo { border:1px dashed #d6d9de; border-radius:12px; padding:10px 12px; }
     </style>
 </head>
 <body>
     <div class="toolbar">
-        <a class="btn-pdf" href="{{ route('catalog.public.pdf', array_merge(['token' => $branch->public_token], $filterQuery ?? [])) }}">
+        <button type="button" class="btn-pdf" data-bs-toggle="modal" data-bs-target="#pdfBuilder">
             <i class="bi bi-download"></i> Descargar PDF
-        </a>
+        </button>
+    </div>
+
+    {{-- Armador del PDF: elegir qué incluir antes de descargar --}}
+    @php
+        $opts = $filterOptions ?? [];
+        $sel = [
+            'cat' => $filter->categories ?? [], 'mar' => $filter->brands ?? [], 'mod' => $filter->models ?? [],
+        ];
+        $groups = [
+            'cat' => ['Categorías', $opts['categories'] ?? []],
+            'mar' => ['Marcas', $opts['brands'] ?? []],
+            'mod' => ['Modelos de vehículo compatibles', $opts['models'] ?? []],
+        ];
+    @endphp
+    <div class="modal fade" id="pdfBuilder" tabindex="-1" aria-labelledby="pdfbTitle">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+            <div class="modal-content border-0">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="pdfbTitle"><i class="bi bi-file-earmark-pdf me-2" style="color:var(--brand)"></i>Descargar catálogo en PDF</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">Elige qué productos quieres en el PDF. Sin elegir nada va todo el catálogo (sin fotos).</p>
+                    @foreach($groups as $key => [$title, $items])
+                        @if(count($items))
+                        <div class="pdfb-group" data-group="{{ $key }}">
+                            <h6>{{ $title }}</h6>
+                            @if(count($items) > 10)
+                                <input type="search" class="form-control form-control-sm pdfb-search" placeholder="Buscar {{ mb_strtolower($title) }}…" aria-label="Buscar {{ mb_strtolower($title) }}">
+                            @endif
+                            <div class="pdfb-chips">
+                                @foreach($items as $o)
+                                    <label class="pdfb-chip" data-label="{{ mb_strtolower($o['name'] . ' ' . ($o['brand'] ?? '')) }}">
+                                        <input type="checkbox" name="{{ $key }}" value="{{ $o['id'] }}" @checked(in_array($o['id'], $sel[$key]))>
+                                        <span>{{ $o['name'] }}@if(!empty($o['brand'])) · {{ $o['brand'] }}@endif</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
+                    @endforeach
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="pdfbStock" @checked($filter->onlyInStock ?? false)>
+                        <label class="form-check-label" for="pdfbStock">Solo productos disponibles en esta sucursal</label>
+                    </div>
+
+                    <div class="pdfb-photo mb-3">
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" role="switch" id="pdfbPhotos">
+                            <label class="form-check-label fw-semibold" for="pdfbPhotos"><i class="bi bi-images me-1"></i>Incluir fotos de los productos</label>
+                        </div>
+                        <div class="small text-muted mt-1">Con fotos el PDF pesa más: elige al menos una categoría, marca o modelo (máximo {{ \App\Services\Catalog\CatalogFilter::PHOTO_MAX }} productos).</div>
+                    </div>
+
+                    <div class="pdfb-count" id="pdfbCount" aria-live="polite">Contando…</div>
+                </div>
+                <div class="modal-footer">
+                    <a href="#" class="btn btn-light border" id="pdfbView"><i class="bi bi-eye me-1"></i>Ver en la página</a>
+                    <a href="#" class="btn btn-dark" id="pdfbDownload"><i class="bi bi-download me-1"></i>Descargar PDF</a>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="sheet">
@@ -174,6 +251,83 @@
                 clearTimeout(t);
                 t = setTimeout(() => { if (input.value.trim() !== initial.trim()) form.submit(); }, 600);
             });
+        })();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // ── Armador del PDF ──
+        (function () {
+            const box = document.getElementById('pdfBuilder');
+            if (!box || !window.bootstrap) return;
+            const pdfUrl   = @json(route('catalog.public.pdf', $branch->public_token));
+            const pageUrl  = @json(route('catalog.public', $branch->public_token));
+            const countUrl = @json(route('catalog.public.count', $branch->public_token));
+            const WARN = {{ \App\Services\Catalog\CatalogFilter::PDF_WARN }};
+            const countEl = document.getElementById('pdfbCount');
+            const dl = document.getElementById('pdfbDownload');
+            let timer = null, seq = 0, blocked = null;
+
+            function params(withPhotos) {
+                const p = new URLSearchParams();
+                ['cat', 'mar', 'mod'].forEach(k => {
+                    const v = Array.from(box.querySelectorAll('input[name="' + k + '"]:checked')).map(i => i.value);
+                    if (v.length) p.set(k, v.join(','));
+                });
+                if (document.getElementById('pdfbStock').checked) p.set('stock', '1');
+                if (withPhotos && document.getElementById('pdfbPhotos').checked) p.set('fotos', '1');
+                return p;
+            }
+            const url = (base, p) => p.toString() ? base + '?' + p.toString().replace(/%2C/g, ',') : base;
+
+            function refresh() {
+                const p = params(true);
+                dl.href = url(pdfUrl, p);
+                document.getElementById('pdfbView').href = url(pageUrl, params(false));
+                countEl.textContent = 'Contando…';
+                countEl.className = 'pdfb-count';
+                clearTimeout(timer);
+                const mine = ++seq;
+                timer = setTimeout(() => {
+                    fetch(url(countUrl, p), { headers: { 'Accept': 'application/json' } })
+                        .then(r => r.ok ? r.json() : null)
+                        .then(res => {
+                            if (mine !== seq || !res) return;
+                            blocked = res.blocked;
+                            const n = res.count;
+                            if (blocked) {
+                                countEl.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>' + blocked;
+                                countEl.className = 'pdfb-count bad';
+                            } else {
+                                countEl.innerHTML = '<i class="bi bi-box-seam me-1"></i>' + (n === 1 ? '1 producto' : n + ' productos')
+                                    + (n > WARN ? ' · el PDF puede tardar, conviene filtrar' : '');
+                                countEl.className = 'pdfb-count' + (n > WARN ? ' warn' : '');
+                            }
+                            dl.classList.toggle('disabled', n === 0);
+                        })
+                        .catch(() => { blocked = null; countEl.textContent = '—'; });
+                }, 250);
+            }
+
+            // Con fotos y sin filtro (o demasiados): avisar en vez de descargar.
+            dl.addEventListener('click', function (e) {
+                if (blocked) {
+                    e.preventDefault();
+                    countEl.classList.add('bad');
+                    countEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                }
+            });
+
+            box.addEventListener('change', refresh);
+            box.querySelectorAll('.pdfb-search').forEach(s => s.addEventListener('input', function () {
+                const q = this.value.trim().toLowerCase();
+                this.closest('.pdfb-group').querySelectorAll('.pdfb-chip').forEach(c => {
+                    const on = c.querySelector('input').checked;
+                    c.style.display = !q || on || c.dataset.label.includes(q) ? '' : 'none';
+                });
+            }));
+            box.addEventListener('show.bs.modal', refresh);
+            // Volver desde "elige un filtro": abrir el armador directo.
+            if (location.hash === '#armar') new bootstrap.Modal(box).show();
         })();
     </script>
 </body>

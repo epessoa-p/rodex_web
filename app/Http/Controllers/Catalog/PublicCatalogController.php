@@ -43,7 +43,16 @@ class PublicCatalogController extends Controller
         $filter = CatalogFilter::fromRequest($request);
 
         return $this->withCatalog($token, function ($data) use ($filter) {
+            // PDF con fotos sin filtro (o demasiados productos): no se genera.
+            if (isset($data['blocked'])) {
+                return response()->view('catalog.pdf-blocked', $data, 422);
+            }
+
             $data['logoData'] = $this->logoBase64($data['company']);
+            $data['withPhotos'] = $filter->photos;
+            $data['photoData'] = $filter->photos
+                ? app(\App\Services\Catalog\CatalogPdfImages::class)->forProducts($data['products'])
+                : [];
 
             $pdf = Pdf::loadView('catalog.branch-pdf', $data)
                 ->setPaper('a4', 'portrait')
@@ -53,10 +62,29 @@ class PublicCatalogController extends Controller
 
             $slug = $filter->slug();
             $name = 'catalogo_' . \Illuminate\Support\Str::slug($data['branch']->name)
-                . ($slug !== '' ? '_' . $slug : '') . '_' . now()->format('Ymd') . '.pdf';
+                . ($slug !== '' ? '_' . $slug : '') . ($filter->photos ? '_fotos' : '') . '_' . now()->format('Ymd') . '.pdf';
 
             return $pdf->download($name);
         }, '', false, $filter);
+    }
+
+    /**
+     * Conteo para el armador de la página pública (sin login): cuántos
+     * productos tendría el PDF con esos filtros.
+     */
+    public function count(Request $request, string $token)
+    {
+        $filter = CatalogFilter::fromRequest($request);
+        $tenancy = app(Tenancy::class);
+        $branch = $tenancy->runAs(null, fn () => Branch::where('public_token', $token)->with('company')->first());
+        abort_if(! $branch || ! $branch->active || ! $branch->company?->active, 404);
+
+        $n = $tenancy->runAs($branch->company_id, fn () => $filter->count($branch));
+
+        return response()->json([
+            'count'   => $n,
+            'blocked' => $filter->photoBlock($n),
+        ]);
     }
 
     /**
@@ -93,6 +121,16 @@ class PublicCatalogController extends Controller
                 });
             }
 
+            // PDF con fotos: se valida antes de cargar los productos (puede ser pesado).
+            if (! $paginate && ($block = $filter->photoBlock((clone $query)->count()))) {
+                return $render([
+                    'blocked'     => $block,
+                    'company'     => $branch->company,
+                    'branch'      => $branch,
+                    'filterQuery' => $filter->query(),
+                ]);
+            }
+
             // Web: paginado (24 por página, conserva ?q=). PDF: todo el catálogo.
             $products = $paginate
                 ? $query->paginate(self::PER_PAGE)->withQueryString()
@@ -110,6 +148,9 @@ class PublicCatalogController extends Controller
                 'generatedAt'  => now()->format('d/m/Y H:i'),
                 'filterLabel'  => $filter->labels(),
                 'filterQuery'  => $filter->query(),
+                // Armador del PDF en la página pública.
+                'filterOptions' => $paginate ? CatalogFilter::options() : [],
+                'filter'       => $filter,
             ]);
         });
     }

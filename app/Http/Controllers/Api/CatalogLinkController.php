@@ -37,6 +37,7 @@ class CatalogLinkController extends Controller
             // Opciones para "Armar catálogo" (solo las que tienen productos activos).
             'filters'  => CatalogFilter::options(),
             'pdf_warn' => CatalogFilter::PDF_WARN,
+            'photo_max' => CatalogFilter::PHOTO_MAX,
         ]);
     }
 
@@ -45,6 +46,9 @@ class CatalogLinkController extends Controller
     {
         abort_unless($branch->active, 404);
 
-        return response()->json(['data' => ['count' => CatalogFilter::fromRequest($request)->count($branch)]]);
+        $filter = CatalogFilter::fromRequest($request);
+        $count = $filter->count($branch);
+
+        return response()->json(['data' => ['count' => $count, 'blocked' => $filter->photoBlock($count)]]);
     }
 }

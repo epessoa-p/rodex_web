@@ -32,6 +32,9 @@ class CatalogController extends Controller
     {
         $branch = Branch::where('active', true)->findOrFail((int) $request->query('branch_id'));
 
-        return response()->json(['count' => CatalogFilter::fromRequest($request)->count($branch)]);
+        $filter = CatalogFilter::fromRequest($request);
+        $count = $filter->count($branch);
+
+        return response()->json(['count' => $count, 'blocked' => $filter->photoBlock($count)]);
     }
 }

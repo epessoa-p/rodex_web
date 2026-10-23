@@ -28,11 +28,16 @@ class CatalogFilter
     /** Avisar antes de generar un PDF con más productos que esto. */
     public const PDF_WARN = 500;
 
+    /** Con fotos el PDF pesa más: máximo de productos y filtro obligatorio. */
+    public const PHOTO_MAX = 300;
+
     public function __construct(
         public readonly array $categories = [],
         public readonly array $brands = [],
         public readonly array $models = [],
         public readonly bool $onlyInStock = false,
+        // PDF con foto de cada producto (solo para el PDF; la página siempre las muestra).
+        public readonly bool $photos = false,
     ) {}
 
     public static function fromRequest(Request $request): self
@@ -42,6 +47,7 @@ class CatalogFilter
             self::ids($request->query('mar')),
             self::ids($request->query('mod')),
             filter_var($request->query('stock', false), FILTER_VALIDATE_BOOLEAN),
+            filter_var($request->query('fotos', false), FILTER_VALIDATE_BOOLEAN),
         );
     }
 
@@ -52,6 +58,33 @@ class CatalogFilter
         $ids = array_values(array_unique(array_filter(array_map('intval', $parts), fn ($v) => $v > 0)));
 
         return array_slice($ids, 0, self::MAX_IDS);
+    }
+
+    /**
+     * ¿Eligió al menos categoría, marca o modelo? ("Solo disponibles" no
+     * achica lo suficiente). Es obligatorio para el PDF con fotos.
+     */
+    public function narrows(): bool
+    {
+        return (bool) ($this->categories || $this->brands || $this->models);
+    }
+
+    /**
+     * Motivo por el que el PDF con fotos no se puede generar (o null si se puede).
+     */
+    public function photoBlock(int $count): ?string
+    {
+        if (! $this->photos) {
+            return null;
+        }
+        if (! $this->narrows()) {
+            return 'Para descargar el PDF con fotos elige al menos una categoría, marca o modelo: con todo el catálogo el archivo sería muy pesado y lento.';
+        }
+        if ($count > self::PHOTO_MAX) {
+            return "Son {$count} productos: con fotos el máximo es " . self::PHOTO_MAX . '. Elige menos categorías, marcas o modelos, o descárgalo sin fotos.';
+        }
+
+        return null;
     }
 
     public function isEmpty(): bool
@@ -67,6 +100,7 @@ class CatalogFilter
             'mar'   => implode(',', $this->brands),
             'mod'   => implode(',', $this->models),
             'stock' => $this->onlyInStock ? 1 : null,
+            'fotos' => $this->photos ? 1 : null,
         ], fn ($v) => $v !== null && $v !== '');
     }
 

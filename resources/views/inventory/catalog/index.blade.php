@@ -97,6 +97,15 @@
                             <label class="form-check-label" for="bmStock">Solo productos disponibles en esta sucursal</label>
                         </div>
                     </div>
+                    <div class="col-12">
+                        <div class="border border-dashed rounded-3 p-2 px-3" style="border-style:dashed!important">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" role="switch" id="bmPhotos">
+                                <label class="form-check-label fw-semibold" for="bmPhotos"><i class="bi bi-images me-1"></i>Incluir fotos de los productos en el PDF</label>
+                            </div>
+                            <div class="small text-muted">Con fotos el PDF pesa más: elige al menos una categoría, marca o modelo (máximo {{ \App\Services\Catalog\CatalogFilter::PHOTO_MAX }} productos).</div>
+                        </div>
+                    </div>
                 </div>
                 <div class="d-flex align-items-center gap-2 mt-3 p-2 rounded-3 bg-light" id="bmCountBox">
                     <i class="bi bi-box-seam text-muted"></i>
@@ -173,6 +182,12 @@
             if (sel('bmStock').checked) p.set('stock', '1');
             return p;
         }
+        function pdfQuery() {
+            const p = query();
+            if (sel('bmPhotos').checked) p.set('fotos', '1');
+            return p;
+        }
+        let blocked = null;
         function withQuery(url, p) { const s = p.toString(); return s ? url + '?' + s : url; }
 
         function refresh() {
@@ -180,21 +195,24 @@
             const p = query();
             const pageUrl = withQuery(cur.url, p);
             sel('bmView').href = pageUrl;
-            sel('bmPdf').href = withQuery(cur.pdf, p);
+            sel('bmPdf').href = withQuery(cur.pdf, pdfQuery());
             sel('bmCopy').dataset.url = pageUrl;
 
             sel('bmCount').textContent = 'Contando…';
             clearTimeout(timer);
             const mine = ++seq;
             timer = setTimeout(function () {
-                const cp = new URLSearchParams(p); cp.set('branch_id', cur.branch);
+                const cp = pdfQuery(); cp.set('branch_id', cur.branch);
                 fetch(countUrl + '?' + cp.toString(), { headers: { 'Accept': 'application/json' } })
                     .then(r => r.ok ? r.json() : null)
                     .then(res => {
                         if (mine !== seq || !res) return;
                         const n = res.count;
-                        sel('bmCount').textContent = n === 1 ? '1 producto' : n + ' productos';
-                        sel('bmWarn').classList.toggle('d-none', n <= WARN);
+                        blocked = res.blocked || null;
+                        sel('bmCount').textContent = blocked ? blocked : (n === 1 ? '1 producto' : n + ' productos');
+                        sel('bmCountBox').classList.toggle('bg-danger-subtle', !!blocked);
+                        sel('bmCountBox').classList.toggle('text-danger', !!blocked);
+                        sel('bmWarn').classList.toggle('d-none', !!blocked || n <= WARN);
                         sel('bmPdf').classList.toggle('disabled', n === 0);
                     })
                     .catch(() => { if (mine === seq) sel('bmCount').textContent = '—'; });
@@ -207,6 +225,7 @@
                 sel('bmBranch').textContent = btn.dataset.name;
                 ['bmCat', 'bmBrand', 'bmModel'].forEach(id => Array.from(sel(id).options).forEach(o => o.selected = false));
                 sel('bmStock').checked = false;
+                sel('bmPhotos').checked = false;
                 if (window.jQuery && jQuery.fn.select2) jQuery('#buildModal select').trigger('change.select2');
                 refresh();
                 modal.show();
@@ -217,6 +236,11 @@
         if (window.jQuery) jQuery('#buildModal select').on('change', refresh);
         else ['bmCat', 'bmBrand', 'bmModel'].forEach(id => sel(id).addEventListener('change', refresh));
         sel('bmStock').addEventListener('change', refresh);
+        sel('bmPhotos').addEventListener('change', refresh);
+        // Con fotos y sin filtro (o demasiados productos): avisar en vez de descargar.
+        sel('bmPdf').addEventListener('click', function (e) {
+            if (blocked) { e.preventDefault(); sel('bmCountBox').scrollIntoView({ block: 'nearest' }); }
+        });
 
         sel('bmCopy').addEventListener('click', function () {
             const url = this.dataset.url || '';
