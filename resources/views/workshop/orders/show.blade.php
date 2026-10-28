@@ -525,14 +525,18 @@
                     </div>
 
                     <div class="row g-3 mb-3">
+                        @php $woMethods = auth()->user()->getCurrentCompany()?->paymentMethods() ?? ['efectivo']; @endphp
+                        @if(count($woMethods) > 1)
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold" for="wo_method">Método de pago</label>
-                            <select name="method" id="wo_method" class="form-select">
-                                <option value="efectivo">Efectivo</option>
-                                <option value="transferencia">Transferencia</option>
-                                <option value="tarjeta">Tarjeta</option>
+                            <label class="form-label fw-semibold" for="wo_method">Forma de pago</label>
+                            <select name="method" id="wo_method" class="form-select" data-no-search>
+                                @include('partials.payment-method-options', ['selected' => old('method')])
                             </select>
                         </div>
+                        @else
+                        {{-- La empresa solo acepta efectivo. --}}
+                        <input type="hidden" name="method" value="efectivo">
+                        @endif
                         <div class="col-md-6">
                             <label class="form-label fw-semibold" for="wo_reference">Referencia</label>
                             <input type="text" name="reference" id="wo_reference"

@@ -724,6 +724,7 @@ class WorkOrderController extends Controller
         if (!$session) {
             return back()->withErrors(['error' => 'Necesitas tener tu caja abierta para registrar el cobro.']);
         }
+        $validated['method'] = $this->woPaymentMethod($order->company_id, $validated['method'] ?? null);
 
         try {
             $this->applyWoCredit($order, $amount, $session, [

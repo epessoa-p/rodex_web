@@ -17,6 +17,26 @@ trait HandlesWorkOrderCharge
     use ResolvesCashSession;
 
     /**
+     * Forma de pago del cobro: una de las que acepta la empresa (Mi empresa →
+     * POS); vacía = efectivo. Otra → error de validación.
+     */
+    protected function woPaymentMethod(?int $companyId, ?string $method): string
+    {
+        $method = trim((string) $method);
+        if ($method === '' || $method === 'efectivo') {
+            return 'efectivo';
+        }
+        $allowed = $companyId ? (\App\Models\Company::find($companyId)?->paymentMethods() ?? ['efectivo']) : ['efectivo'];
+        if (! in_array($method, $allowed, true)) {
+            throw ValidationException::withMessages([
+                'method' => 'La forma de pago «' . CashMovement::shortLabel($method) . '» no está habilitada para esta empresa.',
+            ]);
+        }
+
+        return $method;
+    }
+
+    /**
      * Entrega y cobro de una OT dentro de una transacción:
      * descuenta stock de repuestos, registra el cobro (contado o crédito)
      * y marca la orden como entregada.
@@ -121,6 +141,8 @@ trait HandlesWorkOrderCharge
      */
     protected function registerWoPayment(WorkOrder $wo, ?WorkOrderInstallment $installment, float $amount, ?CashRegisterSession $session, array $meta = []): WorkOrderPayment
     {
+        $meta['method'] = $this->woPaymentMethod($wo->company_id, $meta['method'] ?? null);
+
         $payment = WorkOrderPayment::create([
             'company_id'                => $wo->company_id,
             'work_order_id'             => $wo->id,
