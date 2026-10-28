@@ -347,6 +347,8 @@
         </div>
     </div>
 </div>
+@endif
+
 {{-- Crear OT desde una cita sin vehículo: elegir uno del cliente o escribirlo. --}}
 <div class="modal fade" id="convertModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
