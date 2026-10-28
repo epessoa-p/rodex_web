@@ -32,6 +32,22 @@
     <form action="{{ route('workshop.reception.store') }}" method="POST" id="receptionForm" enctype="multipart/form-data">
         @csrf
         <input type="hidden" name="vehicle_mode" id="vehicle_mode" value="{{ old('vehicle_mode', 'existing') }}">
+        @if(!empty($fromAppointment))
+        <input type="hidden" name="appointment_id" value="{{ $fromAppointment->id }}">
+        <div class="alert alert-info border-0 shadow-sm d-flex align-items-center gap-2">
+            <i class="bi bi-calendar-check fs-5"></i>
+            <div>
+                Desde la cita del <strong>{{ $fromAppointment->scheduled_at?->format('d/m/Y H:i') }}</strong>.
+                Revisa el vehículo y guarda: la orden se crea con
+                @if($fromAppointment->services->isNotEmpty())
+                    sus servicios ({{ $fromAppointment->services->pluck('name')->implode(', ') }})
+                @else
+                    los datos de la cita
+                @endif
+                y la cita queda completada.
+            </div>
+        </div>
+        @endif
 
         <div class="row g-4">
 

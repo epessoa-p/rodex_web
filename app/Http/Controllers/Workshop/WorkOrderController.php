@@ -8,6 +8,7 @@ use App\Models\Client;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Vehicle;
+use App\Models\Workshop\Appointment;
 use App\Models\Workshop\Mechanic;
 use App\Models\Workshop\Service;
 use App\Models\Workshop\WorkOrder;
@@ -91,9 +92,40 @@ class WorkOrderController extends Controller
     }
 
     // ── Recepción (alta de OT) ────────────────────────────────
-    public function reception()
+    public function reception(Request $request)
     {
-        return view('workshop.reception.create', $this->formData());
+        // Desde la agenda (?appointment=): datos de la cita precargados como
+        // "old input" para que el formulario los muestre sin cambios en la vista.
+        $appointment = $this->receptionAppointment($request->query('appointment'));
+        if ($appointment && ! $request->session()->hasOldInput()) {
+            $hasVehicles = $appointment->client_id
+                && Vehicle::where('client_id', $appointment->client_id)->where('active', true)->exists();
+            $request->session()->now('_old_input', array_filter([
+                'client_id'      => $appointment->client_id,
+                'vehicle_id'     => $appointment->vehicle_id,
+                // Sin vehículos registrados: directo a "Nuevo".
+                'vehicle_mode'   => $appointment->vehicle_id || $hasVehicles ? 'existing' : 'new',
+                'mechanic_id'    => $appointment->mechanic_id,
+                'reported_issue' => $appointment->title ?: $appointment->notes,
+                'notes'          => $appointment->title ? $appointment->notes : null,
+            ], fn ($v) => $v !== null && $v !== ''));
+        }
+
+        return view('workshop.reception.create', $this->formData() + ['fromAppointment' => $appointment]);
+    }
+
+    /** Cita de la empresa que aún no tiene OT (para la recepción desde la agenda). */
+    private function receptionAppointment($id): ?Appointment
+    {
+        if (! $id) {
+            return null;
+        }
+        $cid = auth()->user()->getCurrentCompany()?->id;
+
+        return Appointment::with('services')
+            ->where('company_id', $cid)
+            ->whereNull('work_order_id')
+            ->find((int) $id);
     }
 
     public function storeReception(Request $request)
@@ -125,6 +157,8 @@ class WorkOrderController extends Controller
             'reported_issue' => 'nullable|string',
             'received_items' => 'nullable|string',
             'notes'          => 'nullable|string',
+            'mechanic_id'    => ['nullable', Rule::exists('mechanics', 'id')->where('company_id', $companyId)],
+            'appointment_id' => 'nullable|integer',
             'photos'         => 'nullable|array|max:12',
             'photos.*'       => 'image|max:5120',
         ]);
@@ -159,6 +193,7 @@ class WorkOrderController extends Controller
                     'client_id'      => $validated['client_id'],
                     'vehicle_id'     => $vehicleId,
                     'branch_id'      => $branchId,
+                    'mechanic_id'    => $validated['mechanic_id'] ?? null,
                     'reception_date' => $validated['reception_date'],
                     'mileage'        => $validated['mileage'] ?? null,
                     'fuel_level'     => $validated['fuel_level'] ?? null,
@@ -183,6 +218,17 @@ class WorkOrderController extends Controller
                             'sort_order'    => $i,
                         ]);
                     }
+                }
+
+                // Desde una cita: pasan sus servicios y la cita queda cerrada con su OT.
+                if ($appointment = $this->receptionAppointment($validated['appointment_id'] ?? null)) {
+                    $appointment->copyServicesToWorkOrder($wo);
+                    $appointment->update([
+                        'work_order_id' => $wo->id,
+                        'client_id'     => $wo->client_id,
+                        'vehicle_id'    => $wo->vehicle_id,
+                        'status'        => 'completada',
+                    ]);
                 }
 
                 return $wo;

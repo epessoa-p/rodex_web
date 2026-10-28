@@ -51,7 +51,7 @@ class AppointmentController extends Controller
             ];
         }
 
-        $with = ['client.vehicles', 'vehicle', 'service', 'services', 'mechanic', 'workOrder'];
+        $with = ['client', 'vehicle', 'service', 'services', 'mechanic', 'workOrder'];
         $appointments = collect();   // vista día
         $weekDays     = [];          // vista semana
         $monthCells   = [];          // vista mes
@@ -194,34 +194,18 @@ class AppointmentController extends Controller
     }
 
     /** Convierte la cita en una Orden de Trabajo (requiere cliente y vehículo). */
-    public function convertToWorkOrder(Request $request, Appointment $appointment, QuickClientResolver $resolver)
+    /**
+     * "Crear Orden de Trabajo" desde la cita: abre la recepción precargada con
+     * los datos de la cita (como la app). La OT se crea al guardar la recepción,
+     * que pasa los servicios y vincula la cita (WorkOrderController::storeReception).
+     */
+    public function convertToWorkOrder(Appointment $appointment, QuickClientResolver $resolver)
     {
         $this->authorizeAppointment($appointment);
 
         if ($appointment->work_order_id) {
             return redirect()->route('workshop.orders.show', $appointment->work_order_id)
                 ->with('info', 'Esta cita ya tenía una Orden de Trabajo.');
-        }
-
-        // Cita sin vehículo (p. ej. cliente rápido): se elige uno del cliente o
-        // se escribe en el diálogo "Crear OT" (queda como vehículo rápido).
-        $data = $request->validate([
-            'vehicle_id'    => ['nullable', 'integer'],
-            'quick_vehicle' => ['nullable', 'string', 'max:80'],
-        ]);
-        $vehicleId    = $appointment->vehicle_id;
-        $quickVehicle = null;
-        if (! $vehicleId) {
-            if (! empty($data['vehicle_id']) && $appointment->client_id) {
-                $vehicleId = Vehicle::where('id', $data['vehicle_id'])
-                    ->where('client_id', $appointment->client_id)->value('id');
-            }
-            $quickVehicle = $vehicleId ? null : (mb_strtoupper(trim((string) ($data['quick_vehicle'] ?? ''))) ?: null);
-            if (! $vehicleId && ! $quickVehicle) {
-                return back()->withErrors([
-                    'error' => 'Para crear la OT indica el vehículo: elige uno del cliente o escríbelo.',
-                ]);
-            }
         }
 
         // Cita vieja sin cliente registrado: se registra con su nombre y teléfono.
@@ -233,37 +217,7 @@ class AppointmentController extends Controller
             $appointment->update(['client_id' => $client->id]);
         }
 
-        $order = DB::transaction(function () use ($appointment, $vehicleId, $quickVehicle) {
-            $order = WorkOrder::create([
-                'company_id'     => $appointment->company_id,
-                'branch_id'      => $appointment->branch_id,
-                'client_id'      => $appointment->client_id,
-                'vehicle_id'     => $vehicleId,
-                'quick_vehicle'  => $quickVehicle,
-                'mechanic_id'    => $appointment->mechanic_id,
-                'code'           => $this->nextWorkOrderCode($appointment->company_id, $appointment->branch_id),
-                'status'         => 'recibida',
-                'reception_date' => now()->toDateString(),
-                'reported_issue' => $appointment->title ?: $appointment->notes,
-                'notes'          => $appointment->notes,
-                'payment_status' => 'pendiente',
-                'created_by'     => auth()->id(),
-            ]);
-
-            // Los servicios agendados pasan como líneas de la OT.
-            $appointment->copyServicesToWorkOrder($order);
-
-            $appointment->update([
-                'work_order_id' => $order->id,
-                'vehicle_id'    => $vehicleId,
-                'status'        => 'completada',
-            ]);
-
-            return $order;
-        });
-
-        return redirect()->route('workshop.orders.show', $order->id)
-            ->with('success', "Orden de trabajo {$order->code} creada desde la cita.");
+        return redirect()->route('workshop.reception', ['appointment' => $appointment->id]);
     }
 
     /** Reglas compartidas de validación de una cita. */

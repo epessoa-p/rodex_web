@@ -349,77 +349,7 @@
 </div>
 @endif
 
-{{-- Crear OT desde una cita sin vehículo: elegir uno del cliente o escribirlo. --}}
-<div class="modal fade" id="convertModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form method="POST" id="convertForm">
-                @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-clipboard2-plus me-2 text-primary"></i>Crear Orden de Trabajo</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="mb-3">Cliente: <strong id="convertClient"></strong></p>
-                    <div id="convertPickWrap" class="mb-3">
-                        <label class="form-label fw-semibold" for="convertVehicle">Vehículo del cliente</label>
-                        <select class="form-select" id="convertVehicle" name="vehicle_id"></select>
-                    </div>
-                    <div id="convertQuickWrap">
-                        <label class="form-label fw-semibold" for="convertQuick">Vehículo <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control text-uppercase" id="convertQuick" name="quick_vehicle" maxlength="80" placeholder="Ej. HONDA CG 150 ROJA">
-                        <div class="form-text">La cita no tiene vehículo: escribe marca, modelo o placa.</div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Crear OT</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 @endsection
-
-@push('scripts')
-<script>
-    // Crear OT desde una cita sin vehículo.
-    (function () {
-        const modalEl = document.getElementById('convertModal');
-        if (!modalEl) return;
-        const form = document.getElementById('convertForm');
-        const sel = document.getElementById('convertVehicle');
-        const quick = document.getElementById('convertQuick');
-        const pickWrap = document.getElementById('convertPickWrap');
-        const quickWrap = document.getElementById('convertQuickWrap');
-        const syncQuick = function () {
-            const typing = !sel.value;
-            quickWrap.classList.toggle('d-none', !typing);
-            quick.required = typing;
-            if (!typing) quick.value = '';
-        };
-        sel.addEventListener('change', syncQuick);
-        document.addEventListener('click', function (e) {
-            const btn = e.target.closest('.btn-convert-appt');
-            if (!btn) return;
-            e.preventDefault();
-            let vehicles = [];
-            try { vehicles = JSON.parse(btn.dataset.vehicles || '[]'); } catch (_) {}
-            form.action = btn.dataset.url;
-            document.getElementById('convertClient').textContent = btn.dataset.client || '—';
-            sel.innerHTML = '';
-            vehicles.forEach(function (v) { sel.add(new Option(v.name, v.id)); });
-            sel.add(new Option('Otro (escribirlo)', ''));
-            pickWrap.classList.toggle('d-none', vehicles.length === 0);
-            sel.value = vehicles.length ? String(vehicles[0].id) : '';
-            quick.value = '';
-            syncQuick();
-            bootstrap.Modal.getOrCreateInstance(modalEl).show();
-        });
-    })();
-</script>
-@endpush
 
 @push('scripts')
 <script>

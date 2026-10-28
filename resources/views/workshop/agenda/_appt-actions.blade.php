@@ -28,20 +28,11 @@
         @if($canWorkOrder && !$appt->work_order_id)
         <li><hr class="dropdown-divider"></li>
         <li>
-            @if($appt->vehicle_id)
-            <form action="{{ route('workshop.agenda.convert', $appt->id) }}" method="POST" onsubmit="return confirm('¿Crear una Orden de Trabajo a partir de esta cita?');">
+            {{-- Abre la recepción con los datos de la cita (cliente, vehículo, mecánico, motivo). --}}
+            <form action="{{ route('workshop.agenda.convert', $appt->id) }}" method="POST">
                 @csrf
                 <button type="submit" class="dropdown-item text-primary"><i class="bi bi-clipboard2-plus me-2"></i>Crear Orden de Trabajo</button>
             </form>
-            @else
-            {{-- Sin vehículo: el diálogo pide elegirlo o escribirlo. --}}
-            <button type="button" class="dropdown-item text-primary btn-convert-appt"
-                    data-url="{{ route('workshop.agenda.convert', $appt->id) }}"
-                    data-client="{{ $appt->client?->full_name ?: $appt->customer_name }}"
-                    data-vehicles='@json(($appt->client?->vehicles ?? collect())->map(fn ($v) => ['id' => $v->id, 'name' => $v->display_name])->values())'>
-                <i class="bi bi-clipboard2-plus me-2"></i>Crear Orden de Trabajo
-            </button>
-            @endif
         </li>
         @endif
         @if($canDelete)
