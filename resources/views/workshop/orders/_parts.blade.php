@@ -4,8 +4,19 @@
     $colspan  = $editable && $canEdit ? 5 : 4;
 @endphp
 <div class="card border-0 shadow-sm mb-4 wo-card-parts" style="border-left:4px solid #f59e0b !important;">
-    <div class="card-header bg-white border-bottom py-3 px-4">
+    <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center gap-2 flex-wrap">
         <h6 class="mb-0 fw-semibold"><i class="bi bi-box-seam me-2" style="color:#f59e0b;"></i>Repuestos</h6>
+        @if($editable && $canEdit)
+        <div class="d-flex gap-2 no-print">
+            {{-- Para el repuesto que no está en inventario o se compró al momento --}}
+            <button type="button" class="btn btn-light border btn-sm" data-bs-toggle="modal" data-bs-target="#woPurchaseModal" title="No está en inventario o se compró al momento">
+                <i class="bi bi-cart-plus me-1" style="color:#f59e0b;"></i>Compra directa
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#woPartModal">
+                <i class="bi bi-plus-lg me-1"></i>Agregar
+            </button>
+        </div>
+        @endif
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -53,54 +64,57 @@
     </div>
 
     @if($editable && $canEdit)
-    <div class="card-footer bg-light border-top p-4">
-        <p class="small fw-semibold mb-1"><i class="bi bi-plus-circle me-1" style="color:#f59e0b;"></i>Agregar repuesto</p>
-        <p class="text-muted small mb-3">El stock se descuenta al entregar la OT.</p>
-        <form action="{{ route('workshop.orders.parts.add', $order) }}" method="POST" class="wo-ajax-form wo-add-form" data-no-spinner>
-            @csrf
-            <div class="row g-2 align-items-end">
-                <div class="col-md-5">
-                    <label class="form-label form-label-sm fw-semibold mb-1">Producto</label>
-                    <select name="product_id" class="form-select form-select-sm wo-part-select" required>
-                        <option value="">— Seleccionar producto —</option>
-                        @foreach($products as $p)
-                        <option value="{{ $p->id }}" data-price="{{ $p->price }}" data-stock="{{ $p->current_stock }}">
-                            {{ $p->name }} (stock: {{ $p->current_stock }})
-                        </option>
-                        @endforeach
-                    </select>
+    {{-- ── MODAL: Agregar repuesto del inventario ─────────────────────── --}}
+    <div class="modal fade" id="woPartModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-semibold">
+                        <i class="bi bi-box-seam me-2" style="color:#f59e0b;"></i>Agregar repuesto
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label form-label-sm fw-semibold mb-1">Cant.</label>
-                    <input type="number" name="quantity" class="form-control form-control-sm"
-                           min="1" step="1" inputmode="numeric" value="1" required>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label form-label-sm fw-semibold mb-1">Precio unit.</label>
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white">{{ currency_symbol() }}</span>
-                        <input type="number" name="unit_price" class="form-control wo-part-price"
-                               step="0.01" min="0" required placeholder="0.00">
+                <form action="{{ route('workshop.orders.parts.add', $order) }}" method="POST" class="wo-ajax-form wo-add-form" data-no-spinner>
+                    @csrf
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label form-label-sm fw-semibold mb-1">Producto</label>
+                            <select name="product_id" class="form-select form-select-sm wo-part-select" required>
+                                <option value="">— Seleccionar producto —</option>
+                                @foreach($products as $p)
+                                <option value="{{ $p->id }}" data-price="{{ $p->price }}" data-stock="{{ $p->current_stock }}">
+                                    {{ $p->name }} (stock: {{ $p->current_stock }})
+                                </option>
+                                @endforeach
+                            </select>
+                            <div class="form-text" style="font-size:.72rem;">El stock se descuenta al entregar la OT.</div>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-5">
+                                <label class="form-label form-label-sm fw-semibold mb-1">Cant.</label>
+                                <input type="number" name="quantity" class="form-control form-control-sm"
+                                       min="1" step="1" inputmode="numeric" value="1" required>
+                            </div>
+                            <div class="col-7">
+                                <label class="form-label form-label-sm fw-semibold mb-1">Precio unit.</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white">{{ currency_symbol() }}</span>
+                                    <input type="number" name="unit_price" class="form-control wo-part-price"
+                                           step="0.01" min="0" required placeholder="0.00">
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary btn-sm w-100">
-                        <i class="bi bi-plus-lg me-1"></i>Agregar
-                    </button>
-                </div>
+                    <div class="modal-footer border-top">
+                        <button type="button" class="btn btn-light border btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary btn-sm px-3">
+                            <i class="bi bi-check-lg me-1"></i>Agregar
+                        </button>
+                    </div>
+                </form>
             </div>
-        </form>
-
-        {{-- Acceso a compra directa: para el repuesto que no está en inventario o sin stock --}}
-        <div class="text-center mt-3 pt-3 border-top">
-            <span class="text-muted small">¿No está en inventario o se compró al momento?</span>
-            <button type="button" class="btn btn-link btn-sm text-decoration-none fw-semibold p-0 ms-1"
-                    style="color:#f59e0b;" data-bs-toggle="modal" data-bs-target="#woPurchaseModal">
-                <i class="bi bi-cart-plus me-1"></i>Compra directa
-            </button>
         </div>
     </div>
-
     {{-- ── MODAL: Compra directa de repuesto ─────────────────────────── --}}
     <div class="modal fade" id="woPurchaseModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">

@@ -662,11 +662,31 @@
         const price = document.querySelector('.wo-svc-price');
         if (!name || !price) return;
         const map = svcPriceMap();
+        const hint = document.querySelector('.wo-svc-hint');
+        const hintDefault = hint ? hint.textContent : '';
         name.addEventListener('input', function () {
-            const p = map[this.value.trim().toLowerCase()];
+            const key = this.value.trim().toLowerCase();
+            const p = map[key];
             if (p && !price.value) price.value = parseFloat(p).toFixed(2);
+            // Avisa si lo escrito es un servicio nuevo (se guarda al agregar).
+            if (hint) {
+                const isNew = key !== '' && !(key in map);
+                hint.textContent = isNew
+                    ? '«' + this.value.trim() + '» es nuevo: se guardará en el catálogo de servicios con este precio.'
+                    : hintDefault;
+                hint.classList.toggle('text-primary', isNew);
+            }
         });
     }
+
+    // Al abrir el modal de agregar, el cursor va al primer campo.
+    document.addEventListener('shown.bs.modal', function (e) {
+        if (!['woServiceModal', 'woPartModal'].includes(e.target.id)) return;
+        const first = e.target.querySelector('.wo-svc-name');
+        if (first) { first.focus(); return; }
+        const sel = e.target.querySelector('.wo-part-select');
+        if (sel && window.jQuery && jQuery(sel).data('select2')) jQuery(sel).select2('open');
+    });
     // ── Autollenado de precio en el form de repuestos ─────────────────
     // El select usa select2, que dispara 'change' vía jQuery: hay que
     // escucharlo con jQuery (un addEventListener nativo no lo captura).
