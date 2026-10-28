@@ -257,6 +257,32 @@
                 </div>
             </div>
 
+            {{-- Ubicación física por almacén (ej. PA5-VI2 = pasillo 5, vitrina 2) --}}
+            @if(isset($warehouses) && $warehouses->isNotEmpty())
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-bottom py-3 px-4">
+                    <h6 class="mb-0 fw-semibold"><i class="bi bi-geo-alt me-2 text-muted"></i>Ubicación en el local</h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        @foreach($warehouses as $w)
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="loc_{{ $w->id }}">{{ $w->name }}</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-geo-alt"></i></span>
+                                <input type="text" id="loc_{{ $w->id }}" name="locations[{{ $w->id }}]" maxlength="40"
+                                       class="form-control text-uppercase @error('locations.' . $w->id) is-invalid @enderror"
+                                       value="{{ old('locations.' . $w->id, $isEdit ? $product->locationIn($w->id) : '') }}"
+                                       placeholder="Ej: PA5-VI2">
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                    <div class="form-text text-muted mt-2">Dónde está el producto en cada almacén: pasillo, vitrina, estante… Se ve en el POS para encontrarlo rápido.</div>
+                </div>
+            </div>
+            @endif
+
         </div>{{-- end col-lg-8 --}}
 
         {{-- ─── RIGHT COLUMN ─────────────────────────────────────── --}}

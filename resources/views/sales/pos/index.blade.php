@@ -42,6 +42,8 @@
             'description'      => $p->description ?? '',
             // Modelos compatibles: catálogo estructurado (moto_models) enlazado al producto.
             'compatible_models'=> $p->motoModels->pluck('display_name')->implode(', '),
+            // Ubicación en el almacén de la caja (PA5-VI2).
+            'location'         => $p->locationIn($warehouseId),
             // Tarjeta del POS: miniatura (las completas quedan en 'photos' para el visor).
             'photo'            => $p->mainPhoto()?->thumb_url,
             'photos'           => $photos,
@@ -697,6 +699,8 @@
 @push('scripts')
 <script>
 const PRODUCTS = @json($productsData);
+// Datos que la empresa eligió mostrar en cada producto (Mi empresa → POS).
+const CARD_FIELDS = new Set(@json(auth()->user()->getCurrentCompany()?->posCardFields() ?? \App\Models\Company::POS_CARD_DEFAULT));
 const CLIENTS  = @json($clientsJson);
 const WAREHOUSES = @json($warehousesJson);
 const WH_STOCK   = @json($productWhStock);   // { product_id: [ {wid, qty} ] }
@@ -941,6 +945,7 @@ function renderGrid(filter) {
             (p.code && p.code.toLowerCase().includes(q)) ||
             p.sku.toLowerCase().includes(q) ||
             p.category.toLowerCase().includes(q) ||
+            (p.location && p.location.toLowerCase().includes(q)) ||
             (p.compatible_models && p.compatible_models.toLowerCase().includes(q)))
         : PRODUCTS.slice();
 
@@ -961,17 +966,27 @@ function renderGrid(filter) {
     grid.innerHTML = list.map(p => {
         const disabled = p.stock <= 0 ? 'disabled-card' : '';
         const inCart   = cart[p.id] ? 'in-cart' : '';
+        // "Sin stock" se avisa siempre; la cantidad, solo si la empresa la eligió.
         const stockBadge = p.stock > 0
-            ? `<span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.65rem;">${p.stock} en stock</span>`
+            ? (CARD_FIELDS.has('stock') ? `<span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.65rem;">${p.stock} en stock</span>` : '')
             : `<span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size:.65rem;">Sin stock</span>`;
         const img = p.photo
             ? `<img src="${p.photo}" class="product-thumb mb-2" alt="${p.name}">`
             : `<div class="product-thumb-placeholder mb-2"><i class="bi bi-box-seam"></i></div>`;
-        const meta = [p.brand, p.compatible_models].filter(Boolean).join(' · ') || '—';
+        const meta = [
+            CARD_FIELDS.has('brand') ? p.brand : '',
+            CARD_FIELDS.has('category') ? p.category : '',
+            CARD_FIELDS.has('models') ? p.compatible_models : '',
+        ].filter(Boolean).join(' · ');
         const metaEsc = meta.replace(/"/g, '&quot;');
-        const codeHtml = p.code
-            ? `<span class="badge bg-light text-dark border" style="font-size:.6rem;"><i class="bi bi-upc me-1"></i>${p.code}</span>`
-            : `<span class="text-muted fst-italic" style="font-size:.62rem;">Sin código</span>`;
+        const codeHtml = !CARD_FIELDS.has('code') ? ''
+            : (p.code
+                ? `<span class="badge bg-light text-dark border" style="font-size:.6rem;"><i class="bi bi-upc me-1"></i>${p.code}</span>`
+                : `<span class="text-muted fst-italic" style="font-size:.62rem;">Sin código</span>`);
+        // Ubicación en el almacén de la caja: para ir a buscarlo.
+        const locHtml = CARD_FIELDS.has('location') && p.location
+            ? `<span class="badge bg-warning-subtle text-dark border border-warning-subtle" style="font-size:.62rem;" title="Ubicación"><i class="bi bi-geo-alt-fill text-danger me-1"></i>${p.location}</span>`
+            : '';
         return `
         <div class="col-6 col-md-4 col-xl-3">
             <div class="product-card ${disabled} ${inCart}" onclick="addToCart(${p.id})" data-pid="${p.id}">
@@ -980,8 +995,8 @@ function renderGrid(filter) {
                 </button>
                 ${img}
                 <div class="fw-semibold lh-sm mb-1" style="font-size:.78rem;">${p.name}</div>
-                <div class="mb-1">${codeHtml}</div>
-                <div class="text-muted mb-1 text-truncate" style="font-size:.66rem;" title="${metaEsc}">${meta}</div>
+                ${codeHtml || locHtml ? `<div class="mb-1 d-flex flex-wrap gap-1">${codeHtml}${locHtml}</div>` : ''}
+                ${meta ? `<div class="text-muted mb-1 text-truncate" style="font-size:.66rem;" title="${metaEsc}">${meta}</div>` : ''}
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
                     <span class="fw-bold" style="font-size:.85rem;">${money(p.price, 2)}</span>
                     ${stockBadge}

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Purchases;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Sales\Concerns\ResolvesCashSession;
+use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Purchases\GoodsReceipt;
 use App\Models\Purchases\Purchase;
@@ -11,7 +12,9 @@ use App\Models\Purchases\PurchaseItem;
 use App\Models\Purchases\PurchaseOrder;
 use App\Models\Purchases\Supplier;
 use App\Models\Purchases\TreasuryAccount;
+use App\Models\Warehouse;
 use App\Support\PurchaseDiscount;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -83,6 +86,8 @@ class PurchaseController extends Controller
             'tax'                => 'nullable|numeric|min:0',
             'discount'           => 'nullable|numeric|min:0',
             'notes'              => 'nullable|string',
+            // Compra sin OC: la mercadería entra a este almacén (con OC entra al recibirla).
+            'warehouse_id'       => ['nullable', 'required_without:purchase_order_id', Rule::exists('warehouses', 'id')->where('company_id', $companyId)],
             'items'              => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity'   => 'required|integer|min:1',
@@ -120,6 +125,11 @@ class PurchaseController extends Controller
                         ->update(['purchase_id' => $purchase->id]);
                 }
 
+                // Sin OC es una compra directa: suma al inventario aquí mismo.
+                // Con OC no, porque el stock ya entró (o entrará) con la recepción.
+                $direct = empty($validated['purchase_order_id']);
+                $factor = PurchaseDiscount::factor($subtotal, $discount);
+
                 foreach ($validated['items'] as $item) {
                     PurchaseItem::create([
                         'purchase_id' => $purchase->id,
@@ -128,12 +138,33 @@ class PurchaseController extends Controller
                         'unit_cost'   => $item['unit_cost'],
                         'subtotal'    => (float) $item['quantity'] * (float) $item['unit_cost'],
                     ]);
+
+                    if ($direct) {
+                        InventoryMovement::create([
+                            'company_id'    => $companyId,
+                            'warehouse_id'  => $validated['warehouse_id'],
+                            'product_id'    => $item['product_id'],
+                            'user_id'       => auth()->id(),
+                            'type'          => 'in',
+                            'quantity'      => $item['quantity'],
+                            // Costo real: el descuento del proveedor repartido en el producto.
+                            'unit_cost'     => PurchaseDiscount::netUnitCost((float) $item['unit_cost'], $factor),
+                            'reference'     => $purchase->code,
+                            'notes'         => 'Compra ' . $purchase->code,
+                            'movement_date' => $validated['purchase_date'] . ' ' . now()->format('H:i:s'),
+                        ]);
+                        Product::where('id', $item['product_id'])->increment('current_stock', $item['quantity']);
+                    }
                 }
 
                 return $purchase;
             });
 
-            return redirect()->route('purchases.show', $purchase)->with('success', 'Compra registrada. Generó cuenta por pagar.');
+            $msg = empty($validated['purchase_order_id'])
+                ? 'Compra registrada: la mercadería ya sumó al inventario. Generó cuenta por pagar.'
+                : 'Compra registrada. Generó cuenta por pagar.';
+
+            return redirect()->route('purchases.show', $purchase)->with('success', $msg);
         } catch (\Throwable $e) {
             Log::error('Error al crear compra', ['msg' => $e->getMessage()]);
             return back()->withInput()->withErrors(['error' => 'Error al guardar: ' . $e->getMessage()]);
@@ -161,7 +192,23 @@ class PurchaseController extends Controller
             return back()->withErrors(['error' => 'No se puede eliminar: la compra tiene pagos registrados.']);
         }
 
-        $purchase->delete();
+        DB::transaction(function () use ($purchase) {
+            // Compra directa: se quitan sus entradas del kardex y el stock que sumó.
+            // (Las de una OC son de la recepción y se quedan.)
+            if (! $purchase->purchase_order_id) {
+                $movements = InventoryMovement::where('company_id', $purchase->company_id)
+                    ->where('reference', $purchase->code)
+                    ->where('type', 'in')
+                    ->whereIn('product_id', $purchase->items()->pluck('product_id'))
+                    ->get();
+                foreach ($movements as $m) {
+                    Product::where('id', $m->product_id)->decrement('current_stock', $m->quantity);
+                    $m->delete();
+                }
+            }
+            $purchase->delete();
+        });
+
         return redirect()->route('purchases.index')->with('success', 'Compra eliminada.');
     }
 
@@ -197,6 +244,11 @@ class PurchaseController extends Controller
             ->latest()
             ->get();
 
-        return compact('suppliers', 'products', 'orders');
+        $warehouses = Warehouse::when($cid, fn ($q) => $q->where('company_id', $cid))->orderBy('name')->get(['id', 'name']);
+        $defaultWarehouseId = $this->currentOpenSession()?->cashRegister?->branch?->warehouse_id
+            ?? \App\Models\Personal::where('user_id', auth()->id())->with('branch')->first()?->branch?->warehouse_id
+            ?? $warehouses->first()?->id;
+
+        return compact('suppliers', 'products', 'orders', 'warehouses', 'defaultWarehouseId');
     }
 }

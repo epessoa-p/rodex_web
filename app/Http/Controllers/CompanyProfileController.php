@@ -35,6 +35,8 @@ class CompanyProfileController extends Controller
             'payment_methods'            => ['nullable', 'array'],
             'payment_methods.*'          => ['in:' . implode(',', \App\Models\CashMovement::SALE_METHODS)],
             'expenses_use_other_methods' => ['nullable', 'boolean'],
+            'pos_card_fields'            => ['nullable', 'array'],
+            'pos_card_fields.*'          => ['nullable', 'in:' . implode(',', array_keys(\App\Models\Company::POS_CARD_FIELDS))],
         ]);
 
         $update = [
@@ -55,6 +57,9 @@ class CompanyProfileController extends Controller
         }
         if ($request->has('expenses_use_other_methods')) {
             $update['expenses_use_other_methods'] = $request->boolean('expenses_use_other_methods');
+        }
+        if (array_key_exists('pos_card_fields', $data) && \Illuminate\Support\Facades\Schema::hasColumn('companies', 'pos_card_fields')) {
+            $update['pos_card_fields'] = array_filter((array) $data['pos_card_fields']);   // el modelo lo normaliza
         }
 
         if ($request->hasFile('logo')) {

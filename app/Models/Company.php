@@ -21,6 +21,8 @@ class Company extends Model
         'pos_rounding_step', 'allow_credit_sales',
         // Formas de cobro aceptadas y si lo no-efectivo sirve para pagar gastos.
         'payment_methods', 'expenses_use_other_methods',
+        // Datos que se ven en cada producto del POS.
+        'pos_card_fields',
     ];
 
     /** Pasos de redondeo del total que se ofrecen en el POS. */
@@ -156,6 +158,44 @@ class Company extends Model
             CashMovement::SALE_METHODS,
             fn ($m) => $m === 'efectivo' || in_array($m, $chosen, true)
         ));
+    }
+
+    /**
+     * Datos que se ven en cada producto del POS (web y app), en este orden.
+     * Sin configurar: código, marca, modelos compatibles y ubicación.
+     */
+    public const POS_CARD_FIELDS = [
+        'code'     => 'Código',
+        'brand'    => 'Marca',
+        'category' => 'Categoría',
+        'models'   => 'Modelos compatibles',
+        'location' => 'Ubicación',
+        'stock'    => 'Stock',
+    ];
+
+    public const POS_CARD_DEFAULT = ['code', 'brand', 'models', 'location'];
+
+    public function posCardFields(): array
+    {
+        $raw = $this->attributes['pos_card_fields'] ?? null;
+        if ($raw === null) {
+            return self::POS_CARD_DEFAULT;
+        }
+        $chosen = array_filter(array_map('trim', explode(',', (string) $raw)));
+
+        return array_values(array_filter(array_keys(self::POS_CARD_FIELDS), fn ($k) => in_array($k, $chosen, true)));
+    }
+
+    /** Guarda solo valores válidos, en el orden oficial ('' = ninguno). */
+    public function setPosCardFieldsAttribute($value): void
+    {
+        $chosen = is_array($value) ? $value : explode(',', (string) $value);
+        $chosen = array_map(fn ($m) => trim((string) $m), $chosen);
+
+        $this->attributes['pos_card_fields'] = implode(',', array_values(array_filter(
+            array_keys(self::POS_CARD_FIELDS),
+            fn ($k) => in_array($k, $chosen, true)
+        )));
     }
 
     /** Guarda la lista normalizada: efectivo siempre, solo valores válidos, orden oficial. */

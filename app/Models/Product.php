@@ -79,6 +79,52 @@ class Product extends Model
         });
     }
 
+    /** ¿Existe la tabla de ubicaciones? (una vez por proceso; antes del SQL no rompe). */
+    public static function locationsReady(): bool
+    {
+        return self::$locationsReady ??= \Illuminate\Support\Facades\Schema::hasTable('product_locations');
+    }
+
+    private static ?bool $locationsReady = null;
+
+    /** Ubicaciones físicas por almacén (ej. "PA5-VI2"). */
+    public function locations(): HasMany
+    {
+        return $this->hasMany(\App\Models\Inventory\ProductLocation::class);
+    }
+
+    /** Ubicación en un almacén (usa la relación si ya está cargada). */
+    public function locationIn(?int $warehouseId): ?string
+    {
+        if (! $warehouseId || ! self::locationsReady()) {
+            return null;
+        }
+        $rows = $this->relationLoaded('locations') ? $this->locations : $this->locations()->get();
+
+        return $rows->firstWhere('warehouse_id', $warehouseId)?->location;
+    }
+
+    /**
+     * Guarda la ubicación del producto en un almacén. Vacío = la quita.
+     * Se guarda en mayúsculas ("pa5-vi2" → "PA5-VI2").
+     */
+    public function setLocation(int $warehouseId, ?string $location): void
+    {
+        if (! self::locationsReady()) {
+            return; // falta el SQL de ubicaciones
+        }
+        $value = \App\Models\Inventory\ProductLocation::normalize($location);
+        if ($value === '') {
+            $this->locations()->where('warehouse_id', $warehouseId)->delete();
+        } else {
+            $this->locations()->updateOrCreate(
+                ['warehouse_id' => $warehouseId],
+                ['location' => $value, 'company_id' => $this->company_id],
+            );
+        }
+        $this->unsetRelation('locations');
+    }
+
     public function priceChanges(): HasMany
     {
         return $this->hasMany(\App\Models\Inventory\ProductPriceChange::class)->latest('created_at')->latest('id');

@@ -37,6 +37,8 @@ class StoreCompanyRequest extends FormRequest
             'payment_methods'            => ['sometimes', 'array'],
             'payment_methods.*'          => [Rule::in(\App\Models\CashMovement::SALE_METHODS)],
             'expenses_use_other_methods' => ['sometimes', 'boolean'],
+            'pos_card_fields'            => ['sometimes', 'array'],
+            'pos_card_fields.*'          => ['nullable', Rule::in(array_keys(\App\Models\Company::POS_CARD_FIELDS))],
             // Alta: qué marcas de vehículo precargar (motorepuestos / autorepuestos).
             'seed_brands' => ['nullable', Rule::in(array_keys(\App\Support\MotoBrandDefaults::OPTIONS))],
         ] + ($this->isMethod('post') ? $this->onboardingRules() : []);

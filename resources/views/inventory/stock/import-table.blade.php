@@ -212,6 +212,7 @@
         { key: 'origin',   label: 'Origen', upper: true, list: 'dlOrigin', w: 100, extra: true },
         { key: 'models',   label: 'Modelos compatibles', upper: true, multi: true, w: 190, extra: true, hint: 'Ej. CG 150, COROLLA' },
         { key: 'notes',    label: 'Descripción', w: 180, extra: true },
+        { key: 'location', label: 'Ubicación', upper: true, w: 110, extra: true, hint: 'Ej. PA5-VI2 (en el almacén elegido)' },
     ];
     const KEYS = COLS.map(c => c.key);
 
@@ -536,6 +537,8 @@
             name: String(r.name).trim(), price: parseNum(r.price), cost: parseNum(r.cost), qty: parseNum(r.qty),
             category: r.category.trim(), brand: r.brand.trim(), unit: r.unit.trim(), code: r.code.trim() || null,
             origin: r.origin.trim(), models: r.models.split(',').map(t => t.trim()).filter(Boolean).join(', '), notes: r.notes.trim(),
+            // Ubicación en el almacén elegido (borradores viejos no la tienen).
+            location: String(r.location || '').trim(),
         }));
         fetch(CONFIRM_URL, {
             method: 'POST',

@@ -51,7 +51,7 @@ class AppointmentController extends Controller
             ];
         }
 
-        $with = ['client', 'vehicle', 'service', 'services', 'mechanic', 'workOrder'];
+        $with = ['client.vehicles', 'vehicle', 'service', 'services', 'mechanic', 'workOrder'];
         $appointments = collect();   // vista día
         $weekDays     = [];          // vista semana
         $monthCells   = [];          // vista mes
@@ -194,7 +194,7 @@ class AppointmentController extends Controller
     }
 
     /** Convierte la cita en una Orden de Trabajo (requiere cliente y vehículo). */
-    public function convertToWorkOrder(Appointment $appointment)
+    public function convertToWorkOrder(Request $request, Appointment $appointment, QuickClientResolver $resolver)
     {
         $this->authorizeAppointment($appointment);
 
@@ -203,18 +203,43 @@ class AppointmentController extends Controller
                 ->with('info', 'Esta cita ya tenía una Orden de Trabajo.');
         }
 
-        if (! $appointment->client_id || ! $appointment->vehicle_id) {
-            return back()->withErrors([
-                'error' => 'Para crear la OT, la cita debe tener un cliente registrado y su vehículo.',
-            ]);
+        // Cita sin vehículo (p. ej. cliente rápido): se elige uno del cliente o
+        // se escribe en el diálogo "Crear OT" (queda como vehículo rápido).
+        $data = $request->validate([
+            'vehicle_id'    => ['nullable', 'integer'],
+            'quick_vehicle' => ['nullable', 'string', 'max:80'],
+        ]);
+        $vehicleId    = $appointment->vehicle_id;
+        $quickVehicle = null;
+        if (! $vehicleId) {
+            if (! empty($data['vehicle_id']) && $appointment->client_id) {
+                $vehicleId = Vehicle::where('id', $data['vehicle_id'])
+                    ->where('client_id', $appointment->client_id)->value('id');
+            }
+            $quickVehicle = $vehicleId ? null : (mb_strtoupper(trim((string) ($data['quick_vehicle'] ?? ''))) ?: null);
+            if (! $vehicleId && ! $quickVehicle) {
+                return back()->withErrors([
+                    'error' => 'Para crear la OT indica el vehículo: elige uno del cliente o escríbelo.',
+                ]);
+            }
         }
 
-        $order = DB::transaction(function () use ($appointment) {
+        // Cita vieja sin cliente registrado: se registra con su nombre y teléfono.
+        if (! $appointment->client_id) {
+            if (trim((string) $appointment->customer_name) === '') {
+                return back()->withErrors(['error' => 'La cita no tiene cliente. Edítala y elige o escribe el cliente.']);
+            }
+            $client = $resolver->resolve((int) $appointment->company_id, trim((string) $appointment->customer_name), trim((string) $appointment->customer_phone));
+            $appointment->update(['client_id' => $client->id]);
+        }
+
+        $order = DB::transaction(function () use ($appointment, $vehicleId, $quickVehicle) {
             $order = WorkOrder::create([
                 'company_id'     => $appointment->company_id,
                 'branch_id'      => $appointment->branch_id,
                 'client_id'      => $appointment->client_id,
-                'vehicle_id'     => $appointment->vehicle_id,
+                'vehicle_id'     => $vehicleId,
+                'quick_vehicle'  => $quickVehicle,
                 'mechanic_id'    => $appointment->mechanic_id,
                 'code'           => $this->nextWorkOrderCode($appointment->company_id, $appointment->branch_id),
                 'status'         => 'recibida',
@@ -230,6 +255,7 @@ class AppointmentController extends Controller
 
             $appointment->update([
                 'work_order_id' => $order->id,
+                'vehicle_id'    => $vehicleId,
                 'status'        => 'completada',
             ]);
 

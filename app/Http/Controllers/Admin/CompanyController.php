@@ -49,6 +49,7 @@ class CompanyController extends Controller
         // Solo decide qué marcas precargar; no es un dato de la empresa.
         $seedBrands = $data['seed_brands'] ?? 'moto';
         unset($data['seed_brands']);
+        $data = $this->withoutMissingColumns($data);
 
         $company = Company::create($data);
 
@@ -139,7 +140,7 @@ class CompanyController extends Controller
 
     public function update(StoreCompanyRequest $request, Company $company)
     {
-        $data = $request->validated();
+        $data = $this->withoutMissingColumns($request->validated());
         unset($data['logo']);
 
         if ($request->hasFile('logo')) {
@@ -160,6 +161,16 @@ class CompanyController extends Controller
         $company->delete();
 
         return redirect()->route('companies.index')->with('success', 'Empresa eliminada exitosamente');
+    }
+
+    /** Sin el SQL de ubicaciones aplicado, `pos_card_fields` no se guarda (no rompe el alta). */
+    private function withoutMissingColumns(array $data): array
+    {
+        if (array_key_exists('pos_card_fields', $data) && ! \Illuminate\Support\Facades\Schema::hasColumn('companies', 'pos_card_fields')) {
+            unset($data['pos_card_fields']);
+        }
+
+        return $data;
     }
 
     /** Guarda el logo en el disco público, segmentado por empresa. */

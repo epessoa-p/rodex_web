@@ -211,6 +211,11 @@
                                 style="letter-spacing:.04em;font-size:.72rem;min-width:130px;">
                                 Cantidad disponible
                             </th>
+                            <th class="py-2 fw-semibold text-muted text-uppercase"
+                                style="letter-spacing:.04em;font-size:.72rem;min-width:110px;"
+                                title="Dónde está el producto en este almacén (pasillo, vitrina…)">
+                                <i class="bi bi-geo-alt"></i> Ubicación
+                            </th>
                             <th class="py-2 fw-semibold text-muted text-uppercase text-center"
                                 style="letter-spacing:.04em;font-size:.72rem;">Ganancia</th>
                             <th class="py-2 pe-3" style="width:28px;"></th>
@@ -319,6 +324,21 @@
                                        style="max-width:90px;text-align:center;">
                             </td>
 
+                            {{-- Ubicación en el almacén elegido (PA5-VI2) --}}
+                            <td class="py-2">
+                                @if($isAll)
+                                    @php $locs = $product->relationLoaded('locations') ? $product->locations->pluck('location')->unique()->implode(', ') : ''; @endphp
+                                    <span class="text-muted small" title="Elige un almacén para editar la ubicación">{{ $locs ?: '—' }}</span>
+                                @else
+                                    <input type="text" maxlength="40"
+                                           class="form-control form-control-sm loc-input text-uppercase"
+                                           data-id="{{ $product->id }}"
+                                           value="{{ $product->locationIn($whId) }}"
+                                           placeholder="PA5-VI2" data-no-uppercase
+                                           style="max-width:110px;">
+                                @endif
+                            </td>
+
                             {{-- Ganancia --}}
                             <td class="py-2 text-center">
                                 <span class="badge margin-badge bg-success-subtle text-success border border-success-subtle"
@@ -335,7 +355,7 @@
                         </tr>
                         @empty
                         <tr id="stockEmptyRow">
-                            <td colspan="7" class="text-center py-5 text-muted">
+                            <td colspan="8" class="text-center py-5 text-muted">
                                 <i class="bi bi-clipboard-data fs-1 d-block mb-2 opacity-25"></i>
                                 <p class="mb-0">No hay productos en el inventario.</p>
                                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('products.create', auth()->user()->getCurrentCompany()))
@@ -634,6 +654,26 @@
                     flashInput(input, 'error');
                     setStateIcon(id, 'error');
                 });
+        });
+    });
+
+    // ── Inline save: ubicación en el almacén elegido ──────────────────
+    const LOC_URL = '{{ route('inventory.stock.location', '__ID__') }}';
+    document.querySelectorAll('.loc-input').forEach(function (input) {
+        input.addEventListener('change', function () {
+            if (!activeWhId) return;
+            const id = this.dataset.id;
+            setStateIcon(id, 'spin');
+            flashInput(this, 'saving');
+            postJson(LOC_URL.replace('__ID__', id), { warehouse_id: activeWhId, location: this.value })
+                .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+                .then(function (res) {
+                    if (!res.ok) throw new Error(res.d.message || 'Error');
+                    input.value = res.d.location || '';
+                    flashInput(input, 'saved');
+                    setStateIcon(id, 'ok');
+                })
+                .catch(function () { flashInput(input, 'error'); setStateIcon(id, 'error'); });
         });
     });
 

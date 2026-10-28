@@ -11,6 +11,7 @@
     $credit   = (bool) old('allow_credit_sales', $company ? $company->allowsCreditSales() : true);
     $methods  = (array) old('payment_methods', $company ? $company->paymentMethods() : ['efectivo']);
     $otherPay = (bool) old('expenses_use_other_methods', $company ? $company->expensesUseOtherMethods() : true);
+    $cardFields = array_values(array_filter((array) old('pos_card_fields', $company ? $company->posCardFields() : \App\Models\Company::POS_CARD_DEFAULT)));
     $labels   = \App\Models\CashMovement::METHOD_SHORT;
     $icons    = ['efectivo' => 'bi-cash', 'qr' => 'bi-qr-code', 'transferencia' => 'bi-bank', 'tarjeta' => 'bi-credit-card'];
 @endphp
@@ -80,8 +81,78 @@
                 Apagado: solo se puede gastar el efectivo del cajón.
             </div>
         </div>
+
+        <div class="col-12">
+            <label class="form-label small fw-semibold d-block">Datos que se ven en cada producto del POS</label>
+            {{-- Vacío oculto: si se desmarcan todas, igual viaja la lista (vacía). --}}
+            <input type="hidden" name="pos_card_fields[]" value="" {{ $disabled ? 'disabled' : '' }}>
+            <div class="row g-3 align-items-start">
+                <div class="col-md-7">
+                    <div class="d-flex flex-wrap gap-3">
+                        @foreach(\App\Models\Company::POS_CARD_FIELDS as $key => $label)
+                        <div class="form-check">
+                            <input class="form-check-input pos-card-field" type="checkbox" id="pcf_{{ $key }}"
+                                   name="pos_card_fields[]" value="{{ $key }}" data-field="{{ $key }}"
+                                   {{ in_array($key, $cardFields, true) ? 'checked' : '' }} {{ $disabled ? 'disabled' : '' }}>
+                            <label class="form-check-label" for="pcf_{{ $key }}">{{ $label }}</label>
+                        </div>
+                        @endforeach
+                    </div>
+                    <div class="form-text">
+                        Vale para el POS de la web y de la app. La ubicación es la del almacén de la sucursal
+                        de la caja (ej. PA5-VI2). «Sin stock» se avisa siempre.
+                    </div>
+                    @error('pos_card_fields')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-5">
+                    {{-- Vista previa: tarjeta de ejemplo que sigue a las casillas. --}}
+                    <div class="small text-muted mb-1">Vista previa</div>
+                    <div class="border rounded-3 p-2 bg-body" style="max-width:220px;" id="posCardPreview">
+                        <div class="fw-semibold" style="font-size:.8rem;">Pastillas de freno</div>
+                        <div class="mb-1 d-flex flex-wrap gap-1">
+                            <span class="badge bg-light text-dark border" style="font-size:.6rem;" data-show="code"><i class="bi bi-upc me-1"></i>FR-120</span>
+                            <span class="badge bg-warning-subtle text-dark border border-warning-subtle" style="font-size:.62rem;" data-show="location"><i class="bi bi-geo-alt-fill text-danger me-1"></i>PA5-VI2</span>
+                        </div>
+                        <div class="text-muted mb-1" style="font-size:.66rem;">
+                            <span data-show="brand" data-sep>Bosch</span><span data-show="category" data-sep>Frenos</span><span data-show="models" data-sep>CG 150, Pulsar 200</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-primary" style="font-size:.85rem;">{{ $symbol }} 120,00</span>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.65rem;" data-show="stock">15 en stock</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+@once
+@push('scripts')
+<script>
+    // Vista previa de la tarjeta del POS según las casillas marcadas.
+    (function () {
+        const box = document.getElementById('posCardPreview');
+        if (!box) return;
+        const sync = function () {
+            const on = new Set(Array.from(document.querySelectorAll('.pos-card-field:checked')).map(function (c) { return c.dataset.field; }));
+            let first = true;
+            box.querySelectorAll('[data-show]').forEach(function (el) {
+                const show = on.has(el.dataset.show);
+                el.classList.toggle('d-none', !show);
+                // Separador " · " entre marca, categoría y modelos visibles.
+                if (el.hasAttribute('data-sep')) {
+                    el.textContent = el.textContent.replace(/^ · /, '');
+                    if (show) { if (!first) el.textContent = ' · ' + el.textContent; first = false; }
+                }
+            });
+        };
+        document.querySelectorAll('.pos-card-field').forEach(function (c) { c.addEventListener('change', sync); });
+        sync();
+    })();
+</script>
+@endpush
+@endonce
 
 @once
 @push('scripts')

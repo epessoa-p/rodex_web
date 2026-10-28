@@ -105,6 +105,9 @@ class ProductController extends Controller
             'photos'             => 'nullable|array|max:8',
             'photos.*'           => 'image|max:3072',
             'main_photo_index'   => 'nullable|integer',
+            // Ubicación por almacén: [warehouse_id => "PA5-VI2"]
+            'locations'          => 'nullable|array',
+            'locations.*'        => 'nullable|string|max:40',
         ]);
 
         if (empty($validated['sku'])) {
@@ -112,6 +115,7 @@ class ProductController extends Controller
         }
 
         try {
+            unset($validated['locations']);
             $product = Product::create([
                 ...$validated,
                 'company_id' => $companyId,
@@ -119,6 +123,7 @@ class ProductController extends Controller
             ]);
 
             $product->motoModels()->sync($validated['moto_models'] ?? []);
+            $this->saveLocations($product, request()->input('locations', []));
             $this->handlePhotos($product);
 
             return redirect()->route('products.index')
@@ -133,6 +138,9 @@ class ProductController extends Controller
     {
         $this->authorizeProduct($product);
         $product->load(['category', 'brand', 'photos', 'motoModels.brand']);
+        if (Product::locationsReady()) {
+            $product->load('locations');
+        }
 
         $warehouses        = Warehouse::where('company_id', $product->company_id)->where('active', true)->get();
         $stockByWarehouse  = $warehouses->mapWithKeys(fn ($w) => [
@@ -282,6 +290,9 @@ class ProductController extends Controller
             'photos'             => 'nullable|array|max:8',
             'photos.*'           => 'image|max:3072',
             'main_photo_index'   => 'nullable|integer',
+            // Ubicación por almacén: [warehouse_id => "PA5-VI2"]
+            'locations'          => 'nullable|array',
+            'locations.*'        => 'nullable|string|max:40',
             'delete_photos'      => 'nullable|array',
             'delete_photos.*'    => 'exists:product_photos,id',
         ]);
@@ -301,6 +312,7 @@ class ProductController extends Controller
         }
 
         try {
+            unset($validated['locations']);
             $product->update([
                 ...$validated,
                 'company_id' => $companyId,
@@ -308,6 +320,7 @@ class ProductController extends Controller
             ]);
 
             $product->motoModels()->sync($validated['moto_models'] ?? []);
+            $this->saveLocations($product, request()->input('locations', []));
 
             // Delete photos
             if (request()->has('delete_photos')) {
@@ -385,7 +398,24 @@ class ProductController extends Controller
             ? Company::orderBy('name')->get()
             : collect([$user->getCurrentCompany()])->filter();
 
-        return compact('categories', 'brands', 'units', 'motoModels', 'companies');
+        // Ubicación por almacén (un campo por almacén activo).
+        $warehouses = Warehouse::where('company_id', $cid)->where('active', true)->orderBy('name')->get(['id', 'name']);
+
+        return compact('categories', 'brands', 'units', 'motoModels', 'companies', 'warehouses');
+    }
+
+    /** Guarda la ubicación por almacén (solo almacenes de la empresa del producto). */
+    private function saveLocations(Product $product, $locations): void
+    {
+        if (! is_array($locations) || ! $locations) {
+            return;
+        }
+        $valid = Warehouse::where('company_id', $product->company_id)->pluck('id')->all();
+        foreach ($locations as $warehouseId => $value) {
+            if (in_array((int) $warehouseId, $valid, true)) {
+                $product->setLocation((int) $warehouseId, $value);
+            }
+        }
     }
 
     // ── Importación desde Excel ───────────────────────────────

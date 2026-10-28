@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Sales\Concerns\ResolvesCashSession;
 use App\Models\Inventory\ProductBrand;
 use App\Models\Inventory\ProductCategory;
 use App\Models\Inventory\ProductPhoto;
@@ -18,6 +19,11 @@ use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
+    use ResolvesCashSession;
+
+    /** Almacén del usuario (caché por petición); false = aún no resuelto. */
+    private int|null|false $userWarehouse = false;
+
     /** Catálogos para el alta rápida de producto: categorías, marcas, almacenes. */
     public function formData(Request $request)
     {
@@ -63,7 +69,10 @@ class ProductController extends Controller
             'initial_stock' => ['nullable', 'numeric', 'min:0'],
             'warehouse_id'  => ['nullable', Rule::exists('warehouses', 'id')->where('company_id', $cid)],
             'photo'         => ['nullable', 'image', 'max:5120'],
+            'locations'     => ['nullable', 'array'],
+            'locations.*'   => ['nullable', 'string', 'max:40'],
         ]);
+        unset($data['locations']);
 
         $initial = (float) ($data['initial_stock'] ?? 0);
         if ($initial > 0 && empty($data['warehouse_id'])) {
@@ -128,6 +137,8 @@ class ProductController extends Controller
             ]);
             $product->load('photos');
         }
+
+        $this->saveLocations($product, $request);
 
         return response()->json(['data' => $this->payload($product)], 201);
     }
@@ -213,7 +224,7 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        $product->load(['category:id,name', 'brand:id,name', 'origin:id,name', 'motoModels.brand', 'photos']);
+        $product->load(array_merge(['category:id,name', 'brand:id,name', 'origin:id,name', 'motoModels.brand', 'photos'], Product::locationsReady() ? ['locations'] : []));
 
         $stockByWarehouse = Warehouse::where('company_id', $product->company_id)
             ->orderBy('name')->get(['id', 'name'])
@@ -221,6 +232,8 @@ class ProductController extends Controller
                 'id'        => $w->id,
                 'warehouse' => $w->name,
                 'qty'       => (float) $product->stockInWarehouse($w->id),
+                // Ubicación en ese almacén (PA5-VI2); null si no tiene.
+                'location'  => $product->locationIn($w->id),
             ])->values();
 
         return response()->json([
@@ -272,9 +285,11 @@ class ProductController extends Controller
             'active'      => ['nullable', 'boolean'],
             'moto_models'   => ['nullable', 'array'],
             'moto_models.*' => ['integer', Rule::exists('moto_models', 'id')->where('company_id', $cid)],
+            'locations'     => ['nullable', 'array'],
+            'locations.*'   => ['nullable', 'string', 'max:40'],
         ]);
         $models = $data['moto_models'] ?? null;
-        unset($data['moto_models']);
+        unset($data['moto_models'], $data['locations']);
 
         // Las columnas NOT NULL no admiten null aunque el campo venga vacío.
         $attrs = [
@@ -306,6 +321,7 @@ class ProductController extends Controller
         if ($request->has('moto_models')) {
             $product->motoModels()->sync($models ?? []);
         }
+        $this->saveLocations($product, $request);
 
         return $this->show($product->fresh());
     }
@@ -382,7 +398,7 @@ class ProductController extends Controller
         $perPage = min(100, max(10, (int) $request->query('per_page', 30)));
 
         $page = Product::query()
-            ->with('photos')
+            ->with(array_merge(['photos', 'category:id,name', 'brand:id,name', 'motoModels.brand'], Product::locationsReady() ? ['locations'] : []))
             ->where('active', true)
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($sub) use ($q) {
@@ -390,6 +406,13 @@ class ProductController extends Controller
                         ->orWhere('sku', 'like', "%{$q}%")
                         ->orWhere('code', 'like', "%{$q}%")
                         ->orWhere('barcode', 'like', "%{$q}%");
+                    // Por ubicación (PA5-VI2) en el almacén del usuario.
+                    if (Product::locationsReady()) {
+                        $wid = $this->userWarehouseId();
+                        $sub->orWhereHas('locations', fn ($l) => $l
+                            ->where('location', 'like', "%{$q}%")
+                            ->when($wid, fn ($l) => $l->where('warehouse_id', $wid)));
+                    }
                 });
             })
             ->orderBy('name')
@@ -418,7 +441,53 @@ class ProductController extends Controller
             'price'         => (float) $p->price,
             'current_stock' => (float) $p->current_stock,
             'image_url'     => $this->mainPhotoUrl($p),
+            // Datos que el POS de la app puede mostrar (según company.pos_card_fields).
+            'brand'         => $p->relationLoaded('brand') ? $p->brand?->name : null,
+            'category'      => $p->relationLoaded('category') ? $p->category?->name : null,
+            'models_text'   => $p->relationLoaded('motoModels') ? ($p->motoModels->pluck('display_name')->implode(', ') ?: null) : null,
+            // Ubicación en el almacén del usuario (el de su caja o su sucursal).
+            'location'      => $p->locationIn($this->userWarehouseId()),
         ];
+    }
+
+    /**
+     * Almacén del usuario: el de la sucursal de su caja abierta; si no, el de
+     * su sucursal (Personal); si la empresa tiene un solo almacén, ese.
+     */
+    private function userWarehouseId(): ?int
+    {
+        if ($this->userWarehouse !== false) {
+            return $this->userWarehouse;
+        }
+
+        $wid = $this->currentOpenSession()?->cashRegister?->branch?->warehouse_id;
+        if (! $wid) {
+            $wid = \App\Models\Personal::where('user_id', auth()->id())->with('branch')->first()?->branch?->warehouse_id;
+        }
+        if (! $wid) {
+            $ids = Warehouse::query()->limit(2)->pluck('id');
+            $wid = $ids->count() === 1 ? $ids->first() : null;
+        }
+
+        return $this->userWarehouse = $wid ? (int) $wid : null;
+    }
+
+    /**
+     * Ubicaciones por almacén: `locations[warehouse_id] = texto` (vacío = quitar).
+     * Solo si la app las manda (una versión vieja no las conoce).
+     */
+    private function saveLocations(Product $product, Request $request): void
+    {
+        if (! $request->has('locations') || ! Product::locationsReady()) {
+            return;
+        }
+        $valid = Warehouse::where('company_id', $product->company_id)->pluck('id')->all();
+        foreach ((array) $request->input('locations', []) as $wid => $loc) {
+            if (in_array((int) $wid, $valid, true)) {
+                $product->setLocation((int) $wid, $loc);
+            }
+        }
+        $product->unsetRelation('locations');
     }
 
     /**

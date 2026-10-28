@@ -25,7 +25,7 @@ class PosController extends Controller
 
         $products = Product::when($cid, fn ($q) => $q->where('company_id', $cid))
             ->where('active', true)
-            ->with(['category', 'brand', 'photos', 'motoModels.brand'])
+            ->with(array_merge(['category', 'brand', 'photos', 'motoModels.brand'], Product::locationsReady() ? ['locations'] : []))
             ->orderBy('name')
             ->get();
 

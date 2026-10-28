@@ -41,6 +41,8 @@ Route::middleware(['auth', 'plan:inventory'])->group(function () {
         Route::post('/bulk-price/preview', [StockController::class, 'bulkPricePreview'])->name('.bulk-price.preview')->middleware('check-permission:products.prices');
         Route::post('/bulk-price',         [StockController::class, 'bulkPriceApply'])->name('.bulk-price')->middleware('check-permission:products.prices');
         Route::post('/{product}/quantity',[StockController::class, 'setQuantity'])->name('.quantity')->middleware('check-permission:products.edit');
+        // Ubicación del producto en un almacén (PA5-VI2).
+        Route::post('/{product}/location',[StockController::class, 'setLocation'])->name('.location')->middleware('check-permission:products.edit');
     });
 
     // ── Categorías ────────────────────────────────────────────────────────────

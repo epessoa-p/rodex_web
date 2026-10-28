@@ -40,7 +40,7 @@ class StockController extends Controller
         $isAll = $activeWarehouse === 'all' || !$warehouses->firstWhere('id', (int) $activeWarehouse);
         $whId  = $isAll ? null : (int) $activeWarehouse;
 
-        $products = Product::with(['category', 'brand', 'origin', 'photos'])
+        $products = Product::with(array_merge(['category', 'brand', 'origin', 'photos'], Product::locationsReady() ? ['locations'] : []))
             ->when($cid, fn ($q) => $q->where('company_id', $cid))
             ->where('active', true)
             ->orderBy('name')
@@ -124,6 +124,21 @@ class StockController extends Controller
 
         return [(int) $cid, $data['ids'], $data];
     }
+    /** Guarda la ubicación del producto en un almacén (vacío = la quita). */
+    public function setLocation(Product $product, Request $request)
+    {
+        $this->authorizeProduct($product);
+        $data = $request->validate([
+            'warehouse_id' => ['required', 'integer'],
+            'location'     => ['nullable', 'string', 'max:40'],
+        ]);
+        abort_unless(Warehouse::where('company_id', $product->company_id)->whereKey($data['warehouse_id'])->exists(), 422);
+
+        $product->setLocation((int) $data['warehouse_id'], $data['location'] ?? null);
+
+        return response()->json(['ok' => true, 'location' => $product->locationIn((int) $data['warehouse_id'])]);
+    }
+
     public function updateField(Product $product, Request $request)
     {
         $this->authorizeProduct($product);
@@ -207,7 +222,7 @@ class StockController extends Controller
         // Plantilla genérica: se lee por NOMBRE de encabezado (el orden no importa).
         // Solo "Nombre" es obligatorio; el resto es opcional. Ejemplo (repuestos de moto).
         $headers = $this->importHeaders();
-        $example = ['Pastillas de freno', 'Frenos', 'Bosch', 'China', '120', '90', '15', 'Unidad', '', 'CG 150, Pulsar 200', 'Juego x2'];
+        $example = ['Pastillas de freno', 'Frenos', 'Bosch', 'China', '120', '90', '15', 'Unidad', '', 'CG 150, Pulsar 200', 'Juego x2', 'PA5-VI2'];
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -556,6 +571,15 @@ class StockController extends Controller
         }
 
         $product = $this->upsertProduct($d, $companyId, $counters);
+
+        // Ubicación en el almacén de la importación. Excel sin la columna (null)
+        // o celda vacía en la carga en tabla: no se toca.
+        if (array_key_exists('location', $d) && $d['location'] !== null) {
+            $loc = trim((string) $d['location']);
+            if ($loc !== '' || empty($d['_partial'])) {
+                $product->setLocation($warehouse->id, $loc);
+            }
+        }
 
         // Carga en tabla: si no escribieron cantidad para un producto que ya
         // existía, su stock se deja como está (el Excel siempre fija el stock).

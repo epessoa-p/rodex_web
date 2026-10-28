@@ -185,6 +185,9 @@
                                         <p class="mb-0 fw-bold {{ $ws['stock'] < 0 ? 'text-danger' : '' }}">
                                             {{ number_format($ws['stock'], 2) }} <span class="text-muted fw-normal small">{{ $product->unit }}</span>
                                         </p>
+                                        @if($loc = $product->locationIn($wid))
+                                            <span class="badge bg-white text-dark border mt-1"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ $loc }}</span>
+                                        @endif
                                     </div>
                                 </div>
                                 @endforeach
@@ -198,6 +201,9 @@
                                 </div>
                                 <div>
                                     <p class="mb-0 text-muted">{{ $product->unit }} en {{ $ws['warehouse']->name }}</p>
+                                    @if($loc = $product->locationIn($wid))
+                                    <p class="mb-0 fw-semibold"><i class="bi bi-geo-alt-fill text-danger me-1"></i>Ubicación: {{ $loc }}</p>
+                                    @endif
                                     @if($ws['warehouse']->location)
                                     <p class="mb-0 small text-muted"><i class="bi bi-geo-alt me-1"></i>{{ $ws['warehouse']->location }}</p>
                                     @endif

@@ -26,7 +26,7 @@ trait ParsesProductImport
     /** Encabezados de la plantilla estándar (orden sugerido). */
     protected function importHeaders(): array
     {
-        return ['Nombre', 'Categoría', 'Marca', 'Origen', 'Precio', 'Costo', 'Stock', 'Unidad', 'Código', 'Modelos compatibles', 'Descripción'];
+        return ['Nombre', 'Categoría', 'Marca', 'Origen', 'Precio', 'Costo', 'Stock', 'Unidad', 'Código', 'Modelos compatibles', 'Descripción', 'Ubicación'];
     }
 
     /** Alias aceptados por campo (encabezados normalizados: minúscula, sin acentos). */
@@ -44,6 +44,8 @@ trait ParsesProductImport
             'code'     => ['codigo', 'code', 'sku'],
             'models'   => ['modelos compatibles', 'modelos', 'modelo(s)', 'modelo', 'compatibilidad'],
             'notes'    => ['descripcion', 'detalle', 'observaciones'],
+            // Ubicación en el almacén de la importación (PA5-VI2).
+            'location' => ['ubicacion', 'location', 'pasillo', 'ubicacion en almacen', 'posicion'],
         ];
     }
 
@@ -119,6 +121,8 @@ trait ParsesProductImport
                 'code'     => $get($row, 'code') ?: null,
                 'models'   => $get($row, 'models'),
                 'notes'    => $get($row, 'notes'),
+                // null = el Excel no trae la columna: no se toca la ubicación.
+                'location' => isset($map['location']) ? $get($row, 'location') : null,
             ];
         }
 

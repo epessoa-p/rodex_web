@@ -101,6 +101,22 @@
                             </div>
                             @endif
 
+                            @if(!$fromOrder)
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="warehouse_id">
+                                    Almacén de entrada <span class="text-danger">*</span>
+                                </label>
+                                <select id="warehouse_id" name="warehouse_id"
+                                        class="form-select @error('warehouse_id') is-invalid @enderror" required>
+                                    @foreach($warehouses as $wh)
+                                    <option value="{{ $wh->id }}" {{ (int) old('warehouse_id', $defaultWarehouseId) === $wh->id ? 'selected' : '' }}>{{ $wh->name }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text">Sin orden de compra, los productos suman al stock de este almacén al guardar.</div>
+                                @error('warehouse_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            @endif
+
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold" for="invoice_number">N° de factura</label>
                                 <input type="text" id="invoice_number" name="invoice_number"

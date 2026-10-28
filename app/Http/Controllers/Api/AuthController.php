@@ -170,6 +170,8 @@ class AuthController extends Controller
             'logo_url'      => $company->logo_url,
             // Formas de cobro aceptadas (efectivo siempre) para el POS y el taller.
             'payment_methods' => $company->paymentMethods(),
+            // Datos que se ven en cada producto del POS (code, brand, category, models, location, stock).
+            'pos_card_fields' => $company->posCardFields(),
             'phone'         => $company->phone,
             'address'       => $company->address,
             'theme_primary' => $company->theme_primary,
