@@ -46,6 +46,17 @@
             </div>
 
             <div class="form-group mb-3">
+                <label for="business_type" class="form-label">Rubro</label>
+                <select id="business_type" name="business_type" class="form-select @error('business_type') is-invalid @enderror">
+                    @foreach(\App\Support\BusinessTypeDefaults::OPTIONS as $val => $label)
+                    <option value="{{ $val }}" {{ old('business_type', $company->business_type ?? 'moto') === $val ? 'selected' : '' }}>{{ $label }}</option>
+                    @endforeach
+                </select>
+                <small class="text-muted">Cambiarlo no modifica los catálogos ya cargados.</small>
+                @error('business_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+
+            <div class="form-group mb-3">
                 <label for="email" class="form-label">Email</label>
                 <input type="email" id="email" name="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email', $company->email) }}">
             </div>

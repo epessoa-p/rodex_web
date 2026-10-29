@@ -6,19 +6,12 @@ use App\Models\Motos\MotoBrand;
 
 /**
  * Marcas de vehículo comunes (Bolivia) para sembrar el catálogo de una empresa
- * nueva y acelerar el onboarding. El super admin elige en el alta si precarga
- * marcas de motos, de autos o ninguna (motorepuestos vs. autorepuestos).
+ * nueva y acelerar el onboarding. Qué lista se usa lo decide el rubro de la
+ * empresa (ver BusinessTypeDefaults).
  * La tabla sigue llamándose moto_brands por historia: guarda marcas de vehículo.
  */
 class MotoBrandDefaults
 {
-    /** Opciones del alta de empresa: valor => etiqueta. */
-    public const OPTIONS = [
-        'moto' => 'Motos',
-        'auto' => 'Autos',
-        'none' => 'Ninguna',
-    ];
-
     /** Marcas de moto => país de origen. */
     public const BRANDS = [
         'Honda'    => 'Japón',

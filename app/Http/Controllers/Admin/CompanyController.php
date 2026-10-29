@@ -9,8 +9,7 @@ use App\Models\Plan;
 use App\Services\Admin\CompanyOnboardingService;
 use App\Services\Admin\CompanyUsageService;
 use App\Services\Reports\IncomeStatementService;
-use App\Support\MotoBrandDefaults;
-use App\Support\ProductOriginDefaults;
+use App\Support\BusinessTypeDefaults;
 use App\Support\Tenancy;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -46,9 +45,8 @@ class CompanyController extends Controller
     {
         $data = $request->validated();
         unset($data['logo']);   // se guarda tras crear, para poder usar el id en la ruta
-        // Solo decide qué marcas precargar; no es un dato de la empresa.
-        $seedBrands = $data['seed_brands'] ?? 'moto';
-        unset($data['seed_brands']);
+        $businessType = $data['business_type'] ?? 'moto';
+        $data['business_type'] = $businessType;
         $data = $this->withoutMissingColumns($data);
 
         $company = Company::create($data);
@@ -58,8 +56,7 @@ class CompanyController extends Controller
         }
 
         // Onboarding: catálogos base para arrancar de inmediato.
-        MotoBrandDefaults::seedFor($company->id, $seedBrands);
-        ProductOriginDefaults::seedFor($company->id);
+        BusinessTypeDefaults::seedFor($company->id, $businessType);
 
         // Alta "lista para usar": plan, sucursal (+ almacén), cargo, personal
         // con usuario y caja — lo que se haya llenado en el formulario.
@@ -156,6 +153,16 @@ class CompanyController extends Controller
         return redirect()->route('companies.show', $company)->with('success', 'Empresa actualizada exitosamente');
     }
 
+    /** Desactivar / reactivar: sus usuarios (web y APK) pierden o recuperan el acceso; no se borra nada. */
+    public function toggleActive(Company $company)
+    {
+        $company->update(['active' => ! $company->active]);
+
+        return back()->with('success', $company->active
+            ? "Empresa «{$company->name}» activada"
+            : "Empresa «{$company->name}» desactivada: sus usuarios ya no pueden entrar");
+    }
+
     public function destroy(Company $company)
     {
         $company->delete();
@@ -163,11 +170,13 @@ class CompanyController extends Controller
         return redirect()->route('companies.index')->with('success', 'Empresa eliminada exitosamente');
     }
 
-    /** Sin el SQL de ubicaciones aplicado, `pos_card_fields` no se guarda (no rompe el alta). */
+    /** Sin el SQL aplicado, `pos_card_fields` / `business_type` no se guardan (no rompe el alta). */
     private function withoutMissingColumns(array $data): array
     {
-        if (array_key_exists('pos_card_fields', $data) && ! \Illuminate\Support\Facades\Schema::hasColumn('companies', 'pos_card_fields')) {
-            unset($data['pos_card_fields']);
+        foreach (['pos_card_fields', 'business_type'] as $column) {
+            if (array_key_exists($column, $data) && ! \Illuminate\Support\Facades\Schema::hasColumn('companies', $column)) {
+                unset($data[$column]);
+            }
         }
 
         return $data;

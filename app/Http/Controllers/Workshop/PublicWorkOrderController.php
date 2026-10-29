@@ -20,7 +20,8 @@ class PublicWorkOrderController extends Controller
         $order = $tenancy->runAs(null, fn () =>
             WorkOrder::where('public_token', $token)->with('company')->first()
         );
-        abort_if(! $order || $order->status === 'anulada', 404);
+        // Empresa desactivada o eliminada (company null): el enlace deja de servir.
+        abort_if(! $order || $order->status === 'anulada' || ! $order->company?->active, 404);
 
         // Caducidad: el enlace deja de servir N días después de entregada.
         if ($order->status === 'entregada' && $order->delivered_at) {

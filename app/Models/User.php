@@ -187,12 +187,16 @@ class User extends Authenticatable
     }
 
     /**
-     * Obtener empresa actual de la sesión o la primera que pertenezca
+     * Obtener empresa actual de la sesión o la primera que pertenezca.
+     * Solo devuelve empresas activas, no eliminadas y a las que el usuario
+     * sigue asignado: una sesión abierta pierde el acceso al desactivarlas.
      */
     public function getCurrentCompany(): ?Company
     {
         if (auth()->check() && session()->has('current_company_id')) {
-            return Company::find(session('current_company_id'));
+            return $this->is_super_admin
+                ? Company::find(session('current_company_id'))
+                : $this->activeCompanies()->find(session('current_company_id'));
         }
 
         return $this->activeCompanies()->first();

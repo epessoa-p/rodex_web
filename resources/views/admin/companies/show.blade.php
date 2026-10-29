@@ -208,6 +208,7 @@ Contraseña: {{ $ob['password'] }}</pre>
             <div class="card-body">
                 <dl class="row mb-0 small">
                     <dt class="col-4 text-muted fw-normal">RUC</dt><dd class="col-8">{{ $company->ruc ?? '—' }}</dd>
+                    <dt class="col-4 text-muted fw-normal">Rubro</dt><dd class="col-8">{{ \App\Support\BusinessTypeDefaults::OPTIONS[$company->business_type ?? 'moto'] ?? '—' }}</dd>
                     <dt class="col-4 text-muted fw-normal">Email</dt><dd class="col-8">{{ $company->email ?? '—' }}</dd>
                     <dt class="col-4 text-muted fw-normal">Teléfono</dt><dd class="col-8">{{ $company->phone ?? '—' }}</dd>
                     <dt class="col-4 text-muted fw-normal">Dirección</dt><dd class="col-8">{{ $company->address ?? '—' }}</dd>
@@ -261,9 +262,21 @@ Contraseña: {{ $ob['password'] }}</pre>
     </div>
 </div>
 
-<div class="mt-4">
+<div class="mt-4 d-flex flex-wrap gap-2">
+    <form action="{{ route('companies.toggle-active', $company) }}" method="POST" class="d-inline"
+          onsubmit="return confirm(@js($company->active
+              ? '¿Desactivar la empresa «' . $company->name . '»? Sus usuarios no podrán entrar hasta reactivarla.'
+              : '¿Activar la empresa «' . $company->name . '»?'))">
+        @csrf
+        @method('PATCH')
+        @if($company->active)
+            <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pause-circle"></i> Desactivar empresa</button>
+        @else
+            <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-play-circle"></i> Activar empresa</button>
+        @endif
+    </form>
     <form action="{{ route('companies.destroy', $company) }}" method="POST" class="d-inline"
-          onsubmit="return confirm('¿Eliminar la empresa «{{ $company->name }}»? Esta acción no se puede deshacer.')">
+          onsubmit="return confirm(@js('¿Eliminar la empresa «' . $company->name . '»? Sus usuarios perderán el acceso y no se puede deshacer desde el sistema.'))">
         @csrf
         @method('DELETE')
         <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> Eliminar empresa</button>

@@ -47,8 +47,20 @@ class EnsureSubscriptionActive
 
         $company = $user->getCurrentCompany();
 
+        // La empresa de la sesión fue desactivada/eliminada o el usuario ya no
+        // pertenece a ella: a elegir otra si tiene, si no se cierra la sesión.
         if (!$company) {
-            return $next($request);  // CheckPermission ya gestiona el caso sin empresa
+            session()->forget('current_company_id');
+
+            if ($user->activeCompanies()->exists()) {
+                return redirect()->route('select-company');
+            }
+
+            auth()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect('login')->withErrors(['email' => 'Tu empresa no está disponible. Contacta al administrador.']);
         }
 
         $subscription = $company->subscription;

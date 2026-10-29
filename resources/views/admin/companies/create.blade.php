@@ -57,21 +57,21 @@
 
             @include('admin.companies._theme')
 
-            {{-- Rubro de repuestos: qué marcas de vehículo precargar en el catálogo. --}}
+            {{-- Rubro: decide qué catálogos (marcas, categorías, unidades…) se precargan. --}}
             <div class="border rounded-3 p-3 mb-3">
-                <div class="fw-semibold mb-2"><i class="bi bi-car-front me-1 text-primary"></i>Precargar marcas de vehículo</div>
-                @php $seed = old('seed_brands', 'moto'); @endphp
-                <div class="d-flex flex-wrap gap-3">
-                    @foreach(\App\Support\MotoBrandDefaults::OPTIONS as $val => $label)
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="seed_brands" id="seed_{{ $val }}" value="{{ $val }}" {{ $seed === $val ? 'checked' : '' }}>
-                        <label class="form-check-label" for="seed_{{ $val }}">{{ $label }}</label>
-                    </div>
-                    @endforeach
+                <div class="fw-semibold mb-2"><i class="bi bi-shop me-1 text-primary"></i>Rubro del negocio</div>
+                @php $seed = old('business_type', 'moto'); @endphp
+                @foreach(\App\Support\BusinessTypeDefaults::OPTIONS as $val => $label)
+                <div class="form-check mb-1">
+                    <input class="form-check-input" type="radio" name="business_type" id="business_type_{{ $val }}" value="{{ $val }}" {{ $seed === $val ? 'checked' : '' }}>
+                    <label class="form-check-label" for="business_type_{{ $val }}">
+                        <span class="fw-semibold">{{ $label }}</span>
+                        <span class="text-muted small d-block">{{ \App\Support\BusinessTypeDefaults::HINTS[$val] }}</span>
+                    </label>
                 </div>
+                @endforeach
                 <div class="form-text">
-                    Motos: Honda, Yamaha, Bajaj… · Autos: Toyota, Nissan, Hyundai… Se pueden editar o agregar después en
-                    Inventario → Marcas de vehículo.
+                    También se cargan unidades (Unidad, Litro, Juego…) y orígenes. Todo se puede editar después en Inventario.
                 </div>
             </div>
 

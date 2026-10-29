@@ -56,6 +56,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/{company}',      [CompanyController::class, 'show'])->name('show');
         Route::get('/{company}/edit', [CompanyController::class, 'edit'])->name('edit');
         Route::put('/{company}',      [CompanyController::class, 'update'])->name('update');
+        Route::patch('/{company}/toggle-active', [CompanyController::class, 'toggleActive'])->name('toggle-active');
         Route::delete('/{company}',   [CompanyController::class, 'destroy'])->name('destroy');
     });
 

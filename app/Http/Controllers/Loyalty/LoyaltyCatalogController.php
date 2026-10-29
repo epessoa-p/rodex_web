@@ -18,7 +18,8 @@ class LoyaltyCatalogController extends Controller
         $settings = $tenancy->runAs(null, fn () =>
             LoyaltySetting::where('public_token', $token)->with('company')->first()
         );
-        abort_if(!$settings || !$settings->enabled, 404);
+        // Empresa desactivada o eliminada (company null): el catálogo deja de servir.
+        abort_if(!$settings || !$settings->enabled || !$settings->company?->active, 404);
 
         // A partir de aquí fijamos explícitamente el tenant dueño del catálogo,
         // de modo que el global scope aísle correctamente aunque no haya sesión.

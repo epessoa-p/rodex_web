@@ -14,12 +14,13 @@ class StoreCompanyRequest extends FormRequest
 
     public function rules(): array
     {
-        // Al editar, el RUC de la propia empresa no debe chocar consigo mismo.
+        // Al editar, el RUC de la propia empresa no debe chocar consigo mismo;
+        // las empresas eliminadas tampoco lo bloquean.
         $companyId = $this->route('company')?->id;
 
         return [
             'name' => 'required|string|max:255',
-            'ruc' => ['nullable', 'string', 'max:20', Rule::unique('companies', 'ruc')->ignore($companyId)],
+            'ruc' => ['nullable', 'string', 'max:20', Rule::unique('companies', 'ruc')->ignore($companyId)->whereNull('deleted_at')],
             'currency' => 'nullable|string|max:8',
             'address' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
@@ -39,8 +40,8 @@ class StoreCompanyRequest extends FormRequest
             'expenses_use_other_methods' => ['sometimes', 'boolean'],
             'pos_card_fields'            => ['sometimes', 'array'],
             'pos_card_fields.*'          => ['nullable', Rule::in(array_keys(\App\Models\Company::POS_CARD_FIELDS))],
-            // Alta: qué marcas de vehículo precargar (motorepuestos / autorepuestos).
-            'seed_brands' => ['nullable', Rule::in(array_keys(\App\Support\MotoBrandDefaults::OPTIONS))],
+            // Rubro (motorepuestos / autorepuestos / lubricentro): en el alta decide qué catálogos precargar.
+            'business_type' => ['nullable', Rule::in(array_keys(\App\Support\BusinessTypeDefaults::OPTIONS))],
         ] + ($this->isMethod('post') ? $this->onboardingRules() : []);
     }
 

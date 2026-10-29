@@ -72,10 +72,20 @@
                                 <a href="{{ route('companies.edit', $company) }}" class="btn btn-sm btn-warning">
                                     <i class="bi bi-pencil"></i>
                                 </a>
+                                <form action="{{ route('companies.toggle-active', $company) }}" method="POST" style="display: inline;"
+                                      onsubmit="return confirm(@js(($company->active ? '¿Desactivar' : '¿Activar') . ' la empresa «' . $company->name . '»?'))">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="btn btn-sm {{ $company->active ? 'btn-secondary' : 'btn-success' }}"
+                                            title="{{ $company->active ? 'Desactivar' : 'Activar' }}">
+                                        <i class="bi {{ $company->active ? 'bi-pause-circle' : 'bi-play-circle' }}"></i>
+                                    </button>
+                                </form>
                                 <form action="{{ route('companies.destroy', $company) }}" method="POST" style="display: inline;">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Estás seguro?')">
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Eliminar"
+                                            onclick="return confirm(@js('¿Eliminar la empresa «' . $company->name . '»? Sus usuarios perderán el acceso.'))">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
