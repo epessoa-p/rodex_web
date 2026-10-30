@@ -41,9 +41,6 @@
                 </div>
                 <div>
                     <div class="brand-title">{{ $currentCompany?->name ?? config('brand.name') }}</div>
-                    @if($currentCompany?->description)
-                        <small class="brand-subtitle">{{ $currentCompany->description }}</small>
-                    @endif
                 </div>
             @endif
         </div>
@@ -728,7 +725,10 @@
                     </button>
 
                     <span class="topbar-separator">|</span>
-                    <span class="text-muted small">{{ auth()->user()->is_super_admin ? 'Modo Global' : ($currentCompany?->name ?? 'Sin empresa activa') }}</span>
+                    {{-- Quién está en sesión (la empresa ya se ve en el menú lateral). --}}
+                    <span class="text-muted small text-truncate" style="max-width:40vw;">
+                        <i class="bi bi-person me-1"></i>{{ auth()->user()->personal?->full_name ?: auth()->user()->name }}
+                    </span>
 
                     @if(!auth()->user()->is_super_admin && $activeCompanies->count() > 1)
                         <div class="dropdown">
