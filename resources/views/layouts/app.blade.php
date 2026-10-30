@@ -762,20 +762,23 @@
                     @include('partials.expense-btn')
                     @include('partials.cash-register-btn')
                     <div class="dropdown">
-                        <button class="btn btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <button class="btn btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Mi cuenta" aria-label="Mi cuenta">
                             <i class="bi bi-person-circle"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end shadow border-0">
                             <li><span class="dropdown-item-text text-muted">{{ auth()->user()->name }}</span></li>
                             <li><span class="dropdown-item-text text-muted small">{{ auth()->user()->email }}</span></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form action="{{ route('logout') }}" method="POST" class="m-0">
+                                    @csrf
+                                    <button class="dropdown-item dropdown-item-logout" type="submit">
+                                        <i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión
+                                    </button>
+                                </form>
+                            </li>
                         </ul>
                     </div>
-                    <form action="{{ route('logout') }}" method="POST" class="m-0">
-                        @csrf
-                        <button class="btn btn-logout" type="submit">
-                            <i class="bi bi-box-arrow-right"></i> Cerrar sesion
-                        </button>
-                    </form>
                 </div>
             </div>
         </nav>
@@ -1396,19 +1399,10 @@
         border-color: var(--brand-red-soft);
     }
 
-    .btn-logout {
-        border: 1px solid var(--border-soft);
-        background: #fff;
-        color: var(--text-secondary);
-        border-radius: 9px;
-        padding: 7px 14px;
-        font-size: 0.85rem;
-        font-weight: 500;
-        transition: all .15s ease;
-    }
-    .btn-logout:hover {
+    .dropdown-item-logout { color: var(--text-secondary); font-weight: 500; }
+    .dropdown-item-logout:hover,
+    .dropdown-item-logout:focus {
         background: var(--brand-red-tint);
-        border-color: var(--brand-red-soft);
         color: var(--brand-red-dark);
     }
 

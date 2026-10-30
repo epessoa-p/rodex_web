@@ -423,22 +423,22 @@
             }
             body .offcanvas.offcanvas-start { background: var(--company-primary); }
 
-            /* ── Cabecera (topbar: nombre de empresa + botones usuario/cerrar sesión) ── */
+            /* ── Cabecera (topbar: nombre de empresa + botones de ayuda/caja/perfil) ── */
             body .app-topbar {
                 background: var(--company-primary);
                 border-bottom-color: color-mix(in srgb, #fff 12%, transparent);
             }
             body .app-topbar .topbar-label,
             body .app-topbar .text-muted { color: #fff !important; }
+            /* El menú de perfil es blanco: su texto gris no se pinta de blanco. */
+            body .app-topbar .dropdown-menu .text-muted { color: var(--bs-secondary-color) !important; }
             body .app-topbar .topbar-separator { color: color-mix(in srgb, #fff 40%, transparent); }
-            body .app-topbar .btn-icon,
-            body .app-topbar .btn-logout {
+            body .app-topbar .btn-icon {
                 background: color-mix(in srgb, #fff 8%, transparent);
                 color: #fff;
                 border-color: color-mix(in srgb, #fff 20%, transparent);
             }
-            body .app-topbar .btn-icon:hover,
-            body .app-topbar .btn-logout:hover {
+            body .app-topbar .btn-icon:hover {
                 background: var(--company-accent);
                 border-color: var(--company-accent);
                 color: #fff;
