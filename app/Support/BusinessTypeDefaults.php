@@ -8,7 +8,7 @@ use App\Models\Inventory\ProductUnit;
 use App\Models\Motos\MotoBrand;
 
 /**
- * Rubro de la empresa (motorepuestos, autorepuestos, lubricentro, llantera) y los
+ * Rubro de la empresa (motorepuestos, autorepuestos, lubricentro, neumáticos) y los
  * catálogos base que se siembran en el alta para arrancar de inmediato:
  * marcas de vehículo, categorías, marcas de producto, unidades y orígenes.
  * Todo idempotente: re-sembrar no duplica ni pisa lo que el cliente editó.
@@ -20,7 +20,7 @@ class BusinessTypeDefaults
         'moto'        => 'Motorepuestos',
         'auto'        => 'Autorepuestos',
         'lubricentro' => 'Lubricentro',
-        'llantera'    => 'Llantera (neumáticos y aros)',
+        'neumaticos'  => 'Neumáticos y aros',
         'none'        => 'Otro / sin precarga',
     ];
 
@@ -29,7 +29,7 @@ class BusinessTypeDefaults
         'moto'        => 'Marcas de moto (Honda, Yamaha, Bajaj…) y categorías de repuestos.',
         'auto'        => 'Marcas de auto (Toyota, Nissan, Hyundai…) y categorías de repuestos.',
         'lubricentro' => 'Marcas de auto y moto, categorías (aceite de motor, de caja, grasas, filtros…) y marcas de lubricantes y filtros.',
-        'llantera'    => 'Marcas de auto y moto, categorías (neumáticos por tipo de vehículo, aros, cámaras, válvulas…), marcas de neumáticos y aros, y servicios. Consejo: pon la medida en el nombre del producto (ej. 205/55 R16) para encontrarla rápido en el POS.',
+        'neumaticos'  => 'Marcas de auto y moto, categorías (neumáticos por tipo de vehículo, aros, cámaras, válvulas…), marcas de neumáticos y aros, y servicios. Consejo: pon la medida en el nombre del producto (ej. 205/55 R16) para encontrarla rápido en el POS.',
         'none'        => 'Solo unidades y orígenes.',
     ];
 
@@ -56,10 +56,10 @@ class BusinessTypeDefaults
     ];
 
     /**
-     * Categorías de llantera. Las categorías no tienen jerarquía, así que el
+     * Categorías de neumáticos y aros. Las categorías no tienen jerarquía, así que el
      * tipo va en el nombre; la medida (205/55 R16) va en el nombre del producto.
      */
-    public const LLANTERA_CATEGORIES = [
+    public const NEUMATICOS_CATEGORIES = [
         'Neumáticos auto', 'Neumáticos camioneta / SUV / 4x4', 'Neumáticos camión y bus',
         'Neumáticos moto', 'Neumáticos agrícolas / industriales',
         'Aros de aleación', 'Aros de acero', 'Aros de moto',
@@ -67,8 +67,8 @@ class BusinessTypeDefaults
         'Parches y reparación', 'Accesorios', 'Servicios',
     ];
 
-    /** Marcas de producto de llantera: neumáticos y aros. */
-    public const LLANTERA_BRANDS = [
+    /** Marcas de producto de neumáticos y aros: neumáticos y aros. */
+    public const NEUMATICOS_BRANDS = [
         'Bridgestone', 'Firestone', 'Michelin', 'BFGoodrich', 'Goodyear', 'Pirelli', 'Continental',
         'Yokohama', 'Hankook', 'Kumho', 'Dunlop', 'Toyo', 'Falken',
         'Linglong', 'Triangle', 'Westlake', 'Maxxis', 'Sailun', 'Metzeler',
@@ -89,7 +89,7 @@ class BusinessTypeDefaults
         $vehicleBrands = match ($type) {
             'moto'        => MotoBrandDefaults::BRANDS,
             'auto'        => MotoBrandDefaults::AUTO_BRANDS,
-            'lubricentro', 'llantera' => MotoBrandDefaults::AUTO_BRANDS + MotoBrandDefaults::BRANDS,
+            'lubricentro', 'neumaticos' => MotoBrandDefaults::AUTO_BRANDS + MotoBrandDefaults::BRANDS,
             default       => [],
         };
         foreach ($vehicleBrands as $name => $country) {
@@ -102,14 +102,14 @@ class BusinessTypeDefaults
         $categories = match ($type) {
             'moto', 'auto' => self::PARTS_CATEGORIES,
             'lubricentro'  => self::LUBRICENTRO_CATEGORIES,
-            'llantera'     => self::LLANTERA_CATEGORIES,
+            'neumaticos'   => self::NEUMATICOS_CATEGORIES,
             default        => [],
         };
         self::seedNames(ProductCategory::class, $companyId, $categories);
 
         $productBrands = match ($type) {
             'lubricentro' => self::LUBRICENTRO_BRANDS,
-            'llantera'    => self::LLANTERA_BRANDS,
+            'neumaticos'  => self::NEUMATICOS_BRANDS,
             default       => [],
         };
         self::seedNames(ProductBrand::class, $companyId, $productBrands);
