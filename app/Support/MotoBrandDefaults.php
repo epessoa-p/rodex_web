@@ -63,8 +63,8 @@ class MotoBrandDefaults
 
         foreach ($brands as $name => $country) {
             MotoBrand::withoutGlobalScopes()->firstOrCreate(
-                ['company_id' => $companyId, 'name' => $name],
-                ['country' => $country, 'active' => true]
+                ['company_id' => $companyId, 'name' => mb_strtoupper($name)],
+                ['country' => mb_strtoupper($country), 'active' => true]
             );
         }
     }

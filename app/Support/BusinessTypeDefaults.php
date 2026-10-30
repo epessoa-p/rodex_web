@@ -58,16 +58,20 @@ class BusinessTypeDefaults
     /**
      * Categorías de neumáticos y aros. Las categorías no tienen jerarquía, así que el
      * tipo va en el nombre; la medida (205/55 R16) va en el nombre del producto.
+     * Moto y camioneta se dividen por uso porque así los pide el cliente.
      */
     public const NEUMATICOS_CATEGORIES = [
-        'Neumáticos auto', 'Neumáticos camioneta / SUV / 4x4', 'Neumáticos camión y bus',
-        'Neumáticos moto', 'Neumáticos agrícolas / industriales',
+        'Neumáticos auto',
+        'Neumáticos camioneta / SUV ruta (HT)', 'Neumáticos camioneta todo terreno (AT/MT)',
+        'Neumáticos camión y bus',
+        'Neumáticos moto pistera', 'Neumáticos moto doble propósito', 'Neumáticos moto todo terreno',
+        'Neumáticos agrícolas / industriales',
         'Aros de aleación', 'Aros de acero', 'Aros de moto',
         'Cámaras (tubos)', 'Válvulas', 'Pernos y tuercas de rueda', 'Plomos de balanceo',
         'Parches y reparación', 'Accesorios', 'Servicios',
     ];
 
-    /** Marcas de producto de neumáticos y aros: neumáticos y aros. */
+    /** Marcas de producto de neumáticos y aros. */
     public const NEUMATICOS_BRANDS = [
         'Bridgestone', 'Firestone', 'Michelin', 'BFGoodrich', 'Goodyear', 'Pirelli', 'Continental',
         'Yokohama', 'Hankook', 'Kumho', 'Dunlop', 'Toyo', 'Falken',
@@ -94,8 +98,8 @@ class BusinessTypeDefaults
         };
         foreach ($vehicleBrands as $name => $country) {
             MotoBrand::withoutGlobalScopes()->firstOrCreate(
-                ['company_id' => $companyId, 'name' => $name],
-                ['country' => $country, 'active' => true]
+                ['company_id' => $companyId, 'name' => mb_strtoupper($name)],
+                ['country' => mb_strtoupper($country), 'active' => true]
             );
         }
 
@@ -120,12 +124,16 @@ class BusinessTypeDefaults
         ProductOriginDefaults::seedFor($companyId);
     }
 
-    /** @param class-string<\Illuminate\Database\Eloquent\Model> $model */
+    /**
+     * Los catálogos precargados se guardan en MAYÚSCULAS.
+     *
+     * @param class-string<\Illuminate\Database\Eloquent\Model> $model
+     */
     private static function seedNames(string $model, int $companyId, array $names): void
     {
         foreach ($names as $name) {
             $model::withoutGlobalScopes()->firstOrCreate(
-                ['company_id' => $companyId, 'name' => $name],
+                ['company_id' => $companyId, 'name' => mb_strtoupper($name)],
                 ['active' => true]
             );
         }

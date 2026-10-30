@@ -20,7 +20,7 @@ class ProductOriginDefaults
     {
         foreach (self::ORIGINS as $name) {
             ProductOrigin::withoutGlobalScopes()->firstOrCreate(
-                ['company_id' => $companyId, 'name' => $name],
+                ['company_id' => $companyId, 'name' => mb_strtoupper($name)],
                 ['active' => true]
             );
         }
