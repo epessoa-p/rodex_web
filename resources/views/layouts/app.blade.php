@@ -13,6 +13,12 @@
     $canStatistics = auth()->user()->is_super_admin
         || (auth()->user()->hasPermissionInCompany('statistics.view', $currentCompany)
             && (bool) $currentCompany?->planAllows('statistics'));
+
+    // ── Manual: capítulo de la pantalla actual para el botón "?" del topbar ──
+    $manualHelp = \App\Support\UserManual::chapterForRoute(
+        request()->route()?->getName(),
+        \App\Support\UserManual::visibleFor(auth()->user(), $currentCompany)
+    );
 @endphp
 
 <div class="app-shell d-flex">
@@ -47,6 +53,11 @@
             <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
                     <i class="bi bi-speedometer2"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link app-link {{ request()->routeIs('manual.*') ? 'active' : '' }}" href="{{ route('manual.index') }}">
+                    <i class="bi bi-book"></i> Manual de usuario
                 </a>
             </li>
             {{-- "Estadísticas" vive ahora en la sección Reportes. --}}
@@ -744,6 +755,10 @@
                 </div>
 
                 <div class="d-flex align-items-center gap-2">
+                    <a class="btn btn-icon" href="{{ $manualHelp ? route('manual.show', $manualHelp['slug']) : route('manual.index') }}"
+                       title="{{ $manualHelp ? 'Ayuda: ' . $manualHelp['title'] : 'Manual de usuario' }}" aria-label="Ayuda">
+                        <i class="bi bi-question-circle"></i>
+                    </a>
                     @include('partials.expense-btn')
                     @include('partials.cash-register-btn')
                     <div class="dropdown">
@@ -823,6 +838,7 @@
             <div class="sidebar-section-title" data-sec="general">General</div>
             <ul class="nav flex-column gap-1 mb-3">
                 <li><a class="nav-link app-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
+                <li><a class="nav-link app-link {{ request()->routeIs('manual.*') ? 'active' : '' }}" href="{{ route('manual.index') }}"><i class="bi bi-book me-2"></i>Manual de usuario</a></li>
                 {{-- "Estadísticas" vive ahora en la sección Reportes. --}}
                 @if(auth()->user()->is_super_admin){{-- Plantillas: solo plataforma --}}
                 <li><a class="nav-link app-link {{ request()->routeIs('document-templates.*') ? 'active' : '' }}" href="{{ route('document-templates.index') }}"><i class="bi bi-file-earmark-ruled me-2"></i>Plantillas</a></li>

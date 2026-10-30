@@ -23,7 +23,7 @@ class Company extends Model
         'payment_methods', 'expenses_use_other_methods',
         // Datos que se ven en cada producto del POS.
         'pos_card_fields',
-        // Rubro: moto, auto, lubricentro o none (ver BusinessTypeDefaults).
+        // Rubro: moto, auto, lubricentro, llantera o none (ver BusinessTypeDefaults).
         'business_type',
     ];
 

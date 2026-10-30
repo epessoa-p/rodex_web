@@ -34,6 +34,11 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // ── Manual de usuario (capítulos según módulos/permisos del usuario) ──
+    Route::get('/manual',              [\App\Http\Controllers\ManualController::class, 'index'])->name('manual.index');
+    Route::get('/manual/pdf/{slug?}',  [\App\Http\Controllers\ManualController::class, 'pdf'])->name('manual.pdf');
+    Route::get('/manual/{slug}',       [\App\Http\Controllers\ManualController::class, 'show'])->name('manual.show');
+
     // ── Finanzas → Pagos: entrada del hub (abre el primer tab visible) ──
     Route::get('/finanzas/pagos', [\App\Http\Controllers\Finance\PaymentsController::class, 'index'])->name('payments.index');
 

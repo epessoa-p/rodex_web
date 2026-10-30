@@ -40,7 +40,7 @@ class StoreCompanyRequest extends FormRequest
             'expenses_use_other_methods' => ['sometimes', 'boolean'],
             'pos_card_fields'            => ['sometimes', 'array'],
             'pos_card_fields.*'          => ['nullable', Rule::in(array_keys(\App\Models\Company::POS_CARD_FIELDS))],
-            // Rubro (motorepuestos / autorepuestos / lubricentro): en el alta decide qué catálogos precargar.
+            // Rubro (motorepuestos / autorepuestos / lubricentro / llantera): en el alta decide qué catálogos precargar.
             'business_type' => ['nullable', Rule::in(array_keys(\App\Support\BusinessTypeDefaults::OPTIONS))],
         ] + ($this->isMethod('post') ? $this->onboardingRules() : []);
     }
