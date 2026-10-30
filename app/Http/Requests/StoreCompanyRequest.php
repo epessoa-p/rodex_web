@@ -14,13 +14,11 @@ class StoreCompanyRequest extends FormRequest
 
     public function rules(): array
     {
-        // Al editar, el RUC de la propia empresa no debe chocar consigo mismo;
-        // las empresas eliminadas tampoco lo bloquean.
         $companyId = $this->route('company')?->id;
 
         return [
             'name' => 'required|string|max:255',
-            'ruc' => ['nullable', 'string', 'max:20', Rule::unique('companies', 'ruc')->ignore($companyId)->whereNull('deleted_at')],
+            'ruc' => ['nullable', 'string', 'max:20', $this->uniqueRuc($companyId)],
             'currency' => 'nullable|string|max:8',
             'address' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
@@ -43,6 +41,29 @@ class StoreCompanyRequest extends FormRequest
             // Rubro (motorepuestos / autorepuestos / lubricentro / neumáticos): en el alta decide qué catálogos precargar.
             'business_type' => ['nullable', Rule::in(array_keys(\App\Support\BusinessTypeDefaults::OPTIONS))],
         ] + ($this->isMethod('post') ? $this->onboardingRules() : []);
+    }
+
+    /**
+     * RUC único contra TODAS las empresas, también las eliminadas: el índice
+     * `companies_ruc_unique` las incluye y, si no, el alta revienta con un 1062.
+     * Al editar, la propia empresa no choca consigo misma.
+     */
+    private function uniqueRuc(?int $companyId): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail) use ($companyId) {
+            $owner = \App\Models\Company::withTrashed()
+                ->where('ruc', $value)
+                ->when($companyId, fn ($q) => $q->whereKeyNot($companyId))
+                ->first(['id', 'name', 'deleted_at']);
+
+            if (! $owner) {
+                return;
+            }
+
+            $fail($owner->trashed()
+                ? "Este RUC pertenece a la empresa eliminada «{$owner->name}» (#{$owner->id}). Usa otro RUC o déjalo vacío."
+                : "Este RUC ya está registrado en la empresa «{$owner->name}».");
+        };
     }
 
     /**
@@ -72,7 +93,6 @@ class StoreCompanyRequest extends FormRequest
     {
         return [
             'name.required' => 'El nombre de la empresa es requerido',
-            'ruc.unique' => 'Este RUC ya está registrado',
             'logo.image' => 'El logo debe ser una imagen',
             'logo.max' => 'El logo no puede pesar más de 2 MB',
             'theme_primary.regex' => 'El color principal debe ser un valor hexadecimal (#RRGGBB).',
