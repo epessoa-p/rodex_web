@@ -7,6 +7,7 @@
     $companyId  = auth()->user()?->getCurrentCompany()?->id ?? 0;
     $singleWh   = $warehouses->count() === 1 ? $warehouses->first() : null;
 @endphp
+@include('inventory.stock._import-photo')
 <div class="container-fluid">
 
     {{-- ── HEADER ─────────────────────────────────────────────────────── --}}
@@ -151,6 +152,7 @@
 .gt td.gt-num { width:42px; text-align:center; color:#adb5bd; font-size:.72rem; background:#fafbfc; position:sticky; left:0; z-index:1; }
 .gt td.gt-st { width:150px; padding:0 .5rem; white-space:nowrap; }
 .gt td.gt-del { width:34px; text-align:center; }
+.gt td.gt-photo { width:48px; min-width:48px; text-align:center; padding:.2rem; cursor:default; }
 .gt input.gt-in {
     width:100%; border:0; outline:none; background:transparent;
     padding:.5rem .55rem; font-size:.84rem; min-width:var(--w,90px);
@@ -222,9 +224,10 @@
     let rows = [];          // estado: [{name, price, ...}]
     let saveTimer = null;
 
-    const blank = () => Object.assign(Object.fromEntries(KEYS.map(k => [k, ''])), { unit: DEF_UNIT });
+    // photo = token de la foto subida; photoThumb = vista previa (va al borrador).
+    const blank = () => Object.assign(Object.fromEntries(KEYS.map(k => [k, ''])), { unit: DEF_UNIT, photo: '', photoThumb: '' });
     // La unidad por defecto no cuenta: una fila solo con "UNIDAD" sigue vacía.
-    const isEmpty = r => KEYS.every(k => {
+    const isEmpty = r => !r.photo && !r._photoBusy && KEYS.every(k => {
         const v = String(r[k] ?? '').trim();
         return v === '' || (k === 'unit' && v.toUpperCase() === DEF_UNIT);
     });
@@ -243,7 +246,7 @@
     }
 
     // ── Dibujo ─────────────────────────────────────────────────────────
-    head.innerHTML = '<th class="text-center">#</th>' + COLS.map(c =>
+    head.innerHTML = '<th class="text-center">#</th><th class="text-center" title="Toca la cámara para tomar o elegir la foto del producto">Foto</th>' + COLS.map(c =>
         '<th class="' + (c.extra ? 'extra' : '') + (c.num ? ' text-end' : '') + '" title="' + (c.hint || '') + '">' +
         c.label + (c.req ? ' <span class="req">*</span>' : '') + '</th>').join('') +
         '<th>Estado</th><th></th>';
@@ -258,6 +261,7 @@
 
     function rowHtml(r, i) {
         return '<tr data-r="' + i + '"><td class="gt-num">' + (i + 1) + '</td>' +
+            '<td class="gt-photo">' + photoHtml(r) + '</td>' +
             COLS.map(c => cellHtml(c, r, i)).join('') +
             '<td class="gt-st"></td><td class="gt-del"><button type="button" tabindex="-1" title="Quitar fila" data-del="' + i + '"><i class="bi bi-x-lg"></i></button></td></tr>';
     }
@@ -266,6 +270,32 @@
         body.innerHTML = rows.map(rowHtml).join('');
         refresh();
     }
+
+    // ── Foto por fila (ver _import-photo) ──────────────────────────────
+    function photoHtml(r) {
+        return ImportPhoto.cellHtml({ thumb: r.photoThumb, token: r.photo, busy: r._photoBusy, error: r._photoErr });
+    }
+    /** Repinta la foto de esa fila (si sigue en la tabla: pudieron quitarla mientras subía). */
+    function paintPhoto(row) {
+        const i = rows.indexOf(row);
+        const td = i < 0 ? null : body.querySelector('tr[data-r="' + i + '"] .gt-photo');
+        if (td) td.innerHTML = photoHtml(row);
+        ensureTail(); refresh();
+    }
+    body.addEventListener('click', function (e) {
+        const tr = e.target.closest('tr[data-r]');
+        if (!tr) return;
+        const row = rows[+tr.dataset.r];
+        if (e.target.closest('[data-photo-del]')) {
+            row.photo = ''; row.photoThumb = ''; paintPhoto(row); return;
+        }
+        if (!e.target.closest('[data-photo]') || row._photoBusy) return;
+        ImportPhoto.pick({
+            start: function (thumb) { row.photoThumb = thumb; row.photo = ''; row._photoBusy = true; row._photoErr = ''; paintPhoto(row); },
+            done:  function (token) { row.photo = token; row._photoBusy = false; paintPhoto(row); },
+            fail:  function (msg)   { row.photo = ''; row.photoThumb = ''; row._photoBusy = false; row._photoErr = msg; paintPhoto(row); },
+        });
+    });
 
     function addRows(n) {
         const start = rows.length;
@@ -487,7 +517,8 @@
         saveTimer = setTimeout(function () {
             try {
                 const f = filled();
-                f.length ? localStorage.setItem(DRAFT_KEY, JSON.stringify(f)) : localStorage.removeItem(DRAFT_KEY);
+                // Sin los estados de subida (_photoBusy, _photoErr): solo valen en esta pantalla.
+                f.length ? localStorage.setItem(DRAFT_KEY, JSON.stringify(f, (k, v) => k.startsWith('_') ? undefined : v)) : localStorage.removeItem(DRAFT_KEY);
             } catch (e) {}
         }, 400);
     }
@@ -513,6 +544,7 @@
     document.getElementById('btnSave').addEventListener('click', function () {
         const wh = document.getElementById('warehouse');
         if (!wh.value) { wh.focus(); window.showToast?.('Elige el almacén donde se guardará el stock.', 'warning'); return; }
+        if (ImportPhoto.pending()) { window.showToast?.('Espera a que terminen de subir las fotos.', 'warning'); return; }
         const nNew = +this.dataset.new, nUpd = +this.dataset.upd;
         document.getElementById('confTitle').textContent =
             '¿Guardar ' + (nNew + nUpd) + ' producto' + (nNew + nUpd === 1 ? '' : 's') + '?';
@@ -539,6 +571,7 @@
             origin: r.origin.trim(), models: r.models.split(',').map(t => t.trim()).filter(Boolean).join(', '), notes: r.notes.trim(),
             // Ubicación en el almacén elegido (borradores viejos no la tienen).
             location: String(r.location || '').trim(),
+            photo: r.photo || null,
         }));
         fetch(CONFIRM_URL, {
             method: 'POST',
@@ -559,7 +592,8 @@
                 document.getElementById('resultCard').classList.remove('d-none');
                 document.getElementById('resultText').textContent =
                     res.d.created + ' creado' + (res.d.created === 1 ? '' : 's') + ' · ' +
-                    res.d.updated + ' actualizado' + (res.d.updated === 1 ? '' : 's');
+                    res.d.updated + ' actualizado' + (res.d.updated === 1 ? '' : 's') +
+                    (res.d.photos ? ' · ' + res.d.photos + ' con foto' : '');
                 if ((res.d.errors || []).length) {
                     const box = document.getElementById('resultErrors');
                     box.innerHTML = '<div class="alert alert-warning small mb-0"><strong>Con problemas:</strong><ul class="mb-0 mt-1">' +

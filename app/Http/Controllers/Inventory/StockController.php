@@ -11,6 +11,7 @@ use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Warehouse;
 use App\Services\Inventory\BulkPriceUpdateService;
+use App\Services\Inventory\ImportPhotoStore;
 use App\Services\Inventory\StockValuationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -466,13 +467,36 @@ class StockController extends Controller
         }
     }
 
+    /**
+     * Foto de una fila de la importación: se sube apenas se toma (ya reducida
+     * en el navegador) y la fila guarda el token. Se pasa al producto al confirmar.
+     */
+    public function uploadImportPhoto(Request $request, ImportPhotoStore $photos)
+    {
+        $request->validate([
+            'photo' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
+        ], [
+            'photo.image' => 'El archivo debe ser una imagen.',
+            'photo.max'   => 'La foto no puede pesar más de 5 MB.',
+        ]);
+
+        $user      = auth()->user();
+        $companyId = $user->is_super_admin ? $request->company_id : $user->getCurrentCompany()?->id;
+        if (! $companyId) {
+            return response()->json(['ok' => false, 'message' => 'No hay una empresa activa.'], 422);
+        }
+
+        return response()->json(['ok' => true, 'token' => $photos->stash($request->file('photo'), (int) $companyId)]);
+    }
+
     /** Paso 3: confirma la importación a partir de las filas revisadas/editadas. */
-    public function confirmImport(Request $request)
+    public function confirmImport(Request $request, ImportPhotoStore $photos)
     {
         $request->validate([
             'warehouse_id'   => 'required|exists:warehouses,id',
             'rows'           => 'required|array|min:1',
             'rows.*.name'    => 'nullable|string',
+            'rows.*.photo'   => ['nullable', 'string', 'regex:' . ImportPhotoStore::TOKEN_REGEX],
             // 'table' = carga en tabla: en existentes solo se cambia lo escrito.
             'mode'           => 'nullable|in:table',
         ]);
@@ -482,25 +506,45 @@ class StockController extends Controller
         $counters = ['created' => 0, 'updated' => 0];
         $errors   = [];
         $partial  = $request->input('mode') === 'table';
+        $pending  = [];   // [fila, nombre, producto, token]: las fotos se mueven tras el commit
 
         try {
-            DB::transaction(function () use ($request, $companyId, $warehouse, $partial, &$counters, &$errors) {
+            DB::transaction(function () use ($request, $companyId, $warehouse, $partial, &$counters, &$errors, &$pending) {
                 foreach ($request->input('rows', []) as $i => $d) {
                     $name = trim((string) ($d['name'] ?? ''));
                     if ($name === '') continue;
                     $d['_partial'] = $partial;
                     try {
-                        $this->persistRow($d, $companyId, $warehouse, $counters);
+                        $product = $this->persistRow($d, $companyId, $warehouse, $counters);
+                        if ($product && ! empty($d['photo'])) {
+                            $pending[] = [$i, $name, $product, $d['photo']];
+                        }
                     } catch (\Throwable $e) {
                         $errors[] = "Fila " . ($i + 1) . " ({$name}): " . $e->getMessage();
                     }
                 }
             });
 
+            // Fuera de la transacción: si algo fallara arriba no quedan archivos
+            // sueltos, y una foto que no se pudo pasar no deshace el producto.
+            $photosSaved = 0;
+            foreach ($pending as [$i, $name, $product, $token]) {
+                try {
+                    $warning = $photos->attach($product, $token);
+                } catch (\Throwable $e) {
+                    Log::warning('No se pudo guardar la foto de la importación', ['product' => $product->id, 'error' => $e->getMessage()]);
+                    $warning = 'no se pudo guardar la foto';
+                }
+                $warning === null
+                    ? $photosSaved++
+                    : $errors[] = "Fila " . ($i + 1) . " ({$name}): se guardó el producto, pero {$warning}.";
+            }
+
             return response()->json([
                 'ok'      => true,
                 'created' => $counters['created'],
                 'updated' => $counters['updated'],
+                'photos'  => $photosSaved,
                 'errors'  => $errors,
             ]);
         } catch (\Throwable $e) {
@@ -564,10 +608,10 @@ class StockController extends Controller
      * Crea/actualiza un producto (vía el trait genérico) y fija su stock en el
      * almacén. La lógica de parseo/upsert vive en ParsesProductImport.
      */
-    private function persistRow(array $d, int $companyId, Warehouse $warehouse, array &$counters): void
+    private function persistRow(array $d, int $companyId, Warehouse $warehouse, array &$counters): ?Product
     {
         if (trim((string) ($d['name'] ?? '')) === '') {
-            return;
+            return null;
         }
 
         $product = $this->upsertProduct($d, $companyId, $counters);
@@ -585,10 +629,12 @@ class StockController extends Controller
         // existía, su stock se deja como está (el Excel siempre fija el stock).
         $noQty = ! isset($d['qty']) || trim((string) $d['qty']) === '';
         if (! empty($d['_partial']) && $noQty && ! $product->wasRecentlyCreated) {
-            return;
+            return $product;
         }
 
         $this->setWarehouseStock($product, $warehouse->id, (float) ($d['qty'] ?? 0), $warehouse->company_id);
+
+        return $product;
     }
 
     /** Fija el stock de un almacén a $target creando un movimiento por la diferencia. */

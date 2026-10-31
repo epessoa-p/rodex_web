@@ -3,6 +3,7 @@
 @section('title', 'Importar productos desde Excel')
 
 @section('page')
+@include('inventory.stock._import-photo')
 <div class="container-fluid">
 
     {{-- ── HEADER ─────────────────────────────────────────────────────── --}}
@@ -158,6 +159,7 @@
                         <thead class="table-light position-sticky top-0" style="z-index:2;">
                             <tr>
                                 <th class="ps-3 py-2" style="font-size:.66rem;">Estado</th>
+                                <th class="py-2 text-center" style="font-size:.66rem;width:48px;" title="Toca la cámara para tomar o elegir la foto del producto">Foto</th>
                                 <th class="py-2" style="font-size:.66rem;min-width:180px;">Nombre</th>
                                 <th class="py-2" style="font-size:.66rem;min-width:120px;">Categoría</th>
                                 <th class="py-2" style="font-size:.66rem;min-width:100px;">Marca</th>
@@ -250,6 +252,7 @@
                 <div class="d-flex justify-content-center gap-2 flex-wrap my-3">
                     <span class="badge bg-success fs-6 fw-normal px-3 py-2"><i class="bi bi-plus-circle me-1"></i><span id="resCreated">0</span> creados</span>
                     <span class="badge bg-primary fs-6 fw-normal px-3 py-2"><i class="bi bi-arrow-repeat me-1"></i><span id="resUpdated">0</span> actualizados</span>
+                    <span class="badge bg-secondary fs-6 fw-normal px-3 py-2 d-none" id="resPhotosBadge"><i class="bi bi-camera me-1"></i><span id="resPhotos">0</span> con foto</span>
                 </div>
                 <div id="resErrors" class="text-start small text-danger d-none mx-auto" style="max-width:560px;"></div>
                 <div class="d-flex justify-content-center gap-2 mt-3">
@@ -382,6 +385,7 @@
                 : '<span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.62rem;">Nuevo</span>';
             return '<tr class="prev-row" data-status="' + r.status + '" data-catcode="' + esc(r.category_code) + '" data-unit="' + esc(r.unit) + '">' +
                 '<td class="ps-3">' + badge + '</td>' +
+                '<td class="text-center r-photo">' + ImportPhoto.cellHtml() + '</td>' +
                 '<td><input class="form-control form-control-sm r-name" value="' + esc(r.name) + '"></td>' +
                 '<td><input class="form-control form-control-sm r-category" value="' + esc(r.category) + '"></td>' +
                 '<td><input class="form-control form-control-sm r-brand" value="' + esc(r.brand) + '"></td>' +
@@ -399,6 +403,25 @@
         body.querySelectorAll('.row-del').forEach(function (b) {
             b.addEventListener('click', function () { this.closest('tr').remove(); updateRowCount(); });
         });
+    }
+
+    // ── Foto por fila (ver _import-photo) ────────────────────────────
+    function paintPhoto(tr) { tr.querySelector('.r-photo').innerHTML = ImportPhoto.cellHtml(tr._photo); }
+    document.getElementById('prevBody').addEventListener('click', function (e) {
+        const tr = e.target.closest('tr.prev-row');
+        if (!tr) return;
+        if (e.target.closest('[data-photo-del]')) { tr._photo = null; paintPhoto(tr); return; }
+        if (!e.target.closest('[data-photo]') || tr._photo?.busy) return;
+        ImportPhoto.pick({
+            start: function (thumb) { tr._photo = { thumb: thumb, busy: true }; paintPhoto(tr); },
+            done:  function (token) { tr._photo = { thumb: tr._photo.thumb, token: token }; paintPhoto(tr); },
+            fail:  function (msg)   { tr._photo = { error: msg }; paintPhoto(tr); },
+        });
+    });
+    function photosBusy() {
+        if (!ImportPhoto.pending()) return false;
+        alert('Espera a que terminen de subir las fotos.');
+        return true;
     }
     function updateRowCount() {
         const n = document.querySelectorAll('#prevBody .prev-row').length;
@@ -431,12 +454,14 @@
                 price: parseFloat(row.querySelector('.r-price').value) || 0,
                 qty: parseFloat(row.querySelector('.r-qty').value) || 0,
                 status: row.dataset.status,
+                photo: (row._photo && row._photo.token) || null,
             };
         }).filter(function (r) { return r.name !== ''; });
     }
 
     // ── Step 2 → 3: totals ───────────────────────────────────────────
     document.getElementById('btnToStep3').addEventListener('click', function () {
+        if (photosBusy()) return;
         const rows = collectRows();
         if (rows.length === 0) { alert('No hay filas válidas (con nombre) para importar.'); return; }
         let nw = 0, up = 0, units = 0, cost = 0, price = 0;
@@ -459,6 +484,7 @@
     // ── Step 3: confirm ──────────────────────────────────────────────
     const btnConfirm = document.getElementById('btnConfirm');
     btnConfirm.addEventListener('click', function () {
+        if (photosBusy()) return;
         const rows = collectRows();
         if (rows.length === 0) { alert('No hay filas para importar.'); return; }
         btnConfirm.disabled = true;
@@ -476,6 +502,8 @@
                 if (!res.ok || !res.d.ok) throw new Error(res.d.message || 'No se pudo importar.');
                 document.getElementById('resCreated').textContent = res.d.created;
                 document.getElementById('resUpdated').textContent = res.d.updated;
+                document.getElementById('resPhotos').textContent = res.d.photos || 0;
+                document.getElementById('resPhotosBadge').classList.toggle('d-none', !res.d.photos);
                 const errBox = document.getElementById('resErrors');
                 if (res.d.errors && res.d.errors.length) {
                     errBox.innerHTML = '<div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>Filas con error (' + res.d.errors.length + '):</div><ul class="mb-0 ps-3">' + res.d.errors.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + '</ul>';

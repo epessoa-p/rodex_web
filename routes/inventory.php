@@ -36,6 +36,8 @@ Route::middleware(['auth', 'plan:inventory'])->group(function () {
         Route::post('/import',            [StockController::class, 'processImport'])->name('.import.process')->middleware('check-permission:products.create');
         Route::post('/import/preview',    [StockController::class, 'previewImport'])->name('.import.preview')->middleware('check-permission:products.create');
         Route::post('/import/confirm',    [StockController::class, 'confirmImport'])->name('.import.confirm')->middleware('check-permission:products.create');
+        // Foto de una fila (se sube al tomarla; se pasa al producto al confirmar).
+        Route::post('/import/photo',      [StockController::class, 'uploadImportPhoto'])->name('.import.photo')->middleware('check-permission:products.create');
         Route::post('/{product}/field',   [StockController::class, 'updateField'])->name('.field')->middleware('check-permission:products.edit');
         // Ajuste masivo de precios (inflación): vista previa y aplicación.
         Route::post('/bulk-price/preview', [StockController::class, 'bulkPricePreview'])->name('.bulk-price.preview')->middleware('check-permission:products.prices');
