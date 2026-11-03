@@ -54,6 +54,8 @@ class StoreUserRequest extends FormRequest
             'name.regex' => 'El nombre de usuario no puede contener espacios',
             'email.required' => 'El email es requerido',
             'email.unique' => 'Este email ya está registrado',
+            'email.email' => 'El email no es válido',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres',
             'name.unique' => 'Este nombre de usuario ya está registrado',
             'password.required' => 'La contraseña es requerida',
             'password.confirmed' => 'Las contraseñas no coinciden',

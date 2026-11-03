@@ -75,6 +75,12 @@
                     <i class="bi bi-building"></i> Empresas
                 </a>
             </li>
+            {{-- Usuarios: solo plataforma; las empresas los crean desde Personal --}}
+            <li class="nav-item">
+                <a class="nav-link app-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}">
+                    <i class="bi bi-person-gear"></i> Usuarios
+                </a>
+            </li>
             <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('roles.*') ? 'active' : '' }}" href="{{ route('roles.index') }}">
                     <i class="bi bi-shield-lock"></i> Roles
@@ -106,13 +112,6 @@
             <li class="nav-item">
                 <a class="nav-link app-link {{ request()->routeIs('company-profile.*') ? 'active' : '' }}" href="{{ route('company-profile.edit') }}">
                     <i class="bi bi-building"></i> Mi empresa
-                </a>
-            </li>
-            @endif
-            @if(auth()->user()->is_super_admin){{-- Usuarios: solo plataforma; las empresas los crean desde Personal --}}
-            <li class="nav-item">
-                <a class="nav-link app-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}">
-                    <i class="bi bi-person-gear"></i> Usuarios
                 </a>
             </li>
             @endif
@@ -852,6 +851,7 @@
             <div class="sidebar-section-title" data-sec="sistema">Sistema</div>
             <ul class="nav flex-column gap-1 mb-3">
                 <li><a class="nav-link app-link {{ request()->routeIs('companies.*') ? 'active' : '' }}" href="{{ route('companies.index') }}"><i class="bi bi-building me-2"></i>Empresas</a></li>
+                <li><a class="nav-link app-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}"><i class="bi bi-person-gear me-2"></i>Usuarios</a></li>
                 <li><a class="nav-link app-link {{ request()->routeIs('roles.*') ? 'active' : '' }}" href="{{ route('roles.index') }}"><i class="bi bi-shield-lock me-2"></i>Roles</a></li>
                 <li><a class="nav-link app-link {{ request()->routeIs('subscriptions.*') ? 'active' : '' }}" href="{{ route('subscriptions.index') }}"><i class="bi bi-credit-card me-2"></i>Suscripciones</a></li>
                 <li><a class="nav-link app-link {{ request()->routeIs('plans.*') ? 'active' : '' }}" href="{{ route('plans.index') }}"><i class="bi bi-box-seam me-2"></i>Planes</a></li>
@@ -865,9 +865,6 @@
             <ul class="nav flex-column gap-1 mb-3">
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('company-profile.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('company-profile.*') ? 'active' : '' }}" href="{{ route('company-profile.edit') }}"><i class="bi bi-building me-2"></i>Mi empresa</a></li>
-                @endif
-                @if(auth()->user()->is_super_admin){{-- Usuarios: solo plataforma; las empresas los crean desde Personal --}}
-                <li><a class="nav-link app-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}"><i class="bi bi-person-gear me-2"></i>Usuarios</a></li>
                 @endif
                 @if(auth()->user()->is_super_admin || auth()->user()->hasPermissionInCompany('branches.view', $currentCompany))
                 <li><a class="nav-link app-link {{ request()->routeIs('branches.*') ? 'active' : '' }}" href="{{ route('branches.index') }}"><i class="bi bi-diagram-2 me-2"></i>Sucursales</a></li>

@@ -171,6 +171,11 @@ class UserController extends Controller
 
             $user->update($data);
 
+            // Contraseña nueva: se cierran las sesiones de la app móvil de ese usuario.
+            if (!empty($data['password'])) {
+                $user->tokens()->delete();
+            }
+
             Log::info('[UserController::update] guardado OK', ['user_id' => $user->id]);
 
             return redirect()->route('users.index')->with('success', 'Usuario actualizado exitosamente');
